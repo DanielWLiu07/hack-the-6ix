@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useTvTransition } from '../lib/tvTransition.jsx'
 import './ArrivalFuzz.css'
 
 // Full-screen TV static that covers a page the instant it MOUNTS, then fades:
@@ -9,6 +10,11 @@ import './ArrivalFuzz.css'
 // asset load happening underneath it.
 export default function ArrivalFuzz({ hold = 480, fade = 820 }) {
   const ref = useRef(null)
+  // This mounts once the (lazy) page has mounted, so tell the TV transition it
+  // can clear its static now - the page-side fuzz below takes over seamlessly,
+  // with no clean/black gap between them.
+  const { arrived } = useTvTransition()
+  useEffect(() => { arrived() }, [arrived])
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return undefined

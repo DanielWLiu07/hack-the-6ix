@@ -11,7 +11,7 @@ const TvCtx = createContext(null)
 
 // Safe to call outside the provider (falls back to a plain no-op wrapper).
 export function useTvTransition() {
-  return useContext(TvCtx) || { tvNavigate: () => {} }
+  return useContext(TvCtx) || { tvNavigate: () => {}, arrived: () => {} }
 }
 
 // The clicked monitor's in-scene fuzz (TvStaticMesh) already fills the screen by
@@ -20,7 +20,8 @@ export function useTvTransition() {
 // blend seam). COVER_MS is just long enough to paint one opaque frame before we
 // swap the route behind it.
 const COVER_MS = 60
-const HOLD_MS = 400 // stays fully covered while the new page mounts/paints
+const HOLD_MIN_MS = 120 // minimum cover so a fast mount does not snap-reveal
+const HOLD_FALLBACK_MS = 2200 // reveal anyway if the page never signals arrival
 const REVEAL_MS = 640 // then clears (fades) over the destination
 
 // Camera zoom-in / zoom-out duration (MonkeyStage TvZoom / TvZoomOut). Shared so
@@ -37,7 +38,7 @@ export default function TvTransitionProvider({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const canvasRef = useRef(null)
-  const state = useRef({ phase: 'idle', t0: 0, op: 0, to: null, guard: false })
+  const state = useRef({ phase: 'idle', t0: 0, op: 0, to: null, guard: false, arrived: false })
   const startRef = useRef(() => {})
 
   useEffect(() => {
@@ -76,11 +77,13 @@ export default function TvTransitionProvider({ children }) {
         s.op = 1
         if (now - s.t0 >= ZOOM_MS) { s.phase = 'reveal'; s.t0 = now }
       } else if (s.phase === 'hold') {
-        // Keep the screen fully covered while the destination mounts/paints, so
-        // the reveal FADES over the real new page rather than a blank loading
-        // gap (which read as an instant cut).
+        // Stay fully covered until the destination page signals it has mounted
+        // (arrived), so the static never clears over a blank loading screen (the
+        // black flash you saw). A small minimum avoids a snap on very fast mounts;
+        // a fallback reveals anyway if a page never signals.
         s.op = 1
-        if (now - s.t0 >= HOLD_MS) { s.phase = 'reveal'; s.t0 = now }
+        const held = now - s.t0
+        if ((s.arrived && held >= HOLD_MIN_MS) || held >= HOLD_FALLBACK_MS) { s.phase = 'reveal'; s.t0 = now }
       } else if (s.phase === 'reveal') {
         s.op = Math.max(0, 1 - (now - s.t0) / REVEAL_MS)
         if (s.op <= 0) { s.phase = 'idle'; s.op = 0 }
@@ -129,13 +132,18 @@ export default function TvTransitionProvider({ children }) {
     const s = state.current
     if (s.phase === 'cover') return // already changing channel
     s.to = to
+    s.arrived = false
     s.phase = 'cover'
     s.t0 = performance.now()
     startRef.current()
   }, [])
 
+  // The destination page calls this once it has mounted, so the static can clear
+  // over the real page instead of a loading screen.
+  const arrived = useCallback(() => { state.current.arrived = true }, [])
+
   return (
-    <TvCtx.Provider value={{ tvNavigate }}>
+    <TvCtx.Provider value={{ tvNavigate, arrived }}>
       {children}
       <canvas ref={canvasRef} className="tv-static-overlay" aria-hidden="true" />
     </TvCtx.Provider>
