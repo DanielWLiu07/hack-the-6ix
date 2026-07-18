@@ -33,6 +33,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import cv2
 
 from detector import load_detector, annotate
+from spoilage_classifier import load_spoilage_classifier
 from synthetic import SyntheticCamera
 
 PORT = int(os.environ.get("PORT", "8080"))
@@ -79,7 +80,7 @@ def open_source(source):
     return SyntheticCamera(FRAME_W, FRAME_H), "synthetic"
 
 
-def capture_loop(source, detector, emit_stdout=True):
+def capture_loop(source, detector, classifier=None, emit_stdout=True):
     cap, src_name = open_source(source)
     STATE.source = src_name
     fps, alpha = 0.0, 0.1
@@ -92,6 +93,12 @@ def capture_loop(source, detector, emit_stdout=True):
             time.sleep(1)
             continue
         dets = detector.detect(frame, ts=t0)
+        # spoilage authority: HSV localizes, the classifier scores the banana crop
+        # (classical passthrough by default; an Edge Impulse model when configured)
+        if classifier is not None:
+            for d in dets:
+                if d.get("fruit") == "banana":
+                    d.update(classifier.classify(frame, d))
         dt = time.time() - t0
         fps = (1 - alpha) * fps + alpha * (1.0 / max(dt, 1e-6)) if fps else 1.0 / max(dt, 1e-6)
 
@@ -124,6 +131,7 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path.startswith("/health"):
             self._json({"ok": STATE.jpeg is not None,
                         "detector": DETECTOR_NAME,
+                        "spoilage": SPOILAGE_NAME,
                         "source": getattr(STATE, "source", "?"),
                         "fps": round(STATE.fps, 1)})
         else:
@@ -163,7 +171,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    global DETECTOR_NAME
+    global DETECTOR_NAME, SPOILAGE_NAME
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", default="camera", choices=["camera", "synthetic"])
     ap.add_argument("--port", type=int, default=PORT)
@@ -171,10 +179,13 @@ def main():
 
     detector = load_detector()
     DETECTOR_NAME = detector.name
-    print(f"[pipeline] detector={detector.name} port={args.port} source={args.source}",
-          file=sys.stderr)
+    classifier = load_spoilage_classifier()
+    SPOILAGE_NAME = classifier.name
+    print(f"[pipeline] detector={detector.name} spoilage={classifier.name} "
+          f"port={args.port} source={args.source}", file=sys.stderr)
 
-    t = threading.Thread(target=capture_loop, args=(args.source, detector), daemon=True)
+    t = threading.Thread(target=capture_loop, args=(args.source, detector, classifier),
+                         daemon=True)
     t.start()
 
     server = ThreadingHTTPServer(("0.0.0.0", args.port), Handler)
@@ -186,6 +197,7 @@ def main():
 
 
 DETECTOR_NAME = "?"
+SPOILAGE_NAME = "?"
 
 if __name__ == "__main__":
     main()
