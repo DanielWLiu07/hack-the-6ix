@@ -1,7 +1,11 @@
 """Socket.IO client that ships `lidar_scan` events to the laptop hub.
 
 Payload (root CLAUDE.md, do not drift):
-    "lidar_scan" {"ts": <epoch_s>, "points": [[x, y], ...]}   # meters, ≤360
+    "lidar_scan" {"ts": <epoch_ms>, "points": [[x, y], ...]}   # meters, ≤360
+
+The hub only relays `lidar_scan` to dashboards from clients that connect with
+role=robot (see web/server/index.js). Connecting without it silently drops
+every scan, so we always pass auth={"role": "robot"}.
 """
 
 import logging
@@ -32,7 +36,7 @@ class ScanEmitter:
         def disconnect():
             log.warning("socket.io disconnected (auto-reconnecting)")
 
-        sio.connect(self.server_url, wait_timeout=10)
+        sio.connect(self.server_url, auth={"role": "robot"}, wait_timeout=10)
         self._sio = sio
 
     def emit_scan(self, points: "list[list[float]]", ts: "float|None" = None):
@@ -40,7 +44,10 @@ class ScanEmitter:
         stale scans are worthless, the next one arrives in ≤0.5 s."""
         if self._sio is None or not self._sio.connected:
             return False
-        payload = {"ts": ts if ts is not None else time.time(), "points": points}
+        # Contract is epoch milliseconds (matches sim.py + frontend fmtTime).
+        # main.py passes ts in epoch seconds (time.time()); convert here.
+        ts_s = ts if ts is not None else time.time()
+        payload = {"ts": int(ts_s * 1000), "points": points}
         try:
             self._sio.emit("lidar_scan", payload)
             return True
