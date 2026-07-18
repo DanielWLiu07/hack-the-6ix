@@ -13,6 +13,7 @@
   --ui-red: #e5484d;
   --ui-blue: #52a9ff;
   --ui-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --ui-display: 'Katie Roze', 'Brush Script MT', 'Segoe Script', cursive;
 }
 
 .shell {
@@ -39,24 +40,30 @@
 }
 
 .topbar .brand {
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-family: var(--ui-display);
+  font-size: 1.95rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0.4px;
   color: var(--ui-text);
   text-decoration: none;
   white-space: nowrap;
 }
 .topbar .brand .accent { color: var(--ui-red); }
 
-.topbar nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.topbar nav { display: flex; gap: 0.15rem; flex-wrap: wrap; align-items: baseline; }
 .topbar nav a {
+  font-family: var(--ui-display);
+  font-size: 1.4rem;
+  line-height: 1;
   color: var(--ui-dim);
   text-decoration: none;
-  font-size: 0.9rem;
-  padding: 0.3rem 0.7rem;
-  border-radius: 8px;
+  padding: 0.1rem 0.7rem 0.28rem;
+  border-radius: 10px;
+  transition: color 0.15s, background 0.15s;
 }
-.topbar nav a:hover { color: var(--ui-text); background: rgba(255,255,255,0.04); }
-.topbar nav a.active { color: var(--ui-text); background: rgba(70,167,88,0.12); }
+.topbar nav a:hover { color: var(--ui-text); background: rgba(255,255,255,0.05); }
+.topbar nav a.active { color: var(--ui-green); background: rgba(70,167,88,0.14); }
 
 .conn {
   margin-left: auto;

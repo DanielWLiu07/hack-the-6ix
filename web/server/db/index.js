@@ -51,9 +51,15 @@ export async function createDb({
     },
     recordDetection: (doc) => backend.recordDetection(stamp(doc)),
     recordPickEvent: (doc) => backend.recordPickEvent(stamp(doc)),
+    recordCommand: (doc) => backend.recordCommand(stamp(doc)),
     getStats: () => backend.getStats(),
     getPicks: (opts) => backend.getPicks(opts),
     getDetections: (opts) => backend.getDetections(opts),
+    getCommands: (opts) => backend.getCommands(opts),
+    getTimeSeries: (opts) => backend.getTimeSeries(opts),
+    getSessions: (opts) => backend.getSessions(opts),
+    getLatestTelemetry: () => backend.getLatestTelemetry(),
+    getActivity: (opts) => backend.getActivity(opts),
     close: () => backend.close(),
   };
 }

@@ -3,18 +3,18 @@ import { Link } from 'react-router-dom'
 import { useRobot } from './lib/robot.jsx'
 import './App.css'
 
-// The fresh painterly r3f hero (end-goal). Lazy so three.js stays out of the
-// main bundle and only loads when this backdrop is actually shown.
+// Landing = the self-contained r3f painterly OrchardHero. Lazy so three.js
+// stays out of the main bundle. It needs WebGL2 (the painterly pass is GLSL3);
+// if that's unavailable we fall back to the static ClassicHero.
 const OrchardHero = lazy(() => import('./components/OrchardHero.jsx'))
 
-// Landing mode:
-//  - USE_R3F_HERO true  → promote the painterly r3f orchard for dev AND prod
-//    (replaces both interim modes below). Flip on after visual sign-off.
-//  - else in DEV        → embed the standalone :8123 painterly scene (interim)
-//  - else in PROD       → classic React hero (:8123 doesn't exist on Vercel)
-const USE_R3F_HERO = false
-const DEV = import.meta.env.DEV
-const LEGACY_SCENE_URL = 'http://localhost:8123/'
+const WEBGL2 = (() => {
+  try {
+    return !!document.createElement('canvas').getContext('webgl2')
+  } catch {
+    return false
+  }
+})()
 
 function useHeroStats() {
   const { connected, telemetry, picks } = useRobot()
@@ -38,9 +38,7 @@ function useHeroStats() {
   ]
 }
 
-// The only thing overlaid on the pure scene: one tiny, low-opacity corner
-// link so the demo can navigate out. Everything else (HUD, keyboard) is the
-// scene's own, untouched.
+// One tiny, low-opacity corner link so the demo can navigate out of the scene.
 function SceneChip() {
   return (
     <Link className="scene-chip" to="/dashboard">
@@ -49,30 +47,7 @@ function SceneChip() {
   )
 }
 
-// Pure-scene landing: a fullscreen, fully-interactive backdrop with nothing
-// over it but the corner chip.
-function SceneLanding({ backdrop }) {
-  return (
-    <main className="hero-stage">
-      {backdrop}
-      <SceneChip />
-    </main>
-  )
-}
-
-// Interim (dev only): the standalone painterly scene served at :8123,
-// fullscreen, behaving exactly as it does on its own.
-function LegacyEmbed() {
-  return (
-    <iframe
-      className="hero-embed"
-      src={LEGACY_SCENE_URL}
-      title="Painterly orchard scene"
-    />
-  )
-}
-
-// Classic React hero — prod interim until the r3f hero is promoted.
+// Static fallback hero for browsers/GPUs without WebGL2.
 function ClassicHero() {
   const stats = useHeroStats()
   return (
@@ -117,19 +92,13 @@ function ClassicHero() {
 }
 
 export default function App() {
-  if (USE_R3F_HERO) {
-    return (
-      <SceneLanding
-        backdrop={
-          <Suspense fallback={<div className="hero-fallback" />}>
-            <OrchardHero />
-          </Suspense>
-        }
-      />
-    )
-  }
-  if (DEV) {
-    return <SceneLanding backdrop={<LegacyEmbed />} />
-  }
-  return <ClassicHero />
+  if (!WEBGL2) return <ClassicHero />
+  return (
+    <main className="hero-stage">
+      <Suspense fallback={<div className="hero-fallback" />}>
+        <OrchardHero />
+      </Suspense>
+      <SceneChip />
+    </main>
+  )
 }

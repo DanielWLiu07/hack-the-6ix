@@ -23,6 +23,9 @@ npm run sim      # fake robot (separate terminal) — unblocks all frontend work
 | `BASE44_SECRET` | — | shared secret sent as `X-Base44-Secret` header on each forward |
 | `BASE44_JOB_ID` | — | optional HarvestJob id tagged onto every forwarded PickReport |
 | `BASE44_TIMEOUT_MS` | 4000 | per-forward request timeout |
+| `FORCE_SIM` | `off` | demo panic switch boot mode: `off`/`on`/`auto` (see below) |
+| `PANIC_GRACE_MS` | 4000 | `auto` mode: how long the real robot must be gone before the fallback sim spawns |
+| `PANIC_KEY` | — | if set, `POST /api/force-sim` requires an `X-Panic-Key` header |
 | `WASTE_KG_PER_PICK` | 0.15 | kg waste avoided per successful pick (stats) |
 | `SERVER_URL` | `http://localhost:3001` | sim.js only: hub to connect to |
 | `SIM_LIDAR` | on | sim.js only: `0` disables sim lidar frames |
@@ -44,12 +47,13 @@ or connect plain and emit `register {"role":"robot"|"farmhand"}` (`farmhand` ≡
 
 ## HTTP
 
-- `GET /api/health` — `{ ok, uptime_s, clients: {robot,ui,agent}, robot_connected, base44_forwarding }`
+- `GET /api/health` — `{ ok, uptime_s, clients: {robot,ui,agent}, robot_connected, real_robot_connected, base44_forwarding, force_sim }`
 - `GET /api/stats` — shape defined in `db/README.md` (authoritative): `{ backend, totals,
   by_fruit, by_ripeness, by_bin, avg_pick_duration_ms, detections, waste_avoided_kg,
   co2e_avoided_kg }`
 - `GET /api/picks?limit=100&fruit=&ripeness=&since=` — newest-first pick_event docs
 - `GET /api/detections?limit=50` — newest-first detection docs
+- `GET|POST /api/force-sim` — demo panic switch (see below)
 - `GET /stream` — MJPEG (robot proxy if `ROBOT_STREAM_URL` set, else test pattern) — use in an `<img src>`
 
 ## Base44 Orchard OS forwarding (`base44.js`)
@@ -60,6 +64,19 @@ app's webhook as `{ job_id?, fruit, ripeness, bin, success, ts }` with an
 blocks event relay and never throws into the hub; failures are rate-limited-logged.
 Unset the URL to disable entirely (default). Check state via `/api/health`
 (`base44_forwarding`) or the startup log line.
+
+## Demo panic switch (`panic.js`)
+
+Keeps the dashboard alive if the real robot dies mid-judging by spawning `sim.js` as a
+fallback data source. Runtime-switchable, no restart. See `docs/DEPLOY.md` → *Demo panic
+switch* for the operator runbook.
+
+- `GET  /api/force-sim` → `{ mode, sim_running, sim_pid, real_robots, grace_ms }`
+- `POST /api/force-sim` body `{"mode":"off"|"on"|"auto"}` **or** `{"on":true|false}` (button)
+  - `off` — real robot only · `on` — force fallback now · `auto` — failover iff no real robot for `PANIC_GRACE_MS`
+  - guarded by `X-Panic-Key` header iff `PANIC_KEY` env is set
+- Boot mode via `FORCE_SIM` env. Fallback sims are tagged (`auth.sim=true`) so `auto`
+  never counts them as the real robot; `/api/health.real_robot_connected` reflects this.
 
 ## Persistence
 

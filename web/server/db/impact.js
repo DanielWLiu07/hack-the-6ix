@@ -31,3 +31,20 @@ export function computeImpact(successesByFruit) {
 export function round2(n) {
   return Math.round(n * 100) / 100;
 }
+
+// Edible mass (kg) claimed as waste-avoided for one pick: the fruit's mass on a
+// success, zero on a failure. Single source of truth so getStats, getTimeSeries
+// and getSessions never disagree on the impact math.
+export function pickKg(pick) {
+  return pick && pick.success ? KG_PER_FRUIT[pick.fruit] ?? 0.15 : 0;
+}
+
+// Picks-per-hour / kg-per-hour over an elapsed span. Rate is meaningless for a
+// zero-length span (0 or 1 events), so we report 0 rather than Infinity/NaN.
+export function throughput({ picks = 0, kg = 0, spanMs = 0 }) {
+  const hours = spanMs / 3_600_000;
+  return {
+    picks_per_hour: hours > 0 ? round2(picks / hours) : 0,
+    kg_per_hour: hours > 0 ? round2(kg / hours) : 0,
+  };
+}

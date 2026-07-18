@@ -1,3 +1,12 @@
+/* Brand display face (subset of Katie Roze → 2.4KB woff2, self-hosted). */
+@font-face {
+  font-family: 'Katie Roze';
+  src: url('/fonts/katieroze.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;

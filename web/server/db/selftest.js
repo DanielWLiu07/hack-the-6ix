@@ -27,7 +27,8 @@ async function exercise(db, label) {
     { ts: t0, fruit: 'apple', ripeness: 'ripe', bin: 'apple_ripe', success: true, duration_ms: 8000 },
     { ts: t0 + 1, fruit: 'apple', ripeness: 'unripe', bin: 'apple_unripe', success: true, duration_ms: 9000 },
     { ts: t0 + 2, fruit: 'banana', ripeness: 'ripe', bin: 'banana_ripe', success: false, duration_ms: 12000 },
-    { ts: t0 + 3, fruit: 'banana', ripeness: 'ripe', bin: 'banana_ripe', success: true, duration_ms: 7000 },
+    // carries an optional image_url (photo-per-pickup) — must round-trip verbatim.
+    { ts: t0 + 3, fruit: 'banana', ripeness: 'ripe', bin: 'banana_ripe', success: true, duration_ms: 7000, image_url: '/media/pick_test.jpg' },
   ];
   for (const p of picks) await db.recordPickEvent(p);
 
@@ -43,6 +44,7 @@ async function exercise(db, label) {
   assert.equal(stats.avg_pick_duration_ms, 9000);
   assert.equal(stats.detections.total, 2);
   assert.equal(stats.detections.by_class.apple_ripe, 1);
+  assert.equal(stats.detections.avg_conf, 0.87, 'avg detection confidence (0.93+0.81)/2');
   // 2 apples (0.18) + 1 banana (0.12) successful = 0.48 kg
   assert.equal(stats.waste_avoided_kg, 0.48);
   assert.equal(stats.co2e_avoided_kg, 1.2);
@@ -50,6 +52,7 @@ async function exercise(db, label) {
   const recent = await db.getPicks({ limit: 2 });
   assert.equal(recent.length, 2);
   assert.equal(recent[0].ts, t0 + 3, 'getPicks newest first');
+  assert.equal(recent[0].image_url, '/media/pick_test.jpg', 'image_url passes through verbatim');
   assert.ok(!('_id' in recent[0]), 'no _id leakage');
 
   const apples = await db.getPicks({ fruit: 'apple' });
@@ -58,6 +61,75 @@ async function exercise(db, label) {
   const dets = await db.getDetections({ limit: 10 });
   assert.equal(dets.length, 2);
   assert.equal(dets[0].fruit, 'banana', 'getDetections newest first');
+
+  // --- window + throughput (additive getStats fields) ---
+  assert.equal(stats.window.first_ts, t0);
+  assert.equal(stats.window.last_ts, t0 + 3);
+  assert.equal(stats.window.span_ms, 3);
+  assert.ok(stats.throughput.picks_per_hour > 0, 'throughput computed over span');
+
+  // --- getTimeSeries: 4 picks land in one 60s bucket ---
+  const ts1 = await db.getTimeSeries({ bucketMs: 60000 });
+  assert.equal(ts1.bucket_ms, 60000);
+  assert.equal(ts1.series.length, 1, 'all 4 picks in one bucket');
+  assert.equal(ts1.series[0].picks, 4);
+  assert.equal(ts1.series[0].successes, 3);
+  assert.equal(ts1.series[0].kg, 0.48, 'bucket kg = successful-pick mass');
+  assert.equal(ts1.series[0].apple, 2);
+  assert.equal(ts1.series[0].banana, 2);
+
+  // --- getSessions: all 4 picks are one run (gaps << 2 min) ---
+  const s1 = await db.getSessions({ gapMs: 120000 });
+  assert.equal(s1.length, 1, 'single harvest run');
+  assert.equal(s1[0].picks, 4);
+  assert.equal(s1[0].successes, 3);
+  assert.equal(s1[0].success_rate, 0.75);
+  assert.equal(s1[0].waste_avoided_kg, 0.48);
+  assert.equal(s1[0].duration_ms, 3);
+
+  // Add 2 picks 5 min later → forces a 2nd time-bucket AND a 2nd session.
+  const later = t0 + 5 * 60000;
+  await db.recordPickEvent({ ts: later, fruit: 'apple', ripeness: 'ripe', bin: 'apple_ripe', success: true, duration_ms: 6000 });
+  await db.recordPickEvent({ ts: later + 1, fruit: 'apple', ripeness: 'ripe', bin: 'apple_ripe', success: true, duration_ms: 6000 });
+
+  const ts2 = await db.getTimeSeries({ bucketMs: 60000 });
+  assert.equal(ts2.series.length, 2, 'two distinct time buckets');
+  assert.equal(ts2.series[0].picks, 4, 'buckets sorted oldest first');
+  assert.equal(ts2.series[1].picks, 2);
+
+  const s2 = await db.getSessions({ gapMs: 120000 });
+  assert.equal(s2.length, 2, 'two harvest runs');
+  assert.equal(s2[0].picks, 2, 'sessions newest first');
+  assert.equal(s2[0].successes, 2);
+  assert.equal(s2[1].picks, 4);
+
+  // --- getActivity: 3 SEEK samples 1 s apart → 2 s of SEEK, no e-stops ---
+  // Scope to this run's telemetry (capped collection may hold prior-run docs).
+  const act = await db.getActivity({ since: t0 });
+  assert.equal(act.state_durations.SEEK, 2000, 'time attributed to SEEK');
+  assert.equal(act.total_ms, 2000);
+  assert.equal(act.active_pct, 1, 'SEEK counts as active');
+  assert.equal(act.estop_count, 0);
+  assert.equal(act.battery.now, 11.1);
+  assert.equal(act.battery.series.length, 3);
+
+  // --- getLatestTelemetry: newest kept telemetry sample. This run's t0 is
+  // later than any prior run's, so its max sample (t0+2000) is the global
+  // newest even if the capped collection still holds prior-run docs. ---
+  const latest = await db.getLatestTelemetry();
+  assert.equal(latest.ts, t0 + 2000, 'latest telemetry is the newest kept sample');
+  assert.equal(latest.state, 'SEEK');
+  assert.equal(latest.battery_v, 11.1);
+  assert.ok(!('_id' in latest), 'no _id leakage');
+
+  // --- commands: NL-command audit log (Freesolo LLM track) ---
+  await db.recordCommand({ ts: t0, text: 'pick all ripe apples', action: { task: 'pick', fruit: 'apple', filter: 'ripe' }, accepted: true });
+  await db.recordCommand({ ts: t0 + 1, text: 'stop', action: { task: 'stop' }, accepted: true });
+  const cmds = await db.getCommands({ limit: 10 });
+  assert.equal(cmds.length, 2);
+  assert.equal(cmds[0].text, 'stop', 'getCommands newest first');
+  assert.equal(cmds[0].action.task, 'stop');
+  assert.ok(!('_id' in cmds[0]), 'no _id leakage');
 
   await db.close();
   console.log(`✓ ${label} backend passed`);
@@ -89,6 +161,10 @@ if (process.env.MONGODB_URI) {
   const cleanDb = client.db(dbName);
   await cleanDb.collection('pick_events').deleteMany({});
   await cleanDb.collection('detections').deleteMany({});
+  await cleanDb.collection('commands').deleteMany({});
+  // telemetry is a capped collection (deleteMany is illegal on it) — the
+  // activity assertions below scope their query with `since: t0` instead so
+  // leftover telemetry from a prior run against this db name can't skew them.
   await client.close();
 
   const db = await createDb({

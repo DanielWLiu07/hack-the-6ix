@@ -10,6 +10,21 @@ Polycam / Scaniverse / Record3D  ──►  process.py  ──►  web/public/wo
    (GLB / PLY / OBJ export)            (align + shrink)     (three.js loads it)
 ```
 
+## Phone capture app (`app.py`) — connect your phone at the venue
+
+A mobile-first web server you open **on the iPhone** to close the capture loop
+without touching the laptop:
+
+```bash
+cd robot/lidar/phone && python3 app.py        # serves 0.0.0.0:8092, prints the phone URL
+# phone (same wifi/hotspot) → http://<laptop-ip>:8092  (or scan the QR it's paired with)
+```
+
+Flow: scan the scene in Polycam/Scaniverse (LiDAR mode) → export GLB → upload on
+the page → the server runs `process.py` → writes `web/public/world.glb` → the
+dashboard's 3D view swaps to your real scan. Stdlib-only (no Flask). Verified
+end-to-end (upload → optimize → world.glb reload). Env: `PORT` (8092), `WORLD_OUT`.
+
 ## Quick start
 
 ```bash
@@ -88,10 +103,31 @@ need `MeshoptDecoder` wired up — coordinate first.
 `--translate` until the C1 ring lines up with the walls. Budget target: **<15 MB**
 (process.py exits non-zero and tells you which knob to turn if you blow it).
 
+## viewer.html — standalone 3D viewer (executable conventions + demo backup)
+
+A self-contained three.js page that loads `world.glb` **and** overlays the live
+C1 `lidar_scan` ring (decaying cyan→blue) in the same frame — the conventions
+above, made runnable. It's the reference web-frontend copies into the dashboard
+lidar view, and it doubles as offline demo-backup footage.
+
+```bash
+cd robot/lidar/phone && python3 -m http.server 8091
+open "http://localhost:8091/viewer.html"            # live hub + Vite-served world.glb
+open "http://localhost:8091/viewer.html?demo=1"     # synthetic ring, no backend needed
+```
+
+Query params: `?server=` (hub URL, default `:3001`), `?world=` (GLB URL, default
+`http://localhost:5173/world.glb`), `?height=` (C1 mount height, default 0.15 m),
+`?demo=1` (force synthetic ring). Auto-falls back to the synthetic ring if no live
+scan arrives in 3 s, so the view never looks dead. Verified rendering in headless
+Chrome against both the live hub (real sim scans, ~171 pts) and demo mode.
+
 ## Files
 
+- `app.py` — **phone capture app**: mobile upload page → process.py → world.glb
 - `make_sample.py` — synthetic colored room → `world.glb` (zero real-scan dependency)
 - `process.py` — real ingest → align → optimize → `world.glb`
+- `viewer.html` — standalone 3D viewer: world.glb + live C1 ring + **SLAM occupancy overlay** (reference + demo)
 - `requirements.txt` — trimesh + numpy (optimize shells out to `npx @gltf-transform/cli`)
 - `samples/` — scratch dir for scan files (git-ignored except this note)
 

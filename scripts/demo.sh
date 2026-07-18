@@ -7,21 +7,20 @@
 #   scripts/demo.sh status     what's up / down right now (reads reality, not pidfiles)
 #   scripts/demo.sh down       stop everything demo.sh started (leaves pre-existing procs)
 #   scripts/demo.sh restart    down, then up
-#   scripts/demo.sh logs <svc> tail a service log (svc = hub|robot|lidar|web|scene)
+#   scripts/demo.sh logs <svc> tail a service log (svc = hub|robot|lidar|web)
 #
-# Boots 5 pieces, IN ORDER, each skipped if already listening/running:
+# Boots 4 pieces, IN ORDER, each skipped if already listening/running:
 #   1. hub    web/server        Socket.IO + REST relay hub          :3001
 #   2. robot  firmware/linux    robot node, MOCK mode (real SEEK→PICK→SORT state machine)
 #   3. lidar  robot/lidar/sim   synthetic 360deg lidar_scan source  (Socket.IO client)
-#   4. web    web/              Vite dashboard dev server           :5173
-#   5. scene  web/legacy-ui     painterly orchard scene (iframed by the dashboard)  :8123
+#   4. web    web/              Vite dashboard dev server (self-contained r3f hero)  :5173
 #
 # Env overrides:
 #   SERVER_URL       hub URL robot+lidar dial (default http://localhost:3001)
 #   HT6_ROBOT_SIM=1  use server-core's built-in sim.js as the robot instead of the
 #                    fw-linux node (sim.js also emits lidar_scan -> lidar sim auto-skipped).
 #                    Demo panic fallback if the Python robot venv is unhappy.
-#   HT6_SKIP="..."   space-separated svc names to NOT start (e.g. "web scene")
+#   HT6_SKIP="..."   space-separated svc names to NOT start (e.g. "web lidar")
 #   HT6_DEMO_DIR     where logs + pidfiles live (default /tmp/ht6-demo)
 #   HT6_SANITY_WAIT  seconds to pause after each spawn to catch instant death (default 1)
 set -u
@@ -63,6 +62,16 @@ start() {
   local kind=${spec%%:*} val=${spec#*:}
 
   if skipped "$name"; then skip "$name skipped (HT6_SKIP)"; return 0; fi
+
+  # Idempotent for OUR OWN launches: if a prior demo.sh run started this and the
+  # pid is still alive, don't stack a second one (client svcs have no port to probe).
+  if [ -f "$pidf" ]; then
+    local prev; prev="$(cat "$pidf")"
+    if [ "$prev" != external ] && kill -0 "$prev" 2>/dev/null; then
+      skip "$name already running (started by demo.sh, pid $prev)"
+      return 0
+    fi
+  fi
 
   if { [ "$kind" = port ] && port_up "$val"; } || { [ "$kind" = proc ] && proc_up "$val"; }; then
     echo external > "$pidf"                 # marker: we did NOT start it -> down leaves it
@@ -107,15 +116,18 @@ cmd_up() {
     SKIP="$SKIP lidar "
     skip "lidar sim not needed — sim.js already emits lidar_scan"
   else
-    start robot proc:"robot_linux.robot_node" "$ROOT/firmware/linux" -- \
+    # Skip if ANY robot data-source is already feeding the hub (our node, or a
+    # bare server sim.js) so we never stack two robots onto one dashboard.
+    start robot proc:"robot_linux\.robot_node|sim\.js" "$ROOT/firmware/linux" -- \
       .venv/bin/python -u -m robot_linux.robot_node --sim --autostart --server "$SERVER_URL"
   fi
 
-  start lidar proc:"robot/lidar/sim/sim.py" "$ROOT/robot/lidar/sim" -- \
+  # `sim\.py` is the lidar sim (only one in the repo) — matches it whether it was
+  # launched by absolute path (us) or relative path (the tmux fleet pane).
+  start lidar proc:"sim\.py" "$ROOT/robot/lidar/sim" -- \
     ./.venv/bin/python -u "$ROOT/robot/lidar/sim/sim.py" --server "$SERVER_URL"
 
   start web   port:5173 "$ROOT/web"            -- npm run dev
-  start scene port:8123 "$ROOT/web/legacy-ui"  -- python3 serve.py
 
   summary
 }
@@ -123,10 +135,9 @@ cmd_up() {
 summary() {
   hdr "Demo is up"
   printf '  %-13s %s\n' "Dashboard"  "http://localhost:5173"
-  printf '  %-13s %s\n' "Scene"      "http://localhost:8123"
   printf '  %-13s %s\n' "Hub health" "$SERVER_URL/api/health"
   printf '  %-13s %s\n' "Stats API"  "$SERVER_URL/api/stats"
-  printf '  %-13s %s\n' "Logs"       "$DEMO_DIR/<svc>.log   (svc: hub robot lidar web scene)"
+  printf '  %-13s %s\n' "Logs"       "$DEMO_DIR/<svc>.log   (svc: hub robot lidar web)"
   printf '  %-13s %s\n' "Stop all"   "scripts/demo.sh down"
   echo
   echo "  Open the dashboard, then drive/pick from the Teleop page or watch the"
@@ -141,15 +152,15 @@ cmd_status() {
       | sed 's/^/         health: /' 2>/dev/null || true
   else bad "hub    :3001 down"; fi
 
-  proc_up "robot_linux.robot_node" && ok "robot  fw-linux node (mock) running" \
-    || { proc_up "web/server/sim.js" && ok "robot  server sim.js running" || bad "robot  not running"; }
-  proc_up "robot/lidar/sim/sim.py" && ok "lidar  sim running" || bad "lidar  not running"
+  proc_up "robot_linux\.robot_node" && ok "robot  fw-linux node (mock) running" \
+    || { proc_up "sim\.js" && ok "robot  server sim.js running" || bad "robot  not running"; }
+  proc_up "sim\.py" && ok "lidar  sim running" || bad "lidar  not running"
   port_up 5173 && ok "web    :5173 LISTENING (dashboard)" || bad "web    :5173 down"
-  port_up 8123 && ok "scene  :8123 LISTENING (orchard)"   || bad "scene  :8123 down"
 }
 
 stop_svc() {
-  local name=$1 pidf="$DEMO_DIR/$name.pid"
+  local name=$1
+  local pidf="$DEMO_DIR/$name.pid"
   [ -f "$pidf" ] || { skip "$name: nothing recorded"; return; }
   local pid; pid="$(cat "$pidf")"
   rm -f "$pidf"
@@ -168,14 +179,14 @@ stop_svc() {
 
 cmd_down() {
   hdr "HT6 demo shutdown"
-  for s in scene web lidar robot hub; do stop_svc "$s"; done
+  for s in web lidar robot hub; do stop_svc "$s"; done
 }
 
 cmd_logs() {
   local svc="${1:-}"
   case "$svc" in
-    hub|robot|lidar|web|scene) exec tail -n 40 -f "$DEMO_DIR/$svc.log" ;;
-    *) echo "usage: demo.sh logs <hub|robot|lidar|web|scene>"; exit 2 ;;
+    hub|robot|lidar|web) exec tail -n 40 -f "$DEMO_DIR/$svc.log" ;;
+    *) echo "usage: demo.sh logs <hub|robot|lidar|web>"; exit 2 ;;
   esac
 }
 

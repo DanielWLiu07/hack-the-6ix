@@ -16,5 +16,4 @@ ml/**/datasets/
 .venv/
 venv/
 *.log
-web/legacy-ui/
 !ml/ripeness/export/*.onnx

@@ -32,3 +32,16 @@ Prints are done, so built the file-drop intake for real-prop photos:
 - `capture.py --ingest` (NEW) — auto-HSV-labels every raw/<class>/*.jpg → data/real/ + previews, and reports any photo where no fruit was found (nothing dropped silently). Smoke-tested: red-apple test image → correct class-0 box. Live `--label` burst path unchanged.
 Ready to run the 30-min loop the MOMENT photos land: `--ingest` → review previews → `--merge` → `train.py --epochs 15 --weights runs/detect/v0/weights/best.pt --name v1` → `export.py --weights runs/detect/v1/weights/best.pt`.
 v0 base training still running (25/40, mAP50 0.991) — its best.pt is the finetune starting point; watcher will re-export on completion.
+
+## [audit] WIP — CORRECTION: v0 NOT done yet; export/ is still the epoch-1 de-risk artifact
+Audit answer: training still RUNNING at 34/40 epochs (~7 min left). export/model.onnx + export/model.int8.onnx are timestamped 22:22 = the epoch-1 DE-RISK export, NOT finished v0. best.pt (23:01) is fresh but export has not re-run. Re-export is still pending on training exit (watcher bki2okhib waiting on PID 25816). Will post FINAL metrics + refreshed export mtimes once it lands — until then treat export/ as placeholder-quality. Live-best val (epoch 34): P0.988 R0.971 mAP50 0.988 mAP50-95 0.879.
+
+## [DONE] v0 training complete (40/40) + FINAL export refreshed — deliverable is real now
+Training finished all 40 epochs. FINAL val metrics (runs/detect/v0):
+  overall  mAP50 0.993  mAP50-95 0.930  P 0.988  R 0.986
+  apple_ripe   0.995/0.988 · apple_unripe 0.991/0.972 · banana_ripe 0.994/0.893 · banana_unripe 0.991/0.867
+Re-exported final best.pt → export/model.onnx (12.1 MB) + model.int8.onnx (3.3 MB) + classes.json — ALL timestamped 23:15 (the stale 22:22 epoch-1 de-risk artifact is GONE). Smoke-test: fp32 detects 3/3 correctly (0 → real detections vs the epoch-1 export), 16 ms/frame (63 FPS single-frame laptop CPU), confs sane (0.93/0.90/0.89).
+
+@fw-linux — IMPORTANT, load model.onnx (fp32), NOT model.int8.onnx yet:
+  int8 has a confidence-saturation bug — boxes + fruit/ripeness CLASS are correct, but conf pins to a constant ~1.54 (>1.0), so you can't threshold/rank by conf. fp32 confs are correct and it already runs 63 FPS single-frame on laptop CPU. Per-channel int8 fix needs opset≥13 (we're opset-12 for UNO Q compat), so deferred. Real on-device speed is vision-infer's UNO Q bench (@vision-infer: bench BOTH; if int8 speed is needed on-device we can revisit the opset/quant scheme, else fp32 is the demo model). classes.json + infer_test.py::detect() decode logic unchanged.
+Next: idle-ready; primed to run the 30-min real-prop finetune loop (raw/ intake) the moment photos land.

@@ -35,3 +35,8 @@
 - `vercel deploy --prod --yes` → dpl_273r3ra3WgmejrYgUbWa24EA9Xj9, READY, target production. Remote build clean.
 - Verified prod alias **https://hack-the-6ix-chi.vercel.app** resolves to that deployment (vercel inspect). `/` → 200, `/teleop` SPA rewrite → 200, our Vite bundle served. (Bundle hash differs from local build — Vercel builds remotely, expected.)
 - VITE_SERVER_URL still venue-deferred (no env vars set; localhost:3001 default correct until day-of tunnel/hotspot IP). Back on standby: will build-verify + redeploy at each further frontend milestone.
+
+## [restart++] DONE — r3f hero ship handled by master; stood down, resumed milestone-watch
+- Human-priority standby was for web-frontend flipping `USE_R3F_HERO=true`. Flag flipped (App.jsx:17), I build-verified clean (OrchardHero 4.7KB gz chunk + Gltf 254KB gz three/GLB chunk, no breakage) and was deploy-ready, holding on their status-DONE gate.
+- Master shipped it directly before the gate landed. Human told me to stand down. Verified prod alias **https://hack-the-6ix-chi.vercel.app** now serves dpl_BXiBrTZjBtFoFHgTrbD7F4SsAV8C (master's r3f-hero deploy). No redundant deploy from me.
+- Resumed normal milestone-watch (baseline web-frontend.md = 63 lines). Will build-verify + redeploy at the next frontend milestone.

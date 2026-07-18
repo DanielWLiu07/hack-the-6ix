@@ -62,3 +62,45 @@ Cluster `ht6` reached IDLE. Verified the mongo path against **real Atlas** twice
 - **Second selftest fix**: the rerun-safety cleanup used `dropDatabase`, which our least-privilege `ht6app` user can't do on Atlas (needs dbAdmin) — switched it to `deleteMany` on pick_events+detections (a readWrite privilege, and telemetry is capped so it's excluded). Selftest now passes on both a local mongod AND real Atlas with the exact role the app uses. The app never drops, so `readWriteAnyDatabase` is the correct production role — no elevation needed.
 
 **@server-core — ACTION: restart the hub.** Confirmed it currently reports `backend: memory` (started before `.env` existed; `/api/stats` shows the 108 sim picks in memory). Your `index.js` already `process.loadEnvFile('./.env')`s, so a plain restart of `node index.js` flips `store.js` to `backend: mongo`. Verify: `GET /api/stats` → `"backend":"mongo"`. Nothing else needed from db; Atlas is live and open.
+
+## [23:00] DONE — data-model expansion: time-series + throughput + harvest sessions
+Deepened the data layer beyond flat totals to power the Analytics page + demo narrative. All **additive** (existing `getStats` fields/semantics unchanged) and verified on **both backends** (memory + real Atlas) via expanded selftest — single-window AND spaced multi-bucket/multi-session cases pass.
+- **`getStats` +2 fields** (additive): `window {first_ts,last_ts,span_ms}` and `throughput {picks_per_hour,kg_per_hour}` over that span — the "sorts N fruit / X kg per hour" env/Deloitte number.
+- **`getTimeSeries({bucketMs=60000,since,until})`** → `{bucket_ms, series:[{t,picks,successes,kg,apple,banana}]}`, oldest bucket first. Mongo does it in-DB (`$mod` bucketing + `$switch` kg); memory buckets in JS. For the Analytics charts (volume/success-rate/cumulative-yield → ROI animation).
+- **`getSessions({gapMs=120000})`** → harvest runs inferred from pick-gaps (≥gap = new run): `[{start_ts,end_ts,duration_ms,picks,successes,success_rate,waste_avoided_kg,co2e_avoided_kg}]`, newest first. **Derived, not a stored collection** → zero coordination with fw-linux/server-core, maps cleanly to a Base44 HarvestJob + the "this run: N picks in M min, K kg" card.
+- Shared impact math centralized in `impact.js` (`pickKg`, `throughput`) so stats/timeseries/sessions never disagree. Docs updated: `docs/DATA.md` + `web/server/db/README.md`.
+
+**@server-core**: two new methods on the same `createDb()` object — wiring `GET /api/timeseries` and `GET /api/sessions` is one line each (`return await db.getTimeSeries(req.query)` / `getSessions`). Contract shapes in README/DATA.md.
+**@web-frontend**: Analytics page (task 4) now has real chart fuel — `/api/timeseries` for time-bucketed charts, `/api/sessions` for a harvest-runs list, and `stats.throughput`/`stats.window` for headline rate numbers. Shapes in `docs/DATA.md`.
+
+## [23:06] DONE — phase-4 item: docs/IMPACT.md (defensible waste-avoided/ROI methodology)
+Wrote `docs/IMPACT.md` — the judge-facing "where does that number come from?" doc for every kg-waste-avoided / CO₂e / kg-per-hour / ROI figure. Web-verified the headline stats against primary sources rather than writing from memory:
+- **Waste-avoided**: measured successful-pick mass × USDA fruit masses (apple 0.18 / banana 0.12 kg) — matches `impact.js` exactly (cross-checked constants).
+- **CO₂e 2.5 kg/kg**: FAO 2013 Food Wastage Footprint (3.3 Gt ÷ 1.3 Gt ≈ 2.54) — flagged as a conservative *blended* proxy (fruit-specific is lower; we say so).
+- **Context stats**: FAO 2011 (~1/3, 1.3 Gt lost; fruit&veg ~45%), FAO SOFA 2019 (~13% post-harvest pre-retail) — framed as problem-size context, NOT as our yield.
+- **ROI**: transparent formula (harvested value + labour saved ÷ robot cost); prices anchored to BLS/FRED bananas (~$0.62/lb→$1.40/kg, near-exact) + USDA ERS apples (our $2.10/kg is deliberately below the $2.90–3.75/kg retail range). Matches BASE44.md's widget inputs.
+- **Green AI**: 5W on-device UNO Q inference — leads with the *structural* claims (no cloud/data-centre, battery-operable off-grid) not an inflated per-inference kWh.
+- **§7 "what we do NOT claim"** defensibility checklist + full **§8 sources** list (FAO, USDA, BLS/FRED, Green AI/CACM) with URLs. Under-claims on purpose so numbers survive judge Q&A.
+Cross-referenced with `impact.js` / `docs/DATA.md` / `docs/BASE44.md` and noted all four must stay in sync. **@llm-client @vision-infer**: pull the Deloitte/env numbers for docs/DEVPOST.md straight from IMPACT.md §1–4 + §8 so the pitch and the doc cite identically.
+
+## [23:22] LIVE + DONE — Atlas confirmed open; full data-model design pass (4 collections, 9 read shapes)
+**Atlas is live and open**: cluster `ht6` IDLE, `0.0.0.0/0` open, real connection through `createDb` returns `backend: mongo`. server-core **has restarted** — hub `/api/stats` now reports `backend: mongo` with real picks (not memory). No further action on the Atlas front.
+
+Per "think of all the data shapes and design it" — completed a full model design + implementation. `docs/DATA.md` now opens with a **model-at-a-glance** map (4 stored collections → 9 derived read shapes). New this pass, all **additive** + verified on **both backends** (memory + real Atlas, canonical unique-db selftest passed 3/3):
+- **`commands` collection** (+`recordCommand`/`getCommands`) — NL-command → parsed-action audit log for the Freesolo LLM track (capped 500 mem, `{ts:-1}` index).
+- **`getLatestTelemetry()`** — status-header snapshot / late-joiner hydration.
+- **`getActivity({since})`** — time-in-state, e-stop count, battery curve from the telemetry window (reliability / hardware-track story). Shared `activity.js` helper so both backends are byte-identical.
+- **`getStats().detections.avg_conf`** — mean detection confidence (vision-quality headline).
+- Selftest expanded to cover all of the above; found+fixed a rerun-fragility (capped `telemetry` can't be `deleteMany`'d — scoped activity assertions with `since`, cleared `commands` at start). Purged all throwaway `ht6_selftest*` dbs from Atlas after.
+
+**@server-core** — new wiring available (each a 1-liner): `GET /api/timeseries`, `/api/sessions`, `/api/activity`, `/api/commands`, `/api/telemetry/latest`, plus `db.recordCommand({text,action,accepted,source})` on the `nl_command` path. Note: `/api/timeseries` + `/api/sessions` still 404 on the running hub — not wired yet. All shapes in `web/server/db/README.md` + `docs/DATA.md`.
+**@web-frontend** — Analytics/robot-status now fully spec'd: charts (`/api/timeseries`), harvest-run cards (`/api/sessions`), battery+state activity panel (`/api/activity`), command history (`/api/commands`), status header (`/api/telemetry/latest`). Shapes in `docs/DATA.md` "model at a glance".
+
+## [23:27] DONE + COORDINATION — pick-photo (`image_url`) convention. DB confirmed live (backend: mongo, 125 picks).
+Human wants a **photo per pickup**. Decision (human-approved): **local file on the hub**, pick_event stores only a reference — NOT image bytes in Atlas (M0 512 MB would fill and fail mid-demo). The db layer stores pick docs **verbatim**, so `image_url` needs **zero db-layer changes**; added a selftest asserting it round-trips through `recordPickEvent`/`getPicks` on both backends (passes). Documented the full convention + owner split in `docs/DATA.md` ("Pick photos").
+
+**@master — schema note (not a blocker):** this adds an **optional** `image_url` field to the root-`CLAUDE.md` `pick_event` schema. Additive/nullable, back-compatible (absent = no photo), db already supports it. Flagging so it's not a unilateral schema change — OK to canonicalize?
+**Owner split for the photo path (db is done; these are the remaining pieces):**
+- **@fw-linux / @server-core**: on each pick, write the frame to `web/server/media/pick_<ts>.jpg` and set `image_url: "/media/pick_<ts>.jpg"` on the emitted `pick_event`.
+- **@server-core**: serve `GET /media/*` (Express static).
+- **@web-frontend**: render the thumbnail in the pick log (`/api/picks` already returns `image_url`).

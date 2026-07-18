@@ -136,6 +136,41 @@ function fadePoints(nowMs) {
   pGeo.attributes.color.needsUpdate = true;
 }
 
+// ---- SLAM occupancy grid overlay (from `slam_update`) --------------------
+// cells arrive as world-meter [x,y] centers in the robot frame (same frame as
+// the C1 ring). Render as amber squares just above the floor + a pose marker.
+const SLAM_MAX = 4000;
+const slamPos = new Float32Array(SLAM_MAX * 3);
+const slamGeo = new THREE.BufferGeometry();
+slamGeo.setAttribute('position', new THREE.BufferAttribute(slamPos, 3));
+const slamMat = new THREE.PointsMaterial({ size: 0.08, color: 0xf9b559,
+  transparent: true, opacity: 0.85, depthWrite: false });
+const slamPoints = new THREE.Points(slamGeo, slamMat);
+scene.add(slamPoints);
+
+const poseMarker = new THREE.Mesh(
+  new THREE.ConeGeometry(0.12, 0.28, 12),
+  new THREE.MeshBasicMaterial({ color: 0x1e66f5 }));
+poseMarker.visible = false;
+scene.add(poseMarker);
+let slamCells = 0;
+
+function setSlam(cells, pose) {
+  const n = Math.min(cells.length, SLAM_MAX);
+  for (let i = 0; i < n; i++) {
+    const x = cells[i][0], y = cells[i][1];
+    slamPos[i*3] = -y; slamPos[i*3+1] = 0.02; slamPos[i*3+2] = -x;   // robot→three
+  }
+  slamGeo.setDrawRange(0, n);
+  slamGeo.attributes.position.needsUpdate = true;
+  slamCells = n;
+  if (pose) {
+    poseMarker.visible = true;
+    poseMarker.position.set(-pose[1], 0.14, -pose[0]);
+    poseMarker.rotation.set(Math.PI/2, 0, -pose[2] * Math.PI/180);  // theta_deg about up
+  }
+}
+
 // ---- data source: live hub, else synthetic demo ring ---------------------
 let connected = false, scanCount = 0, lastPts = 0, gotLive = false;
 
@@ -149,12 +184,24 @@ function startLive() {
     gotLive = true; scanCount++; lastPts = m.points.length;
     addScan(m.points, performance.now());
   });
+  sock.on('slam_update', (m) => {          // needs server-core relay (see DEPLOY.md)
+    if (!m || !Array.isArray(m.cells)) return;
+    setSlam(m.cells, m.pose);
+  });
 }
 
-let demoMode = false, demoAngle = 0;
+let demoMode = false, demoAngle = 0, slamSeeded = false;
 function startDemo(reason) {
   demoMode = true;
   console.log('demo ring:', reason || 'no live data');
+  // synthesize a SLAM occupancy map (room perimeter cells) so the overlay is visible
+  if (!slamSeeded) {
+    const cells = [];
+    for (let x = -2; x <= 2; x += 0.06) { cells.push([x, 1.5]); cells.push([x, -1.5]); }
+    for (let y = -1.5; y <= 1.5; y += 0.06) { cells.push([2, y]); cells.push([-2, y]); }
+    setSlam(cells, [0, 0, 0]);
+    slamSeeded = true;
+  }
 }
 function demoScan(nowMs) {
   // a plausible 4x3 m room ring + a moving "obstacle" blip
@@ -194,6 +241,7 @@ function tick(now) {
     `world.glb : ${worldOk ? 'loaded' : '—'}\n` +
     `C1 source : ${src}\n` +
     `scans     : ${demoMode ? '∞' : scanCount}   pts/scan: ${demoMode ? 180 : lastPts}\n` +
+    `slam map  : ${slamCells ? slamCells + ' occupied cells' : 'waiting for slam_update'}\n` +
     `sensor h  : ${SENSOR_H.toFixed(2)} m   decay: ${(DECAY_MS/1000)}s\n` +
     `frame     : +Y up, -Z fwd, +X right (m)`;
 }

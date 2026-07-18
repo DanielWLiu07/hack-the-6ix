@@ -1,0 +1,6 @@
+# on-device SLAM node (node.py / slam.py)
+numpy>=1.24
+python-socketio[client]>=5.9      # hub subscribe (lidar_scan) + publish (slam_update)
+# matplotlib is OPTIONAL — only needed for map.png rendering (dev/demo proof).
+# The on-device runtime (UNO Q / Pi) does NOT need it: pass --map-every 0.
+matplotlib>=3.6 ; platform_system != "unobtainium"
