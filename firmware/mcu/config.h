@@ -6,7 +6,7 @@
 
 #include <Arduino.h>
 
-#define FW_VERSION "0.4"
+#define FW_VERSION "0.5"
 
 // ---------------------------------------------------------------- drive base
 // Driver mode. The rover's actual drivers are BTS7960 / IBT-2 (dual-PWM), so
@@ -36,6 +36,13 @@
 // swapping the motor leads, but keep one software knob per side as a fallback.
 #define M_L_INVERT 0
 #define M_R_INVERT 1
+
+// Per-side speed trim to drive straight (open-loop, for mismatched motors with
+// no encoders). Multiplies each side's output; 1.00 = no trim. Tuned on the
+// drive base: the right motor runs faster, so R_TRIM < 1 slows it to match.
+// (~0.96 on the bench rig; re-tune on the floor for the final robot.)
+#define DRIVE_L_TRIM 1.00f
+#define DRIVE_R_TRIM 0.96f
 
 // Deadband below which we output 0 (geared motors won't move anyway).
 #define DRIVE_DEADBAND 0.05f

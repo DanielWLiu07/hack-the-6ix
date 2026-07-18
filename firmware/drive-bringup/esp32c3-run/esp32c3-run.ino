@@ -6,6 +6,10 @@ const int L_RPWM=4, L_LPWM=5, R_RPWM=6, R_LPWM=7;
 const int PWM_FREQ=1000, PWM_RES=8;
 const float DEADBAND=0.05f;
 float SPEED=0.30f;
+// Per-side trim to drive straight (open-loop, no encoders). Right motor spins
+// faster, so R_TRIM<1 slows it to match the left. TUNE: if it still curves LEFT
+// lower R_TRIM; if it curves RIGHT raise it (toward 1.0).
+const float L_TRIM=1.00f, R_TRIM=0.96f;
 void writeMotor(int rp,int lp,float v){
   if(v>-DEADBAND&&v<DEADBAND)v=0;
   int d=(int)(fabs(v)*255.0f); if(d>255)d=255;
@@ -13,7 +17,7 @@ void writeMotor(int rp,int lp,float v){
   else if(v<0){ledcWrite(rp,0);ledcWrite(lp,d);}
   else{ledcWrite(rp,0);ledcWrite(lp,0);}
 }
-void drive(float l,float r){writeMotor(L_RPWM,L_LPWM,l);writeMotor(R_RPWM,R_LPWM,r);}
+void drive(float l,float r){writeMotor(L_RPWM,L_LPWM,l*L_TRIM);writeMotor(R_RPWM,R_LPWM,r*R_TRIM);}
 void setup(){
   Serial.begin(115200);
   ledcAttach(L_RPWM,PWM_FREQ,PWM_RES); ledcAttach(L_LPWM,PWM_FREQ,PWM_RES);
