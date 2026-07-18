@@ -1,0 +1,10 @@
+# YOLO dataset config — paths relative to this file
+path: data/dataset
+train: images/train
+val: images/val
+
+names:
+  0: apple_ripe
+  1: apple_unripe
+  2: banana_ripe
+  3: banana_unripe

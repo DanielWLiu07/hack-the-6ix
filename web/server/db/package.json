@@ -1,0 +1,17 @@
+{
+  "name": "ht6-db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Persistence layer for the HT6 telemetry server: MongoDB Atlas if MONGODB_URI is set, in-memory fallback otherwise.",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "scripts": {
+    "selftest": "node selftest.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0"
+  }
+}

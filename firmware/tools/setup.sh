@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# fw-tools: install + configure arduino-cli for the UNO Q STM32 side.
+# Safe to re-run (idempotent). macOS + Linux.
+set -euo pipefail
+
+say() { printf '\033[1;32m[setup]\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m[setup]\033[0m %s\n' "$*"; }
+
+# --- 1. arduino-cli ---------------------------------------------------------
+if ! command -v arduino-cli >/dev/null 2>&1; then
+  if command -v brew >/dev/null 2>&1; then
+    say "installing arduino-cli via homebrew..."
+    brew install arduino-cli
+  else
+    say "installing arduino-cli via official script into ~/.local/bin ..."
+    mkdir -p "$HOME/.local/bin"
+    curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh \
+      | BINDIR="$HOME/.local/bin" sh
+    export PATH="$HOME/.local/bin:$PATH"
+    warn 'add ~/.local/bin to your PATH if it is not already'
+  fi
+fi
+say "arduino-cli: $(arduino-cli version)"
+
+arduino-cli config init --overwrite >/dev/null 2>&1 || true
+
+# STM32duino board index — fallback target for compile-checking the sketch
+# when no UNO Q core / board is available on this machine.
+arduino-cli config set board_manager.additional_urls \
+  https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+
+say "updating board index..."
+arduino-cli core update-index
+
+# --- 2. UNO Q core (if Arduino publishes one for desktop CLI) ---------------
+say "searching for an UNO Q core..."
+UNOQ_CORE="$(arduino-cli core search 2>/dev/null | grep -i -E 'uno[ _-]?q|qualcomm' | awk '{print $1}' | head -1 || true)"
+if [ -n "${UNOQ_CORE}" ]; then
+  say "found core '${UNOQ_CORE}' — installing"
+  arduino-cli core install "${UNOQ_CORE}"
+else
+  warn "no UNO Q core in the index. That's expected: UNO Q sketches normally"
+  warn "deploy via Arduino App Lab (see README.md). Installing STM32duino core"
+  warn "so we can at least COMPILE-CHECK firmware/mcu on this laptop."
+  arduino-cli core install STMicroelectronics:stm32 || warn "STM32 core install failed — compile checks unavailable"
+fi
+
+# --- 3. libraries fw-mcu needs ---------------------------------------------
+say "installing sketch libraries..."
+arduino-cli lib install "Adafruit PWM Servo Driver Library" || warn "PCA9685 lib install failed"
+
+say "done. next: ./flash.sh (or see README.md for App Lab deploy path)"
+arduino-cli board list || true

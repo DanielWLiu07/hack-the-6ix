@@ -1,0 +1,198 @@
+/* Control-room UI shared across dashboard/teleop/lidar/analytics pages. */
+
+:root {
+  --ui-bg: #0a0f0c;
+  --ui-panel: #121a15;
+  --ui-panel-2: #0e1511;
+  --ui-border: #24322a;
+  --ui-text: #e8efe9;
+  --ui-dim: #8a978d;
+  --ui-faint: #5c685f;
+  --ui-green: #46a758;
+  --ui-yellow: #ffcf3f;
+  --ui-red: #e5484d;
+  --ui-blue: #52a9ff;
+  --ui-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+.shell {
+  min-height: 100vh;
+  background: var(--ui-bg);
+  color: var(--ui-text);
+  font-family: system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--ui-border);
+  background: var(--ui-panel-2);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+.topbar .brand {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ui-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.topbar .brand .accent { color: var(--ui-red); }
+
+.topbar nav { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.topbar nav a {
+  color: var(--ui-dim);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+}
+.topbar nav a:hover { color: var(--ui-text); background: rgba(255,255,255,0.04); }
+.topbar nav a.active { color: var(--ui-text); background: rgba(70,167,88,0.12); }
+
+.conn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--ui-dim);
+  font-family: var(--ui-mono);
+}
+.conn .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ui-red); }
+.conn.ok .dot { background: var(--ui-green); box-shadow: 0 0 8px rgba(70,167,88,0.8); }
+
+.page { flex: 1; padding: 1.25rem; width: 100%; max-width: 1280px; margin: 0 auto; }
+.page h2 { color: var(--ui-text); font-size: 1.15rem; margin: 0 0 1rem; letter-spacing: 0; }
+
+.grid { display: grid; gap: 1rem; }
+.grid.cards { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.grid.main { grid-template-columns: 2fr 1fr; align-items: start; }
+@media (max-width: 900px) { .grid.main { grid-template-columns: 1fr; } }
+
+.panel {
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  padding: 1rem;
+  min-width: 0;
+}
+.panel h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ui-faint);
+}
+
+.bigval { font-size: 1.9rem; font-weight: 700; font-family: var(--ui-mono); line-height: 1.1; }
+.bigval .unit { font-size: 0.95rem; color: var(--ui-dim); font-weight: 400; }
+.subval { font-size: 0.78rem; color: var(--ui-dim); margin-top: 0.35rem; }
+
+.badge {
+  display: inline-block;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  font-family: var(--ui-mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+}
+.badge.IDLE  { background: rgba(138,151,141,0.15); color: var(--ui-dim); }
+.badge.SEEK  { background: rgba(82,169,255,0.15); color: var(--ui-blue); }
+.badge.PICK  { background: rgba(70,167,88,0.18); color: var(--ui-green); }
+.badge.SORT  { background: rgba(255,207,63,0.15); color: var(--ui-yellow); }
+.badge.ESTOP { background: rgba(229,72,77,0.2); color: var(--ui-red); animation: blink 0.8s step-end infinite; }
+.badge.OFFLINE { background: rgba(229,72,77,0.12); color: var(--ui-red); }
+@keyframes blink { 50% { opacity: 0.45; } }
+
+.bar { height: 8px; background: var(--ui-panel-2); border-radius: 4px; overflow: hidden; margin-top: 0.5rem; }
+.bar > div { height: 100%; border-radius: 4px; background: var(--ui-green); transition: width 0.3s; }
+.bar.warn > div { background: var(--ui-yellow); }
+.bar.crit > div { background: var(--ui-red); }
+
+.joints { display: flex; flex-direction: column; gap: 0.5rem; }
+.joint { display: grid; grid-template-columns: 2.4rem 1fr 3.2rem; align-items: center; gap: 0.6rem; font-family: var(--ui-mono); font-size: 0.8rem; color: var(--ui-dim); }
+.joint .track { height: 6px; background: var(--ui-panel-2); border-radius: 3px; position: relative; }
+.joint .track > div { position: absolute; top: -3px; width: 12px; height: 12px; border-radius: 50%; background: var(--ui-blue); transform: translateX(-50%); transition: left 0.15s linear; }
+.joint .deg { text-align: right; color: var(--ui-text); }
+
+.drivebars { display: flex; gap: 1.4rem; justify-content: center; padding: 0.4rem 0; }
+.dtrack { width: 22px; height: 110px; background: var(--ui-panel-2); border-radius: 6px; position: relative; overflow: hidden; }
+.dtrack .zero { position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--ui-border); }
+.dtrack .fill { position: absolute; left: 3px; right: 3px; border-radius: 4px; background: var(--ui-blue); transition: all 0.12s linear; }
+.dtrack .fill.rev { background: var(--ui-yellow); }
+.dlabel { text-align: center; font-family: var(--ui-mono); font-size: 0.75rem; color: var(--ui-dim); margin-top: 0.35rem; }
+
+.loglist { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; }
+.loglist li {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.5rem 0.6rem; border-radius: 8px;
+  background: var(--ui-panel-2); font-size: 0.83rem;
+}
+.loglist .time { font-family: var(--ui-mono); color: var(--ui-faint); font-size: 0.72rem; white-space: nowrap; }
+.loglist .fruit { font-weight: 600; }
+.loglist .tag {
+  font-size: 0.68rem; font-family: var(--ui-mono); padding: 0.1rem 0.45rem;
+  border-radius: 5px; letter-spacing: 0.04em;
+}
+.tag.ripe { background: rgba(70,167,88,0.15); color: var(--ui-green); }
+.tag.unripe { background: rgba(255,207,63,0.13); color: var(--ui-yellow); }
+.tag.ok { background: rgba(70,167,88,0.15); color: var(--ui-green); }
+.tag.fail { background: rgba(229,72,77,0.15); color: var(--ui-red); }
+.loglist .right { margin-left: auto; display: flex; gap: 0.4rem; align-items: center; }
+.loglist .conf { font-family: var(--ui-mono); color: var(--ui-dim); font-size: 0.72rem; }
+
+.empty { color: var(--ui-faint); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
+
+.camwrap { border-radius: 8px; overflow: hidden; background: #000; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; position: relative; }
+.camwrap img { width: 100%; height: 100%; object-fit: contain; }
+.camwrap .nocam { color: var(--ui-faint); font-size: 0.8rem; font-family: var(--ui-mono); }
+
+.simnote {
+  font-size: 0.75rem; font-family: var(--ui-mono); color: var(--ui-yellow);
+  background: rgba(255,207,63,0.08); border: 1px solid rgba(255,207,63,0.25);
+  padding: 0.35rem 0.7rem; border-radius: 8px;
+}
+
+/* teleop */
+.estop-btn {
+  width: 100%; padding: 1.1rem; border-radius: 12px; border: 2px solid var(--ui-red);
+  background: rgba(229,72,77,0.15); color: var(--ui-red);
+  font-size: 1.3rem; font-weight: 800; letter-spacing: 0.15em; cursor: pointer;
+}
+.estop-btn:hover { background: rgba(229,72,77,0.3); }
+.padgrid { display: grid; grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(3, 64px); gap: 8px; justify-content: center; }
+.padbtn {
+  border: 1px solid var(--ui-border); background: var(--ui-panel-2); color: var(--ui-text);
+  border-radius: 10px; font-size: 1.3rem; cursor: pointer; user-select: none; touch-action: none;
+}
+.padbtn:active, .padbtn.held { background: rgba(82,169,255,0.25); border-color: var(--ui-blue); }
+.actionrow { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+.actionbtn {
+  flex: 1; padding: 0.7rem 1rem; border-radius: 10px; border: 1px solid var(--ui-border);
+  background: var(--ui-panel-2); color: var(--ui-text); font-size: 0.9rem; cursor: pointer; white-space: nowrap;
+}
+.actionbtn:hover { border-color: var(--ui-green); }
+.gp-status { font-family: var(--ui-mono); font-size: 0.8rem; color: var(--ui-dim); line-height: 1.7; }
+.gp-status .on { color: var(--ui-green); }
+.stickviz { display: flex; gap: 1.5rem; justify-content: center; padding: 0.5rem 0; }
+.stickbox { width: 90px; height: 90px; border: 1px solid var(--ui-border); border-radius: 50%; position: relative; background: var(--ui-panel-2); }
+.stickbox .knob { position: absolute; width: 18px; height: 18px; border-radius: 50%; background: var(--ui-blue); transform: translate(-50%, -50%); }
+
+.authgate { max-width: 420px; margin: 4rem auto; text-align: center; display: flex; flex-direction: column; gap: 1rem; }
+.authgate button {
+  padding: 0.8rem 1.5rem; border-radius: 10px; border: 1px solid var(--ui-green);
+  background: rgba(70,167,88,0.15); color: var(--ui-green); font-size: 1rem; cursor: pointer;
+}
+
+.lidar-canvas { height: min(70vh, 640px); border-radius: 12px; overflow: hidden; border: 1px solid var(--ui-border); background: #050806; }

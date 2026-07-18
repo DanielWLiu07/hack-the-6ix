@@ -1,0 +1,45 @@
+* { margin: 0; box-sizing: border-box; }
+
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 2rem;
+  text-align: center;
+  background: radial-gradient(ellipse at top, #16211a 0%, #0a0f0c 60%);
+  color: #f2f5f1;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+.kicker { letter-spacing: 0.35em; font-size: 0.8rem; color: #8fb59a; }
+
+h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
+.accent { color: #e5484d; }
+
+.sub { max-width: 36rem; color: #b8c4bb; font-size: 1.1rem; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  width: min(100%, 44rem);
+}
+
+.stat {
+  border: 1px solid #2b3a2f;
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.stat .value { font-size: 1.6rem; font-weight: 700; }
+.stat .label { font-size: 0.75rem; color: #8a978d; letter-spacing: 0.05em; }
+
+.note { color: #6f7d72; font-size: 0.85rem; margin-top: 1rem; }

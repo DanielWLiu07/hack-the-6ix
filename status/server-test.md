@@ -1,0 +1,2 @@
+## [22:05] WIP — server-test starting; server-core not up yet
+web/server/ doesn't exist and server-core has no status file. Building everything that doesn't need a live server: schema validators + conformance test harness in web/server/test/ (own package.json so I never touch server-core's), scripts/check-stack.sh, load/robustness harness. Will poll status/server-core.md and run tests the moment their sim is up.

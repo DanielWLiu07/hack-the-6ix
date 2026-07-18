@@ -1,0 +1,5 @@
+pyrplidar>=0.1.2
+rplidar-roboticia>=0.9.5
+pyserial>=3.5
+python-socketio[client]>=5.11
+websocket-client>=1.7

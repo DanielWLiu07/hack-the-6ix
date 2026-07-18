@@ -1,0 +1,30 @@
+{"id": 1, "text": "grab every ripe banana", "expected": {"task": "pick", "fruit": "banana", "filter": "ripe", "zone": "any"}}
+{"id": 2, "text": "Pick all the ripe apples please", "expected": {"task": "pick", "fruit": "apple", "filter": "ripe", "zone": "any"}}
+{"id": 3, "text": "go harvest the green bananas", "expected": {"task": "pick", "fruit": "banana", "filter": "unripe", "zone": "any"}}
+{"id": 4, "text": "get me the unripe apples", "expected": {"task": "pick", "fruit": "apple", "filter": "unripe", "zone": "any"}}
+{"id": 5, "text": "pick everything you can find", "expected": {"task": "pick", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 6, "text": "colect the ripe furit", "expected": {"task": "pick", "fruit": "any", "filter": "ripe", "zone": "any"}}
+{"id": 7, "text": "yo grab them nanners that are ready", "expected": {"task": "pick", "fruit": "banana", "filter": "ripe", "zone": "any"}}
+{"id": 8, "text": "snag the apples that arent ripe yet", "expected": {"task": "pick", "fruit": "apple", "filter": "unripe", "zone": "any"}}
+{"id": 9, "text": "bring me some bananas ripe or not", "expected": {"task": "pick", "fruit": "banana", "filter": "any", "zone": "any"}}
+{"id": 10, "text": "GRAB THE RED APPLES NOW", "expected": {"task": "pick", "fruit": "apple", "filter": "ripe", "zone": "any"}}
+{"id": 11, "text": "pick the bananas on your left", "expected": {"task": "pick", "fruit": "banana", "filter": "any", "zone": "left"}}
+{"id": 12, "text": "get the apples up ahead", "expected": {"task": "pick", "fruit": "apple", "filter": "any", "zone": "forward"}}
+{"id": 13, "text": "harvest the fruit on the right side", "expected": {"task": "pick", "fruit": "any", "filter": "any", "zone": "right"}}
+{"id": 14, "text": "sort the harvest into the correct bins", "expected": {"task": "sort", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 15, "text": "please separate the bananas by ripeness", "expected": {"task": "sort", "fruit": "banana", "filter": "any", "zone": "any"}}
+{"id": 16, "text": "organize all the ripe apples", "expected": {"task": "sort", "fruit": "apple", "filter": "ripe", "zone": "any"}}
+{"id": 17, "text": "sort out everything youve picked", "expected": {"task": "sort", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 18, "text": "stop", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 19, "text": "WHOA STOP EVERYTHING RIGHT NOW", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 20, "text": "hit the emergency stop", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 21, "text": "ok thats enough, halt", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 22, "text": "kil it now", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 23, "text": "drive forward a little bit", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "forward"}}
+{"id": 24, "text": "back up the rover", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "backward"}}
+{"id": 25, "text": "scoot over to the left", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "left"}}
+{"id": 26, "text": "head right", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "right"}}
+{"id": 27, "text": "come back to the charging station", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "home"}}
+{"id": 28, "text": "can you plz get all teh ripe apples", "expected": {"task": "pick", "fruit": "apple", "filter": "ripe", "zone": "any"}}
+{"id": 29, "text": "i want the yellow bananas picked", "expected": {"task": "pick", "fruit": "banana", "filter": "ripe", "zone": "any"}}
+{"id": 30, "text": "gather up any fruit thats still green", "expected": {"task": "pick", "fruit": "any", "filter": "unripe", "zone": "any"}}
