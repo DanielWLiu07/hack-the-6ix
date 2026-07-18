@@ -14,10 +14,11 @@ import { Splat } from '@react-three/drei'
 
 const SPLAT_URL = '/assets/robot.splat'
 
-// By-eye orientation of the (already centered + scaled) splat.
+// By-eye orientation of the (already centered + scaled) splat, tuned in
+// ?tunesplat so it drives in upright and facing forward.
 const SPLAT_FIX = {
-  rotation: [0, 0, 0], // radians, XYZ
-  scale: 1,
+  rotation: [0.158, 2.348, -0.062], // radians, XYZ
+  scale: 1.3,
 }
 
 // The overlay camera is matched EXACTLY to the orchard scene's rest camera
@@ -33,7 +34,7 @@ const RIG_YAW = 0.654 // scene rig yaw: screen-right axis in world XZ
 const FLOOR_Y = -0.95 // scene ground plane
 const CART_LIFT = 0.55 // raise the cart centre so its base sits on the floor (tune)
 const WORLD_SCALE = 0.9 // shrink the 2.4u splat to scene scale (tune)
-const TARGET = [-1.5, FLOOR_Y + CART_LIFT, 0.1] // end location (left of the apple)
+const TARGET = [-2.9, 0.2, -0.15] // end location (tuned in ?tunesplat)
 const DRIVE_DIST = 9 // how far off-screen-left it starts, along the floor
 const DRIVE_DUR = 2.0 // seconds to drive in
 const DRIVE_DELAY = 1.3 // seconds to WAIT after the apple slam before driving in

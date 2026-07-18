@@ -394,39 +394,22 @@ function aimBone(bone, bindDir, bindWQ, targetDir) {
 const _mv = new THREE.Vector3()
 const _mtarget = new THREE.Vector3()
 const _sh = new THREE.Vector3()
-const _tdir = new THREE.Vector3()
-// Two-bone IK scratch. Solving shoulder+elbow so the hand reaches the cursor
-// target gives natural behaviour for free: fully extended only when reaching far,
-// bent when the target is close, elbow held down/back so the hand stays in front.
+const _n = new THREE.Vector3()
+// Cursor-point pose: the FOREARM aims exactly at the cursor target, while the
+// upper arm just loosely follows (elbow stays relaxed at the side). This reads as
+// a natural pointing gesture and can never fold behind the body the way a strict
+// reach IK could.
 const _aim = new THREE.Vector3()
 const _udir = new THREE.Vector3()
 const _elb = new THREE.Vector3()
 const _fdir = new THREE.Vector3()
-const _pole = new THREE.Vector3()
-const _bax = new THREE.Vector3()
-const _bq = new THREE.Quaternion()
-const clamp = THREE.MathUtils.clamp
-// Aim the upper arm + forearm so the hand reaches `target` (world). S=shoulder.
-function solveArm(a, S, target) {
-  _aim.copy(target).sub(S)
-  let d = _aim.length()
-  if (d < 1e-4) return
-  _aim.divideScalar(d)
-  const L1 = a.L1, L2 = a.L2
-  d = clamp(d, Math.abs(L1 - L2) + 1e-3, L1 + L2 - 1e-3)
-  // shoulder-angle between the upper arm and the straight aim line
-  const angA = Math.acos(clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1))
-  // bend plane: elbow points down-and-back so the forearm/hand come to the front
-  _pole.set(0, -1, -0.35).normalize()
-  _bax.crossVectors(_aim, _pole)
-  if (_bax.lengthSq() < 0.02) _bax.crossVectors(_aim, new THREE.Vector3(1, 0, 0))
-  _bax.normalize()
-  _bq.setFromAxisAngle(_bax, angA)
-  _udir.copy(_aim).applyQuaternion(_bq).normalize()      // upper-arm direction
+function pointArm(a, S, target) {
+  _aim.copy(target).sub(S).normalize()
+  _udir.copy(a.restDir).lerp(_aim, 0.45).normalize()   // loose upper arm (half toward cursor)
   aimBone(a.bone, a.bindDir, a.bindWQ, _udir)
   a.bone.updateWorldMatrix(true, true)
-  _elb.copy(S).addScaledVector(_udir, L1)                 // elbow position
-  _fdir.copy(target).sub(_elb).normalize()               // forearm points elbow->hand target
+  a.fore.getWorldPosition(_elb)                         // elbow = forearm bone origin
+  _fdir.copy(target).sub(_elb).normalize()             // forearm points EXACTLY at cursor
   aimBone(a.fore, a.foreBindDir, a.foreBindWQ, _fdir)
 }
 function Monkey({ bind, poseRef, mimic, mirror }) {
@@ -464,15 +447,17 @@ function Monkey({ bind, poseRef, mimic, mirror }) {
         if (nm === hn.toLowerCase()) h = o
       })
       if (!a || !c || !h) return
+      const bindDir = wp(c).sub(wp(a)).normalize()
+      const outSign = Math.sign(bindDir.x) || 1
       armRest.push({
         bone: a,
         fore: c,
-        bindDir: wp(c).sub(wp(a)).normalize(),
+        bindDir,
         bindWQ: a.getWorldQuaternion(new THREE.Quaternion()),
         foreBindDir: wp(h).sub(wp(c)).normalize(),
         foreBindWQ: c.getWorldQuaternion(new THREE.Quaternion()),
-        L1: wp(c).distanceTo(wp(a)),
-        L2: wp(h).distanceTo(wp(c)),
+        // relaxed upper-arm direction: down + a touch out and forward
+        restDir: new THREE.Vector3(outSign * 0.25, -1, 0.35).normalize(),
       })
     })
     return {
@@ -503,19 +488,24 @@ function Monkey({ bind, poseRef, mimic, mirror }) {
     if (mimic && rig.ok && poseRef.current) {
       applyPose(rig, poseRef.current, { mirror })
     } else if (!mimic && !animated) {
-      // Arms follow the cursor (upper body only - torso/legs never move). Cast the
-      // pointer to a world target at the monkey's depth and aim each arm at it,
-      // slerp-smoothed. When the cursor is low the arms naturally drop to a rest.
+      // Arms point at the cursor (upper body only - torso/legs never move). The
+      // target is the cursor cast onto a plane IN FRONT of the chest (toward the
+      // camera), so the forearms reach forward at the screen, never behind the body.
       const cam = state.camera
       _mv.set(state.pointer.x, state.pointer.y, 0.5).unproject(cam).sub(cam.position).normalize()
-      let D = 6
-      if (armRest[0]) { armRest[0].bone.getWorldPosition(_sh); D = cam.position.distanceTo(_sh) }
-      _mtarget.copy(cam.position).addScaledVector(_mv, D)
-      if (mouseSmooth.current.lengthSq() === 0) mouseSmooth.current.copy(_mtarget)
-      mouseSmooth.current.lerp(_mtarget, 0.18)
-      for (const a of armRest) {
-        a.bone.getWorldPosition(_sh)
-        solveArm(a, _sh, mouseSmooth.current)
+      if (armRest[0]) {
+        armRest[0].bone.getWorldPosition(_sh)
+        _n.copy(cam.position).sub(_sh).normalize()          // chest -> camera
+        const denom = _mv.dot(_n) || 1
+        _mtarget.copy(_sh).addScaledVector(_n, 1.1).sub(cam.position)
+        const t = _mtarget.dot(_n) / denom                  // ray hits the front plane
+        _mtarget.copy(cam.position).addScaledVector(_mv, t)
+        if (mouseSmooth.current.lengthSq() === 0) mouseSmooth.current.copy(_mtarget)
+        mouseSmooth.current.lerp(_mtarget, 0.2)
+        for (const a of armRest) {
+          a.bone.getWorldPosition(_sh)
+          pointArm(a, _sh, mouseSmooth.current)
+        }
       }
     }
     // hang the head on the head bone (position only, kept upright + forward)
