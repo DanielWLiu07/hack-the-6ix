@@ -148,8 +148,8 @@ function FuzzCanvas({ w, h, fuzzRef }) {
     const canvas = ref.current
     if (!canvas) return undefined
     const ctx = canvas.getContext('2d')
-    const lw = Math.max(2, Math.floor(w / 8))
-    const lh = Math.max(2, Math.floor(h / 8))
+    const lw = Math.max(2, Math.floor(w / 16))
+    const lh = Math.max(2, Math.floor(h / 16))
     canvas.width = lw
     canvas.height = lh
     let raf = 0
@@ -161,7 +161,7 @@ function FuzzCanvas({ w, h, fuzzRef }) {
         const img = ctx.createImageData(lw, lh)
         const d = img.data
         for (let i = 0; i < d.length; i += 4) {
-          const v = (Math.random() * 255) | 0
+          const v = (55 + Math.random() * 150) | 0
           d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
         }
         ctx.putImageData(img, 0, 0)
@@ -190,8 +190,8 @@ function StageFuzz({ fuzzRef }) {
     let h = 2
     const resize = () => {
       // low-res canvas stretched to fill => chunky pixelated static
-      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 7))
-      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 7))
+      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 16))
+      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 16))
     }
     resize()
     window.addEventListener('resize', resize)
@@ -202,7 +202,7 @@ function StageFuzz({ fuzzRef }) {
         const img = ctx.createImageData(w, h)
         const d = img.data
         for (let i = 0; i < d.length; i += 4) {
-          const v = (Math.random() * 255) | 0
+          const v = (55 + Math.random() * 150) | 0
           d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
         }
         ctx.putImageData(img, 0, 0)
@@ -890,7 +890,7 @@ function TvStaticMesh() {
     const img = ctx.createImageData(tex.c.width, tex.c.height)
     const d = img.data
     for (let i = 0; i < d.length; i += 4) {
-      const v = (Math.random() * 255) | 0
+      const v = (55 + Math.random() * 150) | 0
       d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
     }
     ctx.putImageData(img, 0, 0)
