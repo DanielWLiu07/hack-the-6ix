@@ -23,14 +23,19 @@ import time
 import cv2
 import numpy as np
 
+from spoilage import score_spoilage, spot_contours
+
 MIN_AREA = int(os.environ.get("HSV_MIN_AREA", "1200"))
 
 # (H, S, V) ranges - OpenCV hue is 0-179.
 # Red wraps around hue 0 so it needs two ranges.
+# Yellow: the 3D-printed banana is a PALE/pastel yellow (measured H~20 S~48-86
+# V~220), so the saturation floor is 45, not the ~100 a ripe-fruit yellow hits.
+# Hue floor 18 keeps skin (H<15) out; V floor 110 keeps dark background out.
 RANGES = {
     "red": [((0, 120, 60), (10, 255, 255)), ((170, 120, 60), (179, 255, 255))],
-    "yellow": [((20, 100, 80), (35, 255, 255))],
-    "green": [((36, 70, 50), (85, 255, 255))],
+    "yellow": [((18, 45, 110), (40, 255, 255))],
+    "green": [((41, 70, 50), (85, 255, 255))],
 }
 
 # aspect ratio (long side / short side) above which a green blob is a banana
@@ -101,27 +106,42 @@ class HSVDetector:
                 if w > 0.9 * W or h > 0.9 * H:
                     continue
                 fruit, ripeness = _classify(color, c)
+                # spoilage: dark-blemish fraction inside the fruit silhouette.
+                # Use the un-blurred frame so marker spots keep their true (dark) value.
+                spoil_score, spoiled = score_spoilage(frame_bgr, (x, y, w, h), c)
                 detections.append({
                     "ts": ts,
                     "fruit": fruit,
                     "ripeness": ripeness,
                     "conf": _confidence(c, area, mask, (x, y, w, h)),
                     "bbox": [int(x), int(y), int(w), int(h)],
+                    "spoiled": bool(spoiled),
+                    "spoil_score": spoil_score,
                 })
         detections.sort(key=lambda d: d["conf"], reverse=True)
         return detections
 
 
-def annotate(frame, detections, extra=""):
+def annotate(frame, detections, extra="", draw_spots=True):
     """Draw detections onto frame (in place) for the MJPEG stream."""
     colors = {"apple": (0, 0, 255), "banana": (0, 220, 255)}
+    SPOIL = (40, 40, 235)  # red-ish, BGR
     for d in detections:
         x, y, w, h = d["bbox"]
-        c = colors.get(d["fruit"], (255, 255, 255))
-        cv2.rectangle(frame, (x, y), (x + w, y + h), c, 2)
+        spoiled = d.get("spoiled")
+        c = SPOIL if spoiled else colors.get(d["fruit"], (255, 255, 255))
+        cv2.rectangle(frame, (x, y), (x + w, y + h), c, 3 if spoiled else 2)
         label = f'{d["fruit"]} {d["ripeness"]} {d["conf"]:.2f}'
+        if "spoil_score" in d:
+            tag = "SPOILED" if spoiled else "fresh"
+            label += f'  [{tag} {d["spoil_score"]:.2f}]'
         cv2.putText(frame, label, (x, max(12, y - 6)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, c, 1, cv2.LINE_AA)
+        # circle the actual blemishes so the "why" is visible in the demo
+        if draw_spots and spoiled:
+            for sc in spot_contours(frame, d["bbox"]):
+                (cx, cy), r = cv2.minEnclosingCircle(sc)
+                cv2.circle(frame, (int(cx), int(cy)), int(max(r, 3)) + 2, SPOIL, 2)
     if extra:
         cv2.putText(frame, extra, (8, 20), cv2.FONT_HERSHEY_SIMPLEX,
                     0.6, (255, 255, 255), 1, cv2.LINE_AA)

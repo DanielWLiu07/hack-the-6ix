@@ -19,6 +19,8 @@ import time
 import cv2
 import numpy as np
 
+from spoilage import score_spoilage
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _EXPORT_DIR = os.path.normpath(os.path.join(_HERE, "..", "..", "ml", "ripeness", "export"))
 
@@ -121,12 +123,17 @@ class ONNXDetector:
             w = int(np.clip(w, 1, W - x))
             h = int(np.clip(h, 1, H - y))
             fruit, ripeness = self.class_map[cls_ids[i]]
+            # spoilage from the bbox region (no contour on the ONNX path -> bbox
+            # silhouette; a touch noisier than HSV's exact contour but fine).
+            spoil_score, spoiled = score_spoilage(frame_bgr, (x, y, w, h))
             detections.append({
                 "ts": ts,
                 "fruit": fruit,
                 "ripeness": ripeness,
                 "conf": round(float(confs[i]), 2),
                 "bbox": [x, y, w, h],
+                "spoiled": bool(spoiled),
+                "spoil_score": spoil_score,
             })
         detections.sort(key=lambda d: d["conf"], reverse=True)
         return detections

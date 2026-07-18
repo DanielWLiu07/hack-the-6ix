@@ -21,7 +21,10 @@ export const validators = {
     FRUITS.includes(p.fruit) &&
     RIPENESS.includes(p.ripeness) &&
     isNum(p.conf) && p.conf >= 0 && p.conf <= 1 &&
-    Array.isArray(p.bbox) && p.bbox.length === 4 && p.bbox.every(isNum),
+    Array.isArray(p.bbox) && p.bbox.length === 4 && p.bbox.every(isNum) &&
+    // spoilage is optional + orthogonal to ripeness (a fruit can be ripe AND spoiled)
+    (p.spoiled === undefined || typeof p.spoiled === 'boolean') &&
+    (p.spoil_score === undefined || (isNum(p.spoil_score) && p.spoil_score >= 0 && p.spoil_score <= 1)),
 
   pick_event: (p) =>
     isNum(p.ts) &&

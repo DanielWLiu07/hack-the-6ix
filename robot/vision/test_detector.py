@@ -24,13 +24,19 @@ def iou(a, b):
 
 
 def check_schema(d):
-    assert set(d) == {"ts", "fruit", "ripeness", "conf", "bbox"}, f"keys: {set(d)}"
+    required = {"ts", "fruit", "ripeness", "conf", "bbox"}
+    optional = {"spoiled", "spoil_score"}  # orthogonal spoilage fields
+    assert required <= set(d) <= (required | optional), f"keys: {set(d)}"
     assert d["fruit"] in ("apple", "banana"), d["fruit"]
     assert d["ripeness"] in ("ripe", "unripe"), d["ripeness"]
     assert isinstance(d["conf"], float) and 0.0 <= d["conf"] <= 1.0, d["conf"]
     assert isinstance(d["bbox"], list) and len(d["bbox"]) == 4, d["bbox"]
     assert all(isinstance(v, int) for v in d["bbox"]), d["bbox"]
     assert isinstance(d["ts"], (int, float)), d["ts"]
+    if "spoiled" in d:
+        assert isinstance(d["spoiled"], bool), d["spoiled"]
+    if "spoil_score" in d:
+        assert isinstance(d["spoil_score"], float) and 0.0 <= d["spoil_score"] <= 1.0, d["spoil_score"]
 
 
 def evaluate(detector, frames=100, iou_thresh=0.3, verbose=False):

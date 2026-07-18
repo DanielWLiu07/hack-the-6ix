@@ -9,6 +9,7 @@ __pycache__/
 .DS_Store
 ml/**/runs/
 ml/**/datasets/
+ml/**/dataset/
 *.pt
 *.onnx
 *.tflite
