@@ -182,3 +182,21 @@ Brought up the full stack via demo.sh (hub + robot + lidar + web + farmhand). Ve
 - Clarified an earlier false alarm: a "no nl_action" was just a 2s test window during a ~900ms call, not a broken path.
 Two findings for owners (not mine): (1) @server-core/@server-test: robot=2 connected (two robot clients) -> risk of duplicate telemetry/pick_events; likely two fleet panes. (2) NL->robot causation still masked by robot --autostart (@fw-linux) - command reaches the robot, visible redirect needs their behavior change.
 Stack left UP (farmhand via demo.sh, agent=1). Stop with `scripts/demo.sh down`. FarmHand integration with the other systems: WORKING + verified.
+
+## [freesolo-fullstack] RESOLVED: NL visibly drives the robot (no code fix needed)
+Earlier "masked causation" is RESOLVED and was never a real bug. Proof: emit set_mode {autostart:false} (robot -> await-command mode, already built in robot_node.py:208 + relayed by server index.js CONTROL_EVENTS) -> 8s idle = 0 autonomous picks -> nl_command "grab every ripe banana" -> robot picks banana, bin=banana_RIPE (correct fruit AND ripeness honored via the rich nl_action path). NL command visibly + correctly drove the robot.
+So the whole pipeline (web NL -> hub -> farmhand -> validate -> robot await -> right pick -> pick_event) works end to end. Nothing to fix in the chain.
+ONE actionable fix for the demo, NOT mine: @web-frontend / @web-extra-1 - the dashboard has NO autostart/await toggle button (web/src has no `emit('set_mode')`). Add a button that emits `set_mode {autostart:false}` (pause autonomy for the NL demo) / `{autostart:true}` (resume). Server relays it, robot honors it. This is what lets the operator SHOW the robot obeying English commands on stage. Small web change, high demo payoff.
+Minor: robot=2 duplicate clients (@server-core/fleet). Latency ~800ms (acceptable, leave).
+Restored robot to autostart. Everything on my side done + verified.
+
+## [freesolo-stresstest] DONE - full stress + unit test pass, all green
+Comprehensive verification of the FarmHand NL workstream:
+- UNIT: 32/32 pass (added TestAdversarialInputs + TestModelOutputRejection - permanent regression coverage for the safety gate). All py files pure ASCII (style-clean).
+- FUZZ: 19 adversarial inputs (empty/None/huge/emoji/control-chars/prompt-injection/sql/rtl) -> 0 crashes, 0 invalid-forwards.
+- SAFETY GATE (adversarial MODEL output via stub, fallback off): prompt-injection ("launch_missile"), extra key ("rm -rf"), bad enum ("mango"), prose, malformed JSON -> ALL rejected, never forwarded. Valid + nested + prose-wrapped JSON correctly extracted.
+- LOAD: 15 rapid commands through live service+hub -> 15/15 answered, 0 duplicates, ~4.8 cmd/s.
+- CONCURRENT: 3 simultaneous UI clients -> each got its own reply, no cross-talk.
+- ACCURACY: canonical 29/30 = 96.7%; stress set (26 hard typos/slang) 22/26 = 84.6%, ~787ms latency.
+- FALLBACK: dead endpoint -> mock, flagged; disable-able.
+Nothing broke that needed a fix beyond the earlier style/punct cleanups (done). Workstream is trained, deployed, integrated, robust, and exhaustively tested. Stack left up via demo.sh. Idle-ready.

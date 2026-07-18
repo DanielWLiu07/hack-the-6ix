@@ -336,6 +336,10 @@ export default function RobotFringe() {
       { file: 'console.glb', x: -5.2, y: 6.54, s: 0.92, rz: 0.12 },
       { file: 'beacon.glb', x: -0.1, y: 6.84, s: 0.72, rz: 0 },
       { file: 'manifold.glb', x: 5.92, y: 6.1, s: 1.15, rz: -0.08 },
+      // extra generated props placed around the fringe (camera head + info sign)
+      { file: 'camhead2.glb', x: -4.35, y: 6.98, s: 1.15, rz: 0.09 },
+      { file: 'infosign.glb', x: 4.75, y: 6.92, s: 1.35, rz: -0.06 },
+      { file: 'camhead2.glb', x: 8.15, y: 6.35, s: 0.9, rz: 0.16 },
     ]
     for (const p of PROPS) {
       loader.load(MODELS + p.file, (g) => {

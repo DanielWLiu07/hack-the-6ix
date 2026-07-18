@@ -568,22 +568,27 @@ function StageWorld() {
 function CameraRig({ stateRef, stage }) {
   const { camera } = useThree()
   const aim = useMemo(() => new THREE.Vector3(), [])
+  // Smoothed stick values. Keyboard/on-screen input jumps 0<->target instantly,
+  // so we ease the RAW input first and drive both pan + look-at from the eased
+  // values. This removes the snap; a low lambda keeps it slow and floaty.
+  const smooth = useRef({ lx: 0, ly: 0, rx: 0, ry: 0 })
   useFrame((_, dt) => {
     const st = stateRef.current || {}
-    const lx = st.lx || 0
-    const ly = st.ly || 0
-    const rx = st.rx || 0
-    const ry = st.ry || 0
+    const s = smooth.current
+    const ease = 1.6
+    s.lx = THREE.MathUtils.damp(s.lx, st.lx || 0, ease, dt)
+    s.ly = THREE.MathUtils.damp(s.ly, st.ly || 0, ease, dt)
+    s.rx = THREE.MathUtils.damp(s.rx, st.rx || 0, ease, dt)
+    s.ry = THREE.MathUtils.damp(s.ry, st.ry || 0, ease, dt)
     const baseZ = stage ? 7 : 4.2
-    // Sticks pan the camera for parallax; a bit more travel on the full stage.
     // Keep Z fixed (no zoom): the distanceFactor'd annotations must not resize
     // as the camera moves, and only Z distance changes their scale.
     const panX = stage ? 0.45 : 0.16
     const panY = stage ? 0.3 : 0.1
-    camera.position.x = THREE.MathUtils.damp(camera.position.x, (lx + rx) * panX, 2.4, dt)
-    camera.position.y = THREE.MathUtils.damp(camera.position.y, (ly + ry) * panY, 2.4, dt)
+    camera.position.x = (s.lx + s.rx) * panX
+    camera.position.y = (s.ly + s.ry) * panY
     camera.position.z = baseZ
-    aim.set((lx + rx) * (stage ? 0.12 : 0.04), (ly + ry) * (stage ? 0.08 : 0.025), 0)
+    aim.set((s.lx + s.rx) * (stage ? 0.12 : 0.04), (s.ly + s.ry) * (stage ? 0.08 : 0.025), 0)
     camera.lookAt(aim)
   })
   return null

@@ -13,13 +13,28 @@ import * as THREE from 'three'
 import { MangaPass } from '../lib/mangaPass.js'
 import { CanvasGuard, SAFE_DPR } from '../lib/canvasGuard.jsx'
 
-// Props that can be placed (only assets that exist on disk).
+// Props that can be placed (all optimized + on disk). Grouped: data infra,
+// the robot/pitch story, and the orchard/fruit set.
 const PALETTE = [
+  // data / analytics
+  { key: 'server', label: 'Server', url: '/assets/server.min.glb' },
+  { key: 'monitor', label: 'Monitor', url: '/assets/monitor.min.glb' },
+  { key: 'harddrive', label: 'Hard drive', url: '/assets/harddrive.min.glb' },
+  { key: 'floppy', label: 'Floppy', url: '/assets/floppy.min.glb' },
+  { key: 'chip', label: 'Microchip', url: '/assets/chip.min.glb' },
+  { key: 'magnifier', label: 'Magnifier', url: '/assets/magnifier.min.glb' },
+  // robot / pitch
+  { key: 'battery', label: 'Battery', url: '/assets/battery.min.glb' },
+  { key: 'robotarm', label: 'Robot arm', url: '/assets/robotarm.min.glb' },
+  { key: 'monkey', label: 'Monkey', url: '/assets/monkey.glb' },
+  // orchard / fruit
   { key: 'apple', label: 'Apple', url: '/assets/apple.glb' },
   { key: 'banana', label: 'Banana', url: '/assets/banana.min.glb' },
   { key: 'crate', label: 'Crate', url: '/assets/crate.min.glb' },
+  { key: 'basket', label: 'Basket', url: '/assets/basket.min.glb' },
+  { key: 'barrel', label: 'Barrel', url: '/assets/barrel.min.glb' },
+  { key: 'haybale', label: 'Hay bale', url: '/assets/haybale.min.glb' },
   { key: 'tree', label: 'Tree', url: '/assets/tree.glb' },
-  { key: 'monkey', label: 'Monkey', url: '/assets/monkey.glb' },
 ]
 const labelOf = (url) => PALETTE.find((p) => p.url === url)?.label ?? 'Prop'
 
@@ -207,6 +222,8 @@ function DecoEditor({ objects, selId, setSelId, addObject, removeSelected, patch
   )
 }
 
+// Note: props load on demand (when added), not preloaded, so the page stays light.
+
 export default function Deco() {
   const [objects, setObjects] = useState(DEFAULT_OBJECTS)
   const [selId, setSelId] = useState(DEFAULT_OBJECTS[0]?.id ?? null)
@@ -241,4 +258,3 @@ export default function Deco() {
   )
 }
 
-PALETTE.forEach((p) => useGLTF.preload(p.url))

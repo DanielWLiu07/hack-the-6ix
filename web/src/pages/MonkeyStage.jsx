@@ -489,8 +489,10 @@ function TransformSliders({ selected, getAll }) {
 // "lights" toolbar toggle to reveal draggable handles and edit them like any
 // other stage object; the intensity is scaled live by the "bg light" slider.
 const BACKDROP_LIGHTS = [
-  { key: 'bl-L', name: 'back light L', pos: [-2.8, 3.8, 2.6], target: [-0.5, 0.1, -1.9], color: '#e7edff', max: 42, angle: 0.6, distance: 20, phase: 1 },
-  { key: 'bl-R', name: 'back light R', pos: [2.8, 3.8, 2.6], target: [0.5, 0.1, -1.9], color: '#fff0d6', max: 38, angle: 0.6, distance: 20, phase: -1 },
+  // Both aim at the SAME centre point behind the monkey (x=0), so their pools
+  // overlap dead-centre instead of splitting left/right.
+  { key: 'bl-L', name: 'back light L', pos: [-2.6, 3.6, 2.6], target: [0, 0.4, -2.4], color: '#e7edff', max: 42, angle: 0.6, distance: 20, phase: 1 },
+  { key: 'bl-R', name: 'back light R', pos: [2.6, 3.6, 2.6], target: [0, 0.4, -2.4], color: '#fff0d6', max: 38, angle: 0.6, distance: 20, phase: -1 },
 ]
 
 // Build the live, mutable light params from the static config. The lighting
@@ -644,9 +646,9 @@ function MangaRender() {
 // coloured on top of the B&W manga TV body. All placement is tunable here.
 const TV_URL = '/assets/tv-monitor.glb' // tv.glb with the stand geometry removed
 const NAV_TVS = [
-  { to: '/stage', label: 'Stage', color: '#ffcf3f', screen: '/assets/pomme-screen.jpg' },
+  { to: '/stage', label: 'Stage', color: '#ffcf3f' },
   { to: '/pov', label: 'Robot POV', color: '#7cd4ff' },
-  { to: '/teleop', label: 'Teleop', color: '#ff8fbf' },
+  { to: '/teleop', label: 'Teleop', color: '#ff8fbf', screen: '/assets/pomme-screen.jpg' },
   { to: '/lidar', label: 'Lidar', color: '#86e6a0' },
   { to: '/analytics', label: 'Analytics', color: '#c3a2ff' },
 ]
@@ -662,6 +664,7 @@ const TV_ARC = {
   faceY: 0, // base yaw; flip by Math.PI if the TVs show their backs
   labelZ: 0.28, // label offset out from the TV centre toward the screen
   labelScale: 5, // drei Html distanceFactor (smaller = smaller label)
+  screenY: -0.3, // vertical offset of the POMME screen (negative = toward bottom)
   screenZ: 0.11, // POMME screen offset onto the monitor face (local units)
   screenScale: 3.4, // drei Html distanceFactor for the on-monitor screen
   screenPx: [200, 128], // screen DOM size (px) - aspect roughly matches the panel
@@ -704,6 +707,16 @@ function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, 
     g.scale.setScalar(scale)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  // Smoothly ease the monitor's pop on hover instead of snapping instantly.
+  const modelRef = useRef(null)
+  useFrame((_, delta) => {
+    const g = modelRef.current
+    if (!g) return
+    const target = hover ? 1.07 : 1
+    const k = 1 - Math.pow(0.001, delta) // frame-rate independent easing
+    const s = g.scale.x + (target - g.scale.x) * k
+    g.scale.setScalar(s)
+  })
   // In edit mode the TV is a draggable/selectable object (bind, no navigation) so
   // you can position it; otherwise it is a nav button (click = go to the page).
   const handlers = edit
@@ -716,9 +729,11 @@ function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, 
       onPointerOver={(event) => { event.stopPropagation(); setHover(true) }}
       onPointerOut={() => setHover(false)}
     >
-      <primitive object={model} scale={hover ? 1.06 : 1} />
+      <group ref={modelRef}>
+        <primitive object={model} />
+      </group>
       {screen ? (
-        // Pixelated POMME on this monitor's screen face (DOM so it keeps colour).
+        // POMME on this monitor's screen face: black-and-white, not pixelated.
         <Html
           center
           transform
@@ -727,13 +742,20 @@ function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, 
           pointerEvents="none"
           style={{ width: `${TV_ARC.screenPx[0]}px`, height: `${TV_ARC.screenPx[1]}px`, pointerEvents: 'none' }}
         >
-          <PixelScreen src={screen} />
+          <img
+            src={screen}
+            alt=""
+            draggable={false}
+            style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover', filter: 'grayscale(1) contrast(1.05)' }}
+          />
         </Html>
       ) : (
         <Html center position={[0, 0, labelZ]} distanceFactor={TV_ARC.labelScale} pointerEvents="none">
           <span
             className="tv3d-label"
-            style={{ color, textShadow: `0 0 12px ${color}, 0 0 4px ${color}` }}
+            style={hover
+              ? { color, textShadow: `0 0 16px ${color}, 0 0 6px ${color}` }
+              : { color: '#9aa0a6', textShadow: '0 1px 2px rgba(0, 0, 0, .65)' }}
           >
             {label}
           </span>
@@ -1008,7 +1030,6 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
           <meshStandardMaterial color="#c8c8c2" roughness={1} emissive="#343432" emissiveIntensity={1} />
         </mesh>
         <Suspense fallback={null}>
-          <Splash bind={bind} fuzzRef={fuzzRef} />
           <Monkey bind={bind} poseRef={poseRef} mimic={mimic} mirror={mirror} />
           {showNav && <StageTVNav bind={bind} navigate={navigate} edit={editTV} />}
         </Suspense>

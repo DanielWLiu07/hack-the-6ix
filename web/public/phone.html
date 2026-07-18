@@ -56,6 +56,8 @@ renderer.domElement.addEventListener('webglcontextrestored', () => { sig = null;
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.target.set(0, 0.6, 0);
+controls.zoomSpeed = 2.4;          // stronger scroll zoom
+controls.zoomToCursor = true;
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0xdad4c6, 1.55));
 scene.add(new THREE.AmbientLight(0xffffff, 0.45));
@@ -106,7 +108,9 @@ function apply(gltf) {
       const s = box.getSize(new THREE.Vector3());
       const d = Math.max(s.x, s.y, s.z, 0.6);
       camera.position.set(d * 0.7, d * 0.55, d * 0.7);
-      controls.target.set(0, s.y * 0.4, 0);
+      // aim a bit above the model center so it sits LOWER on screen, clear of
+      // the dashboard's top HUD bar (the model isn't hidden behind it)
+      controls.target.set(0, s.y * 0.4 + d * 0.12, 0);
       controls.update();
     }
     next.position.sub(offset);

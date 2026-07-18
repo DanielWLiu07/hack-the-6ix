@@ -257,8 +257,6 @@ export default function RobotPOV() {
             </span>
           </div>
 
-          <div className="pov-title">ROBOT&nbsp;·&nbsp;POV</div>
-
           <div className="pov-top-r">
             <button
               className={`pov-live ${live ? 'on' : ''}`}
