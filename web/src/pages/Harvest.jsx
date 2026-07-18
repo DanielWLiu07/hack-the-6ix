@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
 import { detectFile, detectUrl, cachedDetection } from '../lib/ripeness.js'
 import BackToStage from '../components/BackToStage.jsx'
+import ArrivalFuzz from '../components/ArrivalFuzz.jsx'
 import '../harvest.css'
 
 // Self-contained r3f orchard used as the backdrop when the /scene/ folder is
@@ -358,6 +359,7 @@ export default function Harvest() {
 
   return (
     <>
+      <ArrivalFuzz />
       <BackToStage />
       {bgMode === 'scene' ? (
         <iframe
