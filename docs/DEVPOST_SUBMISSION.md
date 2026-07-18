@@ -137,11 +137,11 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
   survive judge Q&A; inflated ones don't.
 
 ## What's next
-- **FarmHand is trained (done).** SFT + GRPO on Freesolo (Qwen3.5-0.8B) reached
-  **96.7%** exact-match on the held-out set, up from the 93.3% regex baseline, and
-  the trained model is deployed and driving the robot client live. Next: an
-  optional distillation (OPD) pass for a three-algorithm showcase, and expanding
-  the eval beyond 30 items.
+- **FarmHand is trained (done).** We ran all three of Freesolo's algorithms on
+  Qwen3.5-0.8B - SFT, GRPO (RL), and OPD (distillation). GRPO won and is deployed
+  and driving the robot live: **96.7%** on clean commands and, more tellingly,
+  **81.0% vs the regex baseline's 46.6%** on a 58-case held-out set of realistic
+  typos/slang. Next: a multi-turn clarify-then-resolve model and on-device serving.
 - **On-board vision benchmark** - quote the YOLOv8n-int8 FPS measured on the UNO Q
   itself. _(TODO: fill when the board bench runs; harness is ready.)_
 - **Voice commands** - browser speech-to-text into the same NL pipeline.

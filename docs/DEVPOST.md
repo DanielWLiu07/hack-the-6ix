@@ -86,17 +86,23 @@ We trained FarmHand on Freesolo (Qwen3.5-**0.8B**, a deliberately tiny edge-size
 model) with a two-stage pipeline and scored every stage the same way on the same
 held-out set:
 
-| Model | Clean commands (30) | Realistic typos/slang (26) |
+| Model | Clean commands (30) | Realistic typos/slang (58) |
 |---|---|---|
-| Regex baseline | 28/30 (93.3%) | 8/26 (30.8%) |
+| Regex baseline | 28/30 (93.3%) | 27/58 (46.6%) |
 | Freesolo **SFT** (0.8B) | 28/30 (93.3%) | - |
-| Freesolo **SFT + GRPO** (0.8B) | **29/30 (96.7%)** | **22/26 (84.6%)** |
+| Freesolo **SFT + GRPO** (0.8B, shipped) | **29/30 (96.7%)** | **47/58 (81.0%)** |
+| Freesolo **SFT + OPD** (distillation) | 28/30 (93.3%) | 47/58 (81.0%) |
+
+We ran **all three** of Freesolo's algorithms - SFT, GRPO (RL), and OPD (on-policy
+distillation from a GLM-5.2 teacher). GRPO won (best clean-set score, tied on
+stress), so it is the shipped model; OPD tied it on realistic input. We report the
+full sweep rather than only the winner.
 
 **The headline: on realistic human input (typos, slang, terse phrasing) the trained
-model scores 84.6% vs the regex baseline's 30.8% - a +54-point jump, nearly 3x.**
-The clean-command set is saturated (regex already handles tidy input), so it hides
-what training bought; the held-out stress set shows it. Both sets are held out with
-verified zero train/eval leakage.
+model scores 81.0% vs the regex baseline's 46.6% - a +34-point jump.** The
+clean-command set is saturated (regex already handles tidy input), so it hides what
+training bought; the 58-case held-out stress set shows it. Both sets are held out
+with verified zero train/eval leakage.
 
 **What moved the number: reward-driven RL, not more data.** SFT matched the regex
 baseline but generalized better (it learned the idiomatic phrasings the regex

@@ -91,9 +91,10 @@ slide on B's next line._
 > **"asdf qwerty"** -> rejected badge; then **"pick the fruit"** -> clarification
 > bubble.)_
 >
-> "Ambiguous? It asks which fruit instead of guessing. On our held-out test set
-> it's **93% accurate** - and 100% safe, because bad output physically can't
-> drive the arm."
+> "Ambiguous? It asks which fruit instead of guessing. We trained it ourselves on
+> Freesolo - and on realistic messy commands, typos and slang, it jumps from
+> **47% to 81%** over the rule-based baseline. **100% safe**, because every output
+> is schema-checked before it can touch the arm."
 
 **[35s -> 2:45]**
 
@@ -121,7 +122,8 @@ slide on B's next line._
 
 ## Track callouts (which line scores which prize)
 
-- **Freesolo LLM** -> the FarmHand beat (2:10) - NL -> validated action, 93% eval.
+- **Freesolo LLM** -> the FarmHand beat (2:10) - NL -> validated action, trained
+  SFT+GRPO on Freesolo, 46.6% -> 81.0% over baseline on realistic input.
 - **Qualcomm UNO Q** -> the dual-brain beat (1:35) - MPU/MCU split, on-device, 5 W.
 - **Deloitte AI-for-Green / Environmental** -> hook (0:00) + live impact widget (1:05).
 - **Overall / Hardware** -> the autonomous pick+sort (0:25) carries the difficulty.
