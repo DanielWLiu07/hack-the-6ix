@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Uno Q MCU-bridge smoke test (App Lab Bridge RPC) — Rung 2.
+"""Uno Q MCU-bridge smoke test (App Lab Bridge RPC) - Rung 2.
 
 Exercises every RPC the robot uses (set_drive / move_servos / heartbeat / estop /
 clear_estop) and prints get_status after each, so you can confirm the MCU is
@@ -48,7 +48,7 @@ def main():
     bridge.heartbeat()
     show(bridge, "after heartbeat")
 
-    print("[2] set_drive(0.2, 0.2) — wheels should be commanded ~+20%")
+    print("[2] set_drive(0.2, 0.2) - wheels should be commanded ~+20%")
     bridge.set_drive(0.2, 0.2)
     bridge.heartbeat()
     time.sleep(0.2)
@@ -57,7 +57,7 @@ def main():
     if not (5 <= abs(st[7]) <= 40 and 5 <= abs(st[8]) <= 40):
         print("  WARN: l_pct/r_pct didn't reflect the drive command"); ok = False
 
-    print("[3] set_drive(0, 0) — stop")
+    print("[3] set_drive(0, 0) - stop")
     bridge.set_drive(0.0, 0.0)
     bridge.heartbeat()
     time.sleep(0.2)
@@ -69,20 +69,20 @@ def main():
         bridge.heartbeat(); time.sleep(0.2)
     show(bridge, "after servo move")
 
-    print("[5] estop — motors must latch off, state -> 3")
+    print("[5] estop - motors must latch off, state -> 3")
     bridge.estop()
     time.sleep(0.2)
     st = show(bridge, "estopped")
     if bridge.mcu_state() != 3:
         print("  WARN: MCU did not report ESTOP (state 3)"); ok = False
 
-    print("[6] clear_estop — back to normal")
+    print("[6] clear_estop - back to normal")
     bridge.clear_estop()
     bridge.heartbeat()
     time.sleep(0.2)
     show(bridge, "cleared")
 
-    print("\nRESULT:", "PASS — every RPC responded" if ok
+    print("\nRESULT:", "PASS - every RPC responded" if ok
           else "CHECK WARNINGS above (RPCs responded but a value looked off)")
     return 0 if ok else 2
 
