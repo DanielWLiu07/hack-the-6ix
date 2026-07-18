@@ -1,0 +1,5 @@
+# Arduino CLI sketch project file (MCU build). VERIFY the exact FQBN for the UNO Q
+# MCU on the board: `arduino-cli board list` in App Lab, or the App Lab docs.
+default_fqbn: arduino:stm32:unoq   # TODO: confirm exact FQBN on the board
+# libraries:
+#   - Bridge                       # App Lab Bridge lib (verify name)

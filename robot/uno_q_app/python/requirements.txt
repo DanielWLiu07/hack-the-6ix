@@ -1,0 +1,4 @@
+# Python deps for the App Lab app (Linux/MPU side). App Lab installs these on deploy.
+opencv-python-headless
+numpy
+onnxruntime          # runs the Edge Impulse ONNX classifier (SPOILAGE_BACKEND=onnx)

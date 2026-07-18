@@ -1,0 +1,14 @@
+# Arduino App Lab manifest — ties the Python (MPU) half to the sketch (MCU) half.
+# VERIFY field names against the App Lab version on your board:
+#   docs.arduino.cc/software/app-lab/  (structure: app.yaml + python/ + sketch/)
+name: fruit-sorter
+description: On-device fruit ripeness + spoilage sort — MPU perception drives MCU actuation
+python:
+  entrypoint: python/main.py
+sketch:
+  path: sketch
+# If you deploy the spoilage model as an App Lab AI Brick instead of raw ONNX,
+# declare it here (verify the exact brick schema in App Lab):
+# bricks:
+#   - type: image-classification
+#     model: models/spoilage.eim

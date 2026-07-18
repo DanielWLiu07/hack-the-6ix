@@ -25,6 +25,40 @@ The two talk over the **App Lab Bridge** (`Arduino_RouterBridge`, MsgPack-RPC).
 That bridge *is* the Qualcomm-track judging boundary - see `firmware/BRIDGE.md`
 for the exact RPC contract.
 
+## The whole stack is Qualcomm's - not just the board
+
+We didn't only target Qualcomm silicon; we built on Qualcomm's **entire edge-AI
+stack**, which consolidated in 2025:
+
+- **Arduino** (UNO Q hardware + App Lab IDE) - acquired by Qualcomm, Nov 2025.
+- **Edge Impulse** (our model-training platform) - acquired by Qualcomm, Mar 2025,
+  *expressly to power the Dragonwing line* the QRB2210 belongs to.
+- **Qualcomm AI Hub** - where we profile the deployed model (latency / RAM).
+
+So the pipeline is end-to-end Qualcomm: **train in Edge Impulse -> deploy as an
+Arduino App Lab app on the QRB2210 -> profile in Qualcomm AI Hub.** The App Lab app
+is real and in-repo - [`robot/uno_q_app/`](../robot/uno_q_app) (MPU perception ->
+Bridge -> MCU actuation) - runnable on a laptop today, board-ready.
+
+Hardware honesty: the QRB2210 runs inference on its **Cortex-A53 CPU + Adreno 702
+GPU** - no discrete NPU at this tier. Our claim is *efficient ~5 W on-device
+inference, no cloud* - not "NPU acceleration."
+
+## Spoilage / anomaly detection - where the learned AI earns its place
+
+Ripeness is a color read; **spoilage is where a trained model matters.** We flag
+bruised/rotting fruit on-device, two ways sharing one dataset:
+
+- **Classification** - an Edge Impulse transfer-learning model on the banana crop
+  (fresh vs spoiled). Swaps into the runtime with one env var
+  (`SPOILAGE_BACKEND=onnx`); see [`robot/vision/spoilage_classifier.py`].
+- **Anomaly framing** - an App Lab anomaly Brick trained on *clean* fruit only,
+  flagging spoilage it was never shown (the "unanticipated defect" story).
+
+Data honesty: real captures are few, so we augment with **procedural spoilage +
+background randomization** ([`ml/spoilage/synthesize.py`]) - validated to lift
+real-test AUC 0.57 -> 0.79 - while **evaluating only on held-out real fruit**.
+
 ## Why the split is intentional (not just "Linux runs Python")
 
 The division is drawn along a **latency + safety** line, not convenience:
