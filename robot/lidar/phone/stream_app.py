@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""stream_app.py - live phone→site camera stream, pure web app (Safari-friendly).
+"""stream_app.py - live phone->site camera stream, pure web app (Safari-friendly).
 
 iOS Safari can't read the LiDAR from a web page (Apple exposes it only to native
 ARKit apps - true even on iPhone 17 in 2026). What Safari CAN do over HTTPS is
 getUserMedia on the camera. So this is a real in-browser web app:
 
-    iPhone Safari  ──getUserMedia──►  canvas → JPEG frames ──POST /push──►  server
-                                                                              │ latest frame
-    Dashboard / any viewer  ◄──MJPEG /stream (multipart/x-mixed-replace)──────┘
+    iPhone Safari  --getUserMedia-->  canvas -> JPEG frames --POST /push-->  server
+                                                                              | latest frame
+    Dashboard / any viewer  <--MJPEG /stream (multipart/x-mixed-replace)------+
 
 The phone broadcasts; the site (or the web dashboard's lidar view) shows it live
 via <img src="/stream">. Pure Python stdlib - no websockets, no native app.
@@ -26,7 +26,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import os
 import socket
 
-# ---- shared latest-frame state ------------------------------------------
+# shared latest-frame state
 _lock = threading.Condition()
 _frame = {"jpeg": None, "seq": 0, "when": 0.0}
 _stats = {"pushes": 0, "viewers": 0}
@@ -40,7 +40,7 @@ def lan_ip():
         return "127.0.0.1"
 
 
-# ---- PWA assets (home-screen "app": manifest + icon + service worker) -----
+# PWA assets (home-screen "app": manifest + icon + service worker)
 _ICON_CACHE = {}
 
 
@@ -146,9 +146,9 @@ BROADCAST_PAGE = """<!doctype html><html><head><meta charset=utf-8>
     <span class=pill id=meta>LiDAR • iPhone</span>
   </div>
 </div>
-<button id=go>▶︎ Start scanning</button>
+<button id=go>>︎ Start scanning</button>
 <div id=st>tap start · allow camera</div>
-<div class=install id=install style=display:none><b>Install as an app:</b> Share → <b>Add to Home&nbsp;Screen</b>, then launch FarmHand from your home screen.</div>
+<div class=install id=install style=display:none><b>Install as an app:</b> Share -> <b>Add to Home&nbsp;Screen</b>, then launch FarmHand from your home screen.</div>
 <p class=foot>Live feed streams to the FarmHand dashboard. View on the laptop at <b>/view</b>.</p>
 <canvas id=c style=display:none></canvas>
 <script>
@@ -169,7 +169,7 @@ async function start(){
 }
 function stop(){ on=false; if(stream){stream.getTracks().forEach(t=>t.stop());}
   document.body.classList.remove('live'); rec.textContent='● STANDBY';
-  go.textContent='▶︎ Start scanning'; go.classList.remove('stop'); st.textContent='stopped'; }
+  go.textContent='>︎ Start scanning'; go.classList.remove('stop'); st.textContent='stopped'; }
 go.onclick=()=> on?stop():start();
 async function loop(){
   if(!on) return;
@@ -191,8 +191,8 @@ VIEW_PAGE = """<!doctype html><html><head><meta charset=utf-8>
  img{max-width:96vw;max-height:82vh;border-radius:14px;border:1px solid #2a3348;background:#000}
  .h{position:fixed;top:12px;left:12px;font:12px ui-monospace,monospace;color:#89dceb;
     background:rgba(17,21,30,.8);padding:8px 12px;border-radius:8px}</style></head><body>
-<div class=h>live phone stream - <span id=s>connecting…</span></div>
-<img id=im src=/stream alt="waiting for phone…">
+<div class=h>live phone stream - <span id=s>connecting...</span></div>
+<img id=im src=/stream alt="waiting for phone...">
 <script>
  const im=document.getElementById('im'),s=document.getElementById('s');
  im.onload=()=>s.textContent='LIVE'; im.onerror=()=>s.textContent='no phone yet - open this URL on the iPhone';

@@ -34,7 +34,7 @@ and `CVCamera` (OpenCV), falling back to mocks if either is unavailable.
 ### Detector selection
 
 `load_detector()` prefers, in order: ONNX (`ml/ripeness/export/model.onnx` +
-`classes.json`) → vision-infer's HSV fallback (`robot/vision/hsv_detector.py`) →
+`classes.json`) -> vision-infer's HSV fallback (`robot/vision/hsv_detector.py`) ->
 `MockDetector` (synthetic ground truth). In `--sim` the node forces
 `MockDetector` (the real models see nothing in MockCamera's synthetic frames);
 pass `--real-detector` to run the ONNX/HSV path against a live camera in sim.
@@ -45,11 +45,11 @@ pass `--real-detector` to run the ONNX/HSV path against a live camera in sim.
 |---|---|
 | `bridge.py` | `MockBridge` (in-process sim) / `AppLabBridge` (real RPC). Timeout/DOWN handling per BRIDGE.md §3 lives in the node. |
 | `camera.py` | `MockCamera` (eye-in-hand sim, fruit position tracks joints) / `CVCamera`. |
-| `detector.py` | `Detection` + ONNX / HSV / Mock detectors, NMS. `to_event()` → root-schema `detection`. |
-| `servoing.py` | ALIGN visual servoing: bbox error → base/shoulder jog. |
+| `detector.py` | `Detection` + ONNX / HSV / Mock detectors, NMS. `to_event()` -> root-schema `detection`. |
+| `servoing.py` | ALIGN visual servoing: bbox error -> base/shoulder jog. |
 | `poses.py` | Named-pose store + sequence replay; `poses.json` (bin poses per class). |
 | `pose_recorder.py` | Interactive keyboard pose recorder (P0 arm-bringup tool). |
-| `state_machine.py` | SEEK→ALIGN→PICK→SORT→DROP, tick-based, non-blocking. |
+| `state_machine.py` | SEEK->ALIGN->PICK->SORT->DROP, tick-based, non-blocking. |
 | `robot_node.py` | Wires it all to the Socket.IO hub; 20 Hz control tick, 5 Hz telemetry + heartbeat. |
 | `soak.py` | N-cycle pick/sort soak + final-model load check (demo-hardening). |
 | `config.py` | Env-overridable config (rates, gains, joint limits, paths). |
@@ -71,7 +71,7 @@ because the real model can't see MockCamera's synthetic frames.
 ## Verified
 
 - Full pick cycle emits schema-correct `detection` / `pick_event` (correct bins
-  `apple_ripe`…`banana_unripe`); `telemetry` payload matches root-CLAUDE.md.
+  `apple_ripe`...`banana_unripe`); `telemetry` payload matches root-CLAUDE.md.
 - Node runs a steady 20 Hz control loop, 5 Hz telemetry + heartbeat, and picks
   end-to-end against server-core's live hub (REST `/api/stats` aggregates them).
 - `drive`/`arm_pose`/`pick`/`estop`/`nl_action` inbound handling; latched estop.

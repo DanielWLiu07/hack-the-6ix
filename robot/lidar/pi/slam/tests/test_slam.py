@@ -16,7 +16,7 @@ from slam import Slam, voxel_downsample                    # noqa: E402
 import synth                                               # noqa: E402
 
 
-# ---- ICP -----------------------------------------------------------------
+# ICP
 def test_icp_recovers_known_transform():
     # Realistic input: a room scan (not a random/gridded cloud, which alias under
     # nearest-neighbour matching). Point-to-point ICP on discretely-sampled beams
@@ -50,7 +50,7 @@ def test_icp_degenerate_inputs():
     assert np.allclose(T, np.eye(3))
 
 
-# ---- occupancy grid ------------------------------------------------------
+# occupancy grid
 def test_occupancy_free_and_occupied():
     g = OccupancyGrid(res=0.1, size_m=8.0)
     # one beam straight ahead, endpoint at (2,0)
@@ -86,14 +86,14 @@ def test_occupied_cells_capped():
     assert all(len(c) == 2 for c in cells)
 
 
-# ---- voxel ---------------------------------------------------------------
+# voxel
 def test_voxel_downsample_dedups():
     pts = np.array([[0.01, 0.01], [0.02, 0.02], [1.0, 1.0]])
     out = voxel_downsample(pts, 0.1)
     assert len(out) == 2      # first two collapse into one voxel
 
 
-# ---- offline SLAM integration -------------------------------------------
+# offline SLAM integration
 def test_slam_tracks_loop_with_bounded_drift():
     poses, scans = synth.dataset(steps=120, beams=180, seed=0)
     s = Slam()

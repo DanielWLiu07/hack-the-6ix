@@ -1,234 +1,193 @@
-/* Analytics - the WHOLE page sits on the landing's painterly orchard scene
- * (reused OrchardHero, full-viewport behind), with translucent frosted data
- * cards floating over it in the green painterly palette. Scoped to Analytics
- * only (az-*). No emojis, no em dashes. */
+/* Analytics - matches the Teleop page's manga look: cream paper + ink, mono
+ * type, bold ink borders with hard offset shadows, kicker + heavy title. Scoped
+ * to Analytics only (az-*). No emojis, no em dashes. */
 
 .az {
-  --ink: #2f4227; /* deep green text */
-  --ink-2: #4f5c3d; /* muted */
-  --ink-3: #6f7a58; /* faint */
-  --card: rgba(236, 231, 217, 0.92); /* frosted paper, opaque enough to read */
-  --card-solid: #e7e1cf;
-  --card-2: rgba(51, 69, 43, 0.1); /* tracks */
-  --leaf: #52803a;
-  --leaf-deep: #3a6129;
-  --gold: #b57e28;
-  --line: rgba(47, 66, 39, 0.2);
-  --line-2: rgba(47, 66, 39, 0.34);
+  --ink: #171914;
+  --ink-2: #43473d;
+  --ink-3: #7c8072;
+  --paper: #fffdf7; /* panels (teleop button paper) */
+  --page: #f4f3ee; /* page (teleop stage) */
+  --track: #e7e3d5;
+  --line: rgba(23, 25, 20, 0.3);
+  --line-soft: rgba(23, 25, 20, 0.16);
+  --green: #2f6b34;
   --mono: var(--ui-mono);
-  --disp: var(--ui-display);
+  --halftone: radial-gradient(var(--ink) 1.1px, transparent 1.45px);
 
+  /* full-bleed paper page */
   position: relative;
-  margin: -1.25rem; /* bleed to the edges of .page padding */
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  margin-top: -1.25rem;
+  margin-bottom: -1.25rem;
+  min-height: calc(100vh - 3.4rem);
+  padding: 2.6rem 0 3.5rem;
   color: var(--ink);
-}
-
-/* full-viewport painterly scene behind the whole page */
-.az-scene {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: #dcd6c4; /* painterly paper, shown before/behind the canvas */
-}
-.az-scene .orchard-canvas,
-.az-scene .hero-fallback {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.orchard-load {
-  position: absolute;
-  inset: auto auto 12px 14px;
+  background-color: var(--page);
   font-family: var(--mono);
-  font-size: 0.72rem;
-  color: #3a4a30;
-  opacity: 0.7;
 }
 
-/* data column floats above the scene */
 .az-overlay {
-  position: relative;
-  z-index: 1;
-  padding: 1.25rem;
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 2.2rem;
   display: flex;
   flex-direction: column;
-  gap: 1.15rem;
+  gap: 2.2rem;
 }
+.az-main { display: flex; flex-direction: column; gap: 2.2rem; }
 
-/* frosted card base */
+/* inked panel with a hard offset shadow (teleop signature) */
 .az-panel {
   position: relative;
-  background: var(--card);
-  backdrop-filter: blur(9px) saturate(1.15);
-  -webkit-backdrop-filter: blur(9px) saturate(1.15);
+  background: var(--paper);
   color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: 13px;
-  box-shadow:
-    0 6px 22px rgba(30, 40, 18, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  padding: 1.05rem 1.15rem;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 4px 4px 0 var(--ink);
+  padding: 1.5rem 1.6rem;
 }
 .az-panel > h3 {
-  margin: 0 0 0.7rem;
-  font-family: var(--mono);
-  font-size: 0.66rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
+  margin: 0 0 1.1rem;
+  font: 800 0.66rem var(--mono);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-2);
 }
 
-/* ---- title header --------------------------------------------------- */
+/* ---- title (kicker + heavy mono title, like teleop) ----------------- */
 .az-head {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 0.6rem 1.4rem 0.7rem;
-  border-radius: 14px;
-  background: var(--card);
-  backdrop-filter: blur(10px) saturate(1.15);
-  -webkit-backdrop-filter: blur(10px) saturate(1.15);
-  border: 1px solid var(--line);
-  box-shadow:
-    0 8px 26px rgba(30, 40, 18, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  position: relative;
+  margin-bottom: 0.3rem;
+  padding-bottom: 1rem;
+  border-bottom: 3px solid var(--ink);
+}
+.az-head::before {
+  content: 'FARMHAND // PICK + SORT LEDGER';
+  display: block;
+  margin-bottom: 0.5rem;
+  font: 800 0.64rem var(--mono);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  opacity: 0.6;
 }
 .az-title {
-  font-family: var(--disp);
-  font-weight: 400;
-  font-size: clamp(2.6rem, 6.5vw, 4.6rem);
-  line-height: 0.92;
-  letter-spacing: 0.5px;
+  font: 900 clamp(1.9rem, 4.6vw, 3rem) var(--mono);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   margin: 0;
-  color: var(--ink);
+  color: #14160f;
 }
 
 /* ---- controls ------------------------------------------------------- */
-.az-controls { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
-.az-seg {
-  display: inline-flex;
-  border: 1px solid var(--line-2);
-  border-radius: 9px;
-  overflow: hidden;
-  background: var(--card);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
-}
+.az-controls { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
+.az-seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 4px; overflow: hidden; background: var(--paper); box-shadow: 3px 3px 0 var(--ink); }
 .az-seg button {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font: 800 0.72rem var(--mono);
   letter-spacing: 0.06em;
-  padding: 0.36rem 0.85rem;
+  padding: 0.42rem 0.95rem;
   background: transparent;
-  color: var(--ink-2);
+  color: var(--ink);
   border: none;
-  border-right: 1px solid var(--line);
+  border-right: 2px solid var(--ink);
   cursor: pointer;
+  transition: background 0.12s, color 0.12s;
 }
 .az-seg button:last-child { border-right: none; }
-.az-seg button:hover { color: var(--ink); background: rgba(255, 255, 255, 0.25); }
-.az-seg button.on { background: var(--leaf); color: #f4f1e2; }
+.az-seg button:hover { background: var(--track); }
+.az-seg button.on { background: var(--ink); color: var(--paper); }
 
 .az-live {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font: 800 0.7rem var(--mono);
   letter-spacing: 0.08em;
-  color: var(--ink-2);
-  padding: 0.34rem 0.75rem;
-  border: 1px solid var(--line-2);
-  border-radius: 9px;
-  background: var(--card);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
+  color: var(--ink);
+  padding: 0.36rem 0.8rem;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  background: var(--paper);
 }
-.az-live .sq { width: 8px; height: 8px; border-radius: 50%; background: var(--leaf); box-shadow: 0 0 8px rgba(82, 128, 58, 0.7); }
-.az-live.stale .sq { background: transparent; border: 1.5px solid var(--ink-3); box-shadow: none; }
+.az-live .sq { width: 8px; height: 8px; background: var(--green); }
+.az-live.stale { color: var(--ink-3); border-color: var(--ink-3); }
+.az-live.stale .sq { background: transparent; border: 1.5px solid var(--ink-3); }
 
 .az-note {
-  font-family: var(--mono);
-  font-size: 0.74rem;
+  font: 500 0.75rem var(--mono);
   color: var(--ink);
-  background: var(--card);
-  backdrop-filter: blur(9px);
-  -webkit-backdrop-filter: blur(9px);
-  border: 1px solid var(--line-2);
-  border-left: 4px solid var(--gold);
-  border-radius: 9px;
-  padding: 0.5rem 0.85rem;
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 0.6rem 0.95rem;
 }
 
 /* ---- grids ---------------------------------------------------------- */
-.az-grid { display: grid; gap: 1.1rem; }
-.az-metrics { grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); }
+.az-grid { display: grid; gap: 2.2rem; }
+.az-metrics { grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); }
 .az-two { grid-template-columns: 1.4fr 1fr; align-items: start; }
-@media (max-width: 720px) { .az-two { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .az-two { grid-template-columns: 1fr; } }
 
 /* ---- metric tiles --------------------------------------------------- */
-.az-metric .az-num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 2.2rem; line-height: 1; color: var(--ink); }
-.az-metric .az-num .u { font-size: 0.95rem; font-weight: 500; color: var(--ink-3); margin-left: 0.25rem; }
-.az-metric .az-delta { font-family: var(--mono); font-size: 0.72rem; margin-top: 0.3rem; color: var(--ink-2); }
-.az-spark { display: block; width: 100%; height: 34px; margin-top: 0.6rem; border-top: 1px solid var(--line); padding-top: 0.35rem; }
+.az-metric { display: flex; flex-direction: column; }
+.az-metric .az-num { font: 800 2.5rem var(--mono); font-variant-numeric: tabular-nums; line-height: 1; color: var(--ink); }
+.az-metric .az-num .u { font-size: 0.9rem; font-weight: 600; color: var(--ink-3); margin-left: 0.3rem; }
+.az-metric .az-delta { font: 500 0.74rem var(--mono); margin-top: 0.5rem; color: var(--ink-2); }
+.az-spark { display: block; width: 100%; height: 30px; margin-top: 1rem; border-top: 2px solid var(--ink); padding-top: 0.5rem; }
 .az-spark .line { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
 
-/* ---- bin table ------------------------------------------------------ */
-.az-tbl { display: flex; flex-direction: column; gap: 0.6rem; }
-.az-tbl-row { display: grid; grid-template-columns: 8.5rem 1fr 3.4rem; align-items: center; gap: 0.7rem; }
+/* ---- bin table (solid ink vs screentone) ---------------------------- */
+.az-tbl { display: flex; flex-direction: column; gap: 0.95rem; }
+.az-tbl-row { display: grid; grid-template-columns: 9rem 1fr 3.4rem; align-items: center; gap: 0.95rem; }
 .az-tbl-name {
-  font-family: var(--mono);
-  font-size: 0.76rem;
-  font-weight: 600;
+  font: 700 0.77rem var(--mono);
   letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--ink);
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.55rem;
   white-space: nowrap;
 }
-.az-tbl-name i { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14); }
-.az-tbl-name i.ripe { background: var(--leaf); }
-.az-tbl-name i.unripe { background: var(--gold); }
-.az-tbl-bar { position: relative; height: 15px; background: rgba(47, 66, 39, 0.12); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.az-tbl-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 8px; transition: width 0.4s ease; }
-.az-tbl-bar > span.ripe { background: linear-gradient(180deg, #6a9a4a, var(--leaf-deep)); }
-.az-tbl-bar > span.unripe { background: linear-gradient(180deg, #d09a3e, var(--gold)); }
-.az-tbl-count { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.9rem; text-align: right; color: var(--ink); }
-.az-tbl-count .az-tbl-pct { color: var(--ink-3); font-size: 0.68rem; font-weight: 500; }
+.az-tbl-name i { width: 12px; height: 12px; border: 1.5px solid var(--ink); flex: 0 0 auto; }
+.az-tbl-name i.ripe { background: var(--ink); }
+.az-tbl-name i.unripe { background-image: var(--halftone); background-size: 4px 4px; }
+.az-tbl-bar { position: relative; height: 15px; background: var(--track); border: 1.5px solid var(--ink); overflow: hidden; }
+.az-tbl-bar > span { position: absolute; inset: 0 auto 0 0; transition: width 0.4s ease; }
+.az-tbl-bar > span.ripe { background: var(--ink); }
+.az-tbl-bar > span.unripe { background-color: var(--paper); background-image: var(--halftone); background-size: 5px 5px; border-right: 1.5px solid var(--ink); }
+.az-tbl-count { font: 800 0.9rem var(--mono); font-variant-numeric: tabular-nums; text-align: right; color: var(--ink); }
+.az-tbl-count .az-tbl-pct { color: var(--ink-3); font-size: 0.68rem; font-weight: 600; }
 
 .az-legend {
   display: flex;
-  gap: 1.2rem;
-  margin-top: 0.85rem;
-  padding-top: 0.7rem;
-  border-top: 1px solid var(--line);
-  font-family: var(--mono);
-  font-size: 0.7rem;
+  gap: 1.4rem;
+  margin-top: 1.2rem;
+  padding-top: 0.95rem;
+  border-top: 2px solid var(--line-soft);
+  font: 700 0.7rem var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-2);
 }
-.az-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 0.4rem; vertical-align: -2px; }
-.az-legend i.ripe { background: var(--leaf); }
-.az-legend i.unripe { background: var(--gold); }
+.az-legend i { display: inline-block; width: 12px; height: 12px; border: 1.5px solid var(--ink); margin-right: 0.45rem; vertical-align: -2px; }
+.az-legend i.ripe { background: var(--ink); }
+.az-legend i.unripe { background-image: var(--halftone); background-size: 4px 4px; }
 
-/* ---- fruit x ripeness matrix ---------------------------------------- */
-.az-matrix { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 1px; background: var(--line-2); border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
-.az-matrix > div { background: rgba(233, 227, 210, 0.9); padding: 0.6rem 0.7rem; font-family: var(--mono); font-size: 0.86rem; color: var(--ink); }
-.az-matrix .h { background: var(--leaf-deep); color: #eef0df; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
-.az-matrix .rh { color: var(--ink-2); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.04em; }
-.az-matrix .cell { font-variant-numeric: tabular-nums; }
-.az-matrix .cell b { font-weight: 700; font-size: 1.05rem; }
-.az-matrix .tot { color: var(--gold); font-weight: 700; }
-.az-matrix .cell.tot { background: rgba(47, 66, 39, 0.12); }
-.az-matrix .h.tot { color: #eef0df; }
+/* ---- fruit x ripeness matrix (inked grid) --------------------------- */
+.az-matrix { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 2px; background: var(--ink); border: 2px solid var(--ink); border-radius: 3px; overflow: hidden; }
+.az-matrix > div { background: var(--paper); padding: 0.72rem 0.8rem; font: 500 0.86rem var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); text-align: center; }
+.az-matrix .h { background: var(--ink); color: var(--paper); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.az-matrix .rh { text-align: left; font-weight: 800; text-transform: uppercase; font-size: 0.73rem; letter-spacing: 0.04em; }
+.az-matrix .cell b { font-weight: 800; font-size: 1.2rem; }
+.az-matrix .tot { font-weight: 800; }
+.az-matrix .cell.tot { background: var(--track); }
+.az-matrix .h.tot { background: var(--ink); color: var(--paper); }
 
 /* ---- throughput strip ----------------------------------------------- */
-.az-strip .az-spark { height: 58px; border-top: none; padding-top: 0; }
+.az-strip .az-spark { height: 62px; border-top: none; padding-top: 0; }

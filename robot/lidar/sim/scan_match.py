@@ -24,7 +24,7 @@ import math
 import numpy as np
 
 
-# ------------------------------------------------------------- rigid transforms
+# rigid transforms
 
 def _rot(theta):
     c, s = math.cos(theta), math.sin(theta)
@@ -52,7 +52,7 @@ def transform_xytheta(T):
     return T[0, 2], T[1, 2], math.atan2(T[1, 0], T[0, 0])
 
 
-# --------------------------------------------------------------------------- NN
+# NN
 
 def _nearest(src, dst):
     """For each src point, index + sq-distance of nearest dst point (brute force)."""
@@ -79,7 +79,7 @@ def _best_fit_transform(src, dst):
     return T
 
 
-# -------------------------------------------------------------------------- ICP
+# ICP
 
 def icp(src, dst, max_iter=30, tol=1e-5, reject_pct=80.0, init=None):
     """Align `src` onto `dst` with point-to-point ICP.
@@ -114,7 +114,7 @@ def icp(src, dst, max_iter=30, tol=1e-5, reject_pct=80.0, init=None):
     return T, err
 
 
-# ----------------------------------------------------------------- streaming map
+# streaming map
 
 class ScanMapper:
     """SLAM-lite front-end: scan-to-map ICP -> global trajectory + world map.
@@ -228,7 +228,7 @@ class ScanMapper:
         return np.array(list(self._voxels.values()))
 
 
-# -------------------------------------------------------------------- self-test
+# self-test
 
 def _room_outline_points(n_per_seg=25, noise=0.01, seed=0):
     """Sample points along the sim room walls - what a real scan looks like."""

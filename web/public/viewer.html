@@ -1,0 +1,326 @@
+<!doctype html>
+<!--
+  viewer.html - standalone 3D lidar viewer (executable conventions).
+
+  Loads the phone-scanned colored world (world.glb) AND overlays the live
+  RPLIDAR C1 `lidar_scan` ring in the SAME frame, with decay. This is the
+  reference web-frontend copies into the dashboard's lidar view, and doubles
+  as offline demo-backup footage.
+
+  Run:
+    cd robot/lidar/phone && python3 -m http.server 8091
+    open http://localhost:8091/viewer.html
+
+  Query params (all optional):
+    ?server=http://localhost:3001     hub Socket.IO URL (live C1 scans)
+    ?world=http://localhost:5173/world.glb   the phone-scanned GLB (Vite serves web/public)
+    ?height=0.15                      C1 sensor mount height (m) - where the ring floats
+    ?demo=1                           force synthetic rotating ring (no hub needed)
+
+  If no live scan arrives within 3 s it auto-falls back to a synthetic ring so
+  the demo never looks dead.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>C1 + phone lidar - 3D viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f1ece1; overflow: hidden; }
+  #hud {
+    position: fixed; top: 10px; left: 10px; z-index: 10;
+    font: 12px/1.5 ui-monospace, Menlo, monospace; color: #2a2a2a;
+    background: rgba(255,253,248,.9); padding: 10px 12px; border-radius: 8px;
+    border: 1px solid rgba(17,16,13,.15); pointer-events: none; white-space: pre;
+  }
+  #hud b { color: #1e66f5; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .on { background:#2bb673; } .off { background:#e5484d; }
+</style>
+<div id="hud">loading...</div>
+
+<script src="/vendor/socket.io.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "/vendor/three.module.js",
+  "three/addons/": "/vendor/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const q = new URLSearchParams(location.search);
+const SERVER = q.get('server') || 'http://localhost:3001';
+const WORLD  = q.get('world')  || 'http://localhost:5173/world.glb';
+const SENSOR_H = parseFloat(q.get('height') || '0.15');   // C1 mount height (m)
+const FORCE_DEMO = q.get('demo') === '1';
+const DECAY_MS = 2500;            // how long a point lingers
+const MAX_POINTS = 360 * 8;       // ~8 scans of history
+
+const hud = document.getElementById('hud');
+
+// ---- scene ---------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf1ece1);      // warm, lit room
+scene.fog = new THREE.Fog(0xf1ece1, 10, 26);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 100);
+camera.position.set(3.2, 2.6, 3.4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.6, -1.2);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xdad4c6, 1.55));
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+const key = new THREE.DirectionalLight(0xffffff, 1.25); key.position.set(3, 6, 2); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(-4, 3, -2); scene.add(fill);
+const grid = new THREE.GridHelper(10, 20, 0xc7c1b3, 0xded8cb); scene.add(grid);
+// robot origin marker (forward = -Z)
+const axes = new THREE.AxesHelper(0.4); scene.add(axes);
+
+// ---- phone world (GLB) - auto-reloads so a live scan grows on screen ------
+let worldOk = false;
+let worldObj = null;
+let worldSig = null;        // last world.glb signature; skip reloads when unchanged
+let loading = false;        // guard against overlapping loads
+let worldVerts = 0, worldFaces = 0, worldStamp = 0, worldUpdates = 0;  // live-feed status
+const loader = new GLTFLoader();
+const LIVE_RELOAD = q.get('live') !== '0';
+
+// Free the GPU resources of a mesh tree. Without this, every live reload leaks
+// geometry+material+textures until the GPU process crashes = the flashing.
+function disposeObj(obj) {
+  obj.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
+    mats.forEach((m) => {
+      for (const k in m) { const v = m[k]; if (v && v.isTexture) v.dispose(); }
+      if (m.dispose) m.dispose();
+    });
+  });
+}
+
+function applyWorld(gltf) {
+  const next = gltf.scene;
+  // scanned from inside a room, ARKit normals face out -> double-sided or walls vanish
+  next.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => { m.side = THREE.DoubleSide; });
+  });
+  scene.add(next);                                   // add new BEFORE removing old (no gap)
+  if (worldObj) { scene.remove(worldObj); disposeObj(worldObj); }
+  worldObj = next;
+  worldOk = true;
+  // live-feed status: count geometry + stamp the update time
+  let v = 0, f = 0;
+  next.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    const pos = o.geometry.attributes && o.geometry.attributes.position;
+    if (pos) v += pos.count;
+    f += o.geometry.index ? o.geometry.index.count / 3 : (pos ? pos.count / 3 : 0);
+  });
+  worldVerts = v; worldFaces = Math.floor(f); worldStamp = performance.now(); worldUpdates++;
+}
+
+async function loadWorld(force) {
+  if (loading) return;
+  // Only reload when the file changed. Re-uploading the same ~1MB mesh to the
+  // GPU every few seconds is what makes it stutter/flash; skip when unchanged.
+  try {
+    const head = await fetch(WORLD, { method: 'HEAD', cache: 'no-store' });
+    if (head.ok) {
+      const sig = (head.headers.get('etag') || '') + '|' +
+                  (head.headers.get('last-modified') || '') + '|' +
+                  (head.headers.get('content-length') || '');
+      if (!force && sig === worldSig) return;
+      worldSig = sig;
+    }
+  } catch (e) { /* HEAD unsupported: fall through and load */ }
+  loading = true;
+  const url = WORLD + (WORLD.includes('?') ? '&' : '?') + 't=' + Date.now();
+  loader.load(url,
+    (gltf) => { loading = false; applyWorld(gltf); },
+    undefined,
+    (err) => { loading = false; if (!worldOk) console.warn('world.glb load failed', err); });
+}
+
+// Recover from a GPU context loss instead of going black permanently.
+renderer.domElement.addEventListener('webglcontextlost', (e) => { e.preventDefault(); }, false);
+renderer.domElement.addEventListener('webglcontextrestored', () => { worldSig = null; loadWorld(true); }, false);
+
+loadWorld(true);
+if (LIVE_RELOAD) setInterval(loadWorld, 3000);
+
+// ---- live C1 ring (points with decay) ------------------------------------
+// robot frame (x_fwd, y_left, meters) -> three.js (X,Y,Z) = (-y, SENSOR_H, -x)
+const positions = new Float32Array(MAX_POINTS * 3);
+const colors    = new Float32Array(MAX_POINTS * 3);
+const born      = new Float64Array(MAX_POINTS);   // ms timestamp per point
+let head = 0, filled = 0;
+
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+pGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+const pMat = new THREE.PointsMaterial({ size: 0.06, vertexColors: true,
+  transparent: true, depthWrite: false, sizeAttenuation: true });
+const points = new THREE.Points(pGeo, pMat);
+scene.add(points);
+
+const HOT = new THREE.Color(0x89dceb);   // fresh scan color
+
+function addScan(pts, nowMs) {
+  for (const p of pts) {
+    const x = p[0], y = p[1];
+    const i = head * 3;
+    positions[i]   = -y;
+    positions[i+1] = SENSOR_H;
+    positions[i+2] = -x;
+    colors[i] = HOT.r; colors[i+1] = HOT.g; colors[i+2] = HOT.b;
+    born[head] = nowMs;
+    head = (head + 1) % MAX_POINTS;
+    filled = Math.min(filled + 1, MAX_POINTS);
+  }
+  pGeo.attributes.position.needsUpdate = true;
+}
+
+function fadePoints(nowMs) {
+  for (let k = 0; k < filled; k++) {
+    const age = nowMs - born[k];
+    const t = Math.max(0, 1 - age / DECAY_MS);   // 1 fresh -> 0 gone
+    const i = k * 3;
+    // fade cyan -> deep blue as it ages, and dim toward black
+    colors[i]   = HOT.r * t;
+    colors[i+1] = HOT.g * t;
+    colors[i+2] = (HOT.b * t) + (1 - t) * 0.15;
+  }
+  pGeo.attributes.color.needsUpdate = true;
+}
+
+// ---- SLAM occupancy grid overlay (from `slam_update`) --------------------
+// cells arrive as world-meter [x,y] centers in the robot frame (same frame as
+// the C1 ring). Render as amber squares just above the floor + a pose marker.
+const SLAM_MAX = 4000;
+const slamPos = new Float32Array(SLAM_MAX * 3);
+const slamGeo = new THREE.BufferGeometry();
+slamGeo.setAttribute('position', new THREE.BufferAttribute(slamPos, 3));
+const slamMat = new THREE.PointsMaterial({ size: 0.08, color: 0xf9b559,
+  transparent: true, opacity: 0.85, depthWrite: false });
+const slamPoints = new THREE.Points(slamGeo, slamMat);
+scene.add(slamPoints);
+
+const poseMarker = new THREE.Mesh(
+  new THREE.ConeGeometry(0.12, 0.28, 12),
+  new THREE.MeshBasicMaterial({ color: 0x1e66f5 }));
+poseMarker.visible = false;
+scene.add(poseMarker);
+let slamCells = 0;
+
+function setSlam(cells, pose) {
+  const n = Math.min(cells.length, SLAM_MAX);
+  for (let i = 0; i < n; i++) {
+    const x = cells[i][0], y = cells[i][1];
+    slamPos[i*3] = -y; slamPos[i*3+1] = 0.02; slamPos[i*3+2] = -x;   // robot->three
+  }
+  slamGeo.setDrawRange(0, n);
+  slamGeo.attributes.position.needsUpdate = true;
+  slamCells = n;
+  if (pose) {
+    poseMarker.visible = true;
+    poseMarker.position.set(-pose[1], 0.14, -pose[0]);
+    poseMarker.rotation.set(Math.PI/2, 0, -pose[2] * Math.PI/180);  // theta_deg about up
+  }
+}
+
+// ---- data source: live hub, else synthetic demo ring ---------------------
+let connected = false, scanCount = 0, lastPts = 0, gotLive = false;
+
+function startLive() {
+  if (typeof io === 'undefined') { startDemo('socket.io failed to load'); return; }
+  const sock = io(SERVER, { transports: ['websocket', 'polling'] });
+  sock.on('connect', () => { connected = true; });
+  sock.on('disconnect', () => { connected = false; });
+  sock.on('lidar_scan', (m) => {
+    if (!m || !Array.isArray(m.points)) return;
+    gotLive = true; scanCount++; lastPts = m.points.length;
+    addScan(m.points, performance.now());
+  });
+  sock.on('slam_update', (m) => {          // needs server-core relay (see DEPLOY.md)
+    if (!m || !Array.isArray(m.cells)) return;
+    setSlam(m.cells, m.pose);
+  });
+}
+
+let demoMode = false, demoAngle = 0, slamSeeded = false;
+function startDemo(reason) {
+  demoMode = true;
+  console.log('demo ring:', reason || 'no live data');
+  // synthesize a SLAM occupancy map (room perimeter cells) so the overlay is visible
+  if (!slamSeeded) {
+    const cells = [];
+    for (let x = -2; x <= 2; x += 0.06) { cells.push([x, 1.5]); cells.push([x, -1.5]); }
+    for (let y = -1.5; y <= 1.5; y += 0.06) { cells.push([2, y]); cells.push([-2, y]); }
+    setSlam(cells, [0, 0, 0]);
+    slamSeeded = true;
+  }
+}
+function demoScan(nowMs) {
+  // a plausible 4x3 m room ring + a moving "obstacle" blip
+  const pts = [];
+  for (let a = 0; a < 360; a += 2) {
+    const rad = a * Math.PI / 180;
+    // rectangular room distance
+    const cx = Math.cos(rad), cy = Math.sin(rad);
+    const half = Math.min(Math.abs(2 / (cx || 1e-6)), Math.abs(1.5 / (cy || 1e-6)));
+    let r = Math.min(half, 4);
+    // moving obstacle
+    const oa = demoAngle % (2 * Math.PI);
+    if (Math.abs(rad - oa) < 0.12) r = 1.2;
+    pts.push([r * cx, r * cy]);
+  }
+  demoAngle += 0.03;
+  addScan(pts, nowMs);
+}
+
+if (FORCE_DEMO) startDemo('forced via ?demo=1'); else startLive();
+// fall back to demo if nothing live arrives
+setTimeout(() => { if (!gotLive && !demoMode) startDemo('no live scan in 3s'); }, 3000);
+
+// ---- loop ----------------------------------------------------------------
+let lastDemo = 0;
+function tick(now) {
+  requestAnimationFrame(tick);
+  if (demoMode && now - lastDemo > 200) { demoScan(now); lastDemo = now; }
+  fadePoints(now);
+  controls.update();
+  renderer.render(scene, camera);
+
+  const src = demoMode ? 'DEMO (synthetic ring)'
+            : `<span class="dot ${connected ? 'on' : 'off'}"></span>${connected ? 'live hub' : 'connecting...'}`;
+  const ageS = worldStamp ? (performance.now() - worldStamp) / 1000 : null;
+  const feed = !worldOk ? 'loading world.glb...'
+    : ageS < 6
+      ? `<span class="dot on"></span>LIVE - ${worldVerts} verts, ${worldFaces} faces (#${worldUpdates}, ${ageS.toFixed(0)}s ago)`
+      : `<span class="dot off"></span>IDLE ${ageS.toFixed(0)}s - move + scan the phone (app in foreground)`;
+  hud.innerHTML =
+    `<b>3D lidar viewer</b>\n` +
+    `phone mesh: ${feed}\n` +
+    `C1 source : ${src}\n` +
+    `scans     : ${demoMode ? '∞' : scanCount}   pts/scan: ${demoMode ? 180 : lastPts}\n` +
+    `slam map  : ${slamCells ? slamCells + ' occupied cells' : 'waiting for slam_update'}\n` +
+    `sensor h  : ${SENSOR_H.toFixed(2)} m   decay: ${(DECAY_MS/1000)}s\n` +
+    `frame     : +Y up, -Z fwd, +X right (m)`;
+}
+requestAnimationFrame(tick);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>

@@ -8,7 +8,7 @@ One Devpost submission, stacked across every track we plausibly qualify for.
 
 We're choosing **Best Environmental** (per team decision). Note the tradeoff honestly:
 - **Hardware** is arguably our *strongest natural fit* (this is literally a hardware-centered project - arm, rover, lidar, edge compute) and the field may be thinner.
-- **Environmental** requires the sustainability story to carry: food waste reduction, labor-free local agriculture, lower food costs → less famine. We back it with *numbers* in the demo (e.g. "X% of fruit rots unpicked due to labor shortages; a $200 robot changes that math").
+- **Environmental** requires the sustainability story to carry: food waste reduction, labor-free local agriculture, lower food costs -> less famine. We back it with *numbers* in the demo (e.g. "X% of fruit rots unpicked due to labor shortages; a $200 robot changes that math").
 - Decide finally at submission time based on what other teams are building. Ask organizers if switching is allowed before deadline.
 
 ## Priority tiers
@@ -26,7 +26,7 @@ We're choosing **Best Environmental** (per team decision). Note the tradeoff hon
 
 | Track | Prize | Requirements | How |
 |---|---|---|---|
-| **Freesolo - Best Model Trained** | SF flight + interview | Train an LLM on Freesolo (SFT/RL/distillation), infinite credits during event | **"FarmHand"**: SFT a small model on synthetic pairs of natural-language commands → structured action JSON (`{"task":"pick","filter":"ripe","zone":"left"}`) + multi-turn clarification dialogs. It becomes the robot's NL command interface. Generate ~1–2k training pairs with a big model, fine-tune, demo live voice/text commanding. |
+| **Freesolo - Best Model Trained** | SF flight + interview | Train an LLM on Freesolo (SFT/RL/distillation), infinite credits during event | **"FarmHand"**: SFT a small model on synthetic pairs of natural-language commands -> structured action JSON (`{"task":"pick","filter":"ripe","zone":"left"}`) + multi-turn clarification dialogs. It becomes the robot's NL command interface. Generate ~1–2k training pairs with a big model, fine-tune, demo live voice/text commanding. |
 
 ### Tier 3 - nearly free, claim them
 
@@ -53,5 +53,5 @@ We're choosing **Best Environmental** (per team decision). Note the tradeoff hon
 
 - [ ] Select: Environmental (NOT hardware/beginner), Qualcomm, Deloitte, Freesolo, MongoDB, Auth0, Base44. Do NOT select Chexy. People's Choice is automatic.
 - [ ] Repo link public, README polished
-- [ ] Demo video ≤ 2–3 min: hook (env stats) → live pick → dashboard → MPU/MCU split slide → FarmHand command demo
+- [ ] Demo video ≤ 2–3 min: hook (env stats) -> live pick -> dashboard -> MPU/MCU split slide -> FarmHand command demo
 - [ ] Explicit slide/section for EACH sponsor's judging criteria (judges score what they can see)

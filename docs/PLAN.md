@@ -6,13 +6,13 @@
 
 1. **P0 - Arm picks a fruit and drops it in a bin on command** (recorded poses). This alone is a demo.
 2. **P0 - Web dashboard shows live telemetry** (fake data first, real data when robot's up).
-3. **P1 - Vision-autonomous pick & sort**: on-arm camera detects apple/banana + ripeness → arm picks → carries to the matching bin pose.
-4. **P1 - Drive + teleop via PlayStation controller** (browser Gamepad API in dashboard → `drive` events).
+3. **P1 - Vision-autonomous pick & sort**: on-arm camera detects apple/banana + ripeness -> arm picks -> carries to the matching bin pose.
+4. **P1 - Drive + teleop via PlayStation controller** (browser Gamepad API in dashboard -> `drive` events).
 5. **P2 - Lidar live point-cloud/map in the web app** (Three.js scatter is fine; ROS2+Foxglove only if time).
 6. **P2 - FarmHand LLM commanding** (Freesolo track).
 7. **P3 - Autonomous navigate-then-pick, ElevenLabs voice.**
 
-Never let a P2 block a P0. If IK is fighting us → record/replay servo poses ("canned picks") and move on; revisit later.
+Never let a P2 block a P0. If IK is fighting us -> record/replay servo poses ("canned picks") and move on; revisit later.
 
 ## Workstreams & suggested split (4 people)
 
@@ -23,7 +23,7 @@ Never let a P2 block a P0. If IK is fighting us → record/replay servo poses ("
 | **C - Vision + ML** | Ripeness model, camera pipeline on UNO Q Linux, Freesolo training | Grab apple dataset (Roboflow "apple ripeness" sets exist) Fri night, train YOLOv8n/MobileNet overnight, quantize for on-device. Freesolo job Sat PM. |
 | **D - Web** | React+Three.js landing, dashboard, Express/Socket.IO, Atlas, Auth0, Vercel | Ship with simulated telemetry immediately so web never blocks on hardware. Wire real feed Sat PM. |
 
-## Timeline (assuming Fri eve → Sun AM hacking window - adjust to real schedule)
+## Timeline (assuming Fri eve -> Sun AM hacking window - adjust to real schedule)
 
 ### Fri night (hours 0–6)
 - [ ] All: repo, team sync on this plan, claim UNO Q + hardware from Qualcomm table
@@ -36,13 +36,13 @@ Never let a P2 block a P0. If IK is fighting us → record/replay servo poses ("
 ### Sat AM (6–16)
 - [ ] A: arm assembled, 5-servo poses scripted, first canned pick of a real apple (film it immediately - backup demo footage)
 - [ ] B: base drives under teleop from dashboard buttons; ultrasonic e-stop on MCU
-- [ ] C: model v1 on-device: bounding box + ripe/unripe at usable FPS; camera → server MJPEG/WebRTC stream
+- [ ] C: model v1 on-device: bounding box + ripe/unripe at usable FPS; camera -> server MJPEG/WebRTC stream
 - [ ] D: dashboard v1: live camera, telemetry cards, pick log persisted to Atlas, Auth0 login
 
 ### Sat PM (16–26)
-- [ ] A+C: **vision → IK → pick** loop closed (the money demo). Simple 3-DOF geometric IK; depth from known apple size or fixed pick plane
-- [ ] B: lidar on Pi streaming scans → web Three.js point cloud
-- [ ] C: Freesolo SFT job: generate synthetic command→JSON dataset, train, evaluate; wire FarmHand → robot command bus
+- [ ] A+C: **vision -> IK -> pick** loop closed (the money demo). Simple 3-DOF geometric IK; depth from known apple size or fixed pick plane
+- [ ] B: lidar on Pi streaming scans -> web Three.js point cloud
+- [ ] C: Freesolo SFT job: generate synthetic command->JSON dataset, train, evaluate; wire FarmHand -> robot command bus
 - [ ] D: manga-shader Three.js landing (Blender/Meshy assets), ripeness analytics charts
 
 ### Sat night (26–34)
@@ -53,7 +53,7 @@ Never let a P2 block a P0. If IK is fighting us → record/replay servo poses ("
 ### Sun AM (34–end)
 - [ ] Feature freeze 3h before deadline. No new features, only demo hardening
 - [ ] Devpost writeup (use TRACKS.md checklist), video edit, slide for MPU/MCU split + env impact numbers
-- [ ] Rehearse 3-min pitch: env hook → live pick → dashboard → edge-AI story → FarmHand
+- [ ] Rehearse 3-min pitch: env hook -> live pick -> dashboard -> edge-AI story -> FarmHand
 
 ## Top risks & fallbacks
 
@@ -62,7 +62,7 @@ Never let a P2 block a P0. If IK is fighting us → record/replay servo poses ("
 | Servo brownout resets everything | HIGH | Separate 5V/5A+ buck for servos, common ground, big electrolytic cap across servo rail. Never power servos from Pi/UNO Q 5V. |
 | IK too fiddly | HIGH | Record/replay poses; place apples at known positions. Judges care that it picks, not how. |
 | 3D prints late/failed | MED | Start hour 0; design arm segments printable in <2h each; cardboard+zip-tie gripper backup. |
-| ROS2/Foxglove rabbit hole | MED | Skip ROS entirely: raw lidar serial → Python → WebSocket → Three.js points. Foxglove is a P2 nicety. |
+| ROS2/Foxglove rabbit hole | MED | Skip ROS entirely: raw lidar serial -> Python -> WebSocket -> Three.js points. Foxglove is a P2 nicety. |
 | On-device inference too slow on QRB2210 | MED | Quantize to int8 / shrink input to 320px / classify only in detected ROI. Absolute floor: run on Pi - but Qualcomm track needs it on UNO Q, so fight for it. |
 | Live demo fails on stage | MED | Backup video of every working milestone, filmed as achieved. |
-| WiFi at venue blocks robot↔server | MED | Phone hotspot; server can also run on a laptop with Vercel as public mirror. |
+| WiFi at venue blocks robot<->server | MED | Phone hotspot; server can also run on a laptop with Vercel as public mirror. |

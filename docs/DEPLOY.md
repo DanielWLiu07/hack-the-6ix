@@ -21,7 +21,7 @@ vercel deploy --prod --yes
 ```
 
 - Project is already linked (`web/.vercel/project.json`, team `daniel-w-lius-projects`).
-- `web/vercel.json` handles the rest: Vite framework preset, SPA rewrite (all non-`/assets/*` paths → `index.html`, so client-side routes like `/teleop` deep-link fine), long-cache on hashed assets, `no-cache` on HTML.
+- `web/vercel.json` handles the rest: Vite framework preset, SPA rewrite (all non-`/assets/*` paths -> `index.html`, so client-side routes like `/teleop` deep-link fine), long-cache on hashed assets, `no-cache` on HTML.
 - Preview deploy (for testing without touching prod): `vercel deploy --yes`.
 - Rollback: `vercel ls` to see recent deployments, `vercel promote <deployment-url>`.
 
@@ -51,7 +51,7 @@ Problem: venue WiFi usually isolates clients, and judges' phones need the dashbo
    ```sh
    ngrok http 3001        # already installed on the laptop (cloudflared is not)
    ```
-   Take the printed `https://…` URL → `vercel env add VITE_SERVER_URL production` → redeploy. One-time ~2 min at the venue. (Quick-tunnel URLs change per run - start it once, early, and leave it running.)
+   Take the printed `https://...` URL -> `vercel env add VITE_SERVER_URL production` -> redeploy. One-time ~2 min at the venue. (Quick-tunnel URLs change per run - start it once, early, and leave it running.)
 2. **Local-only fallback** - judges join the hotspot and open `http://<laptop-ip>:5173` (Vite dev server) or a `vite preview` build directly from the laptop. Plain HTTP throughout, no mixed content. Vercel then serves only as the static "it's deployed" proof with simulated data.
 
 **CORS**: the server must allow the Vercel origin, not just `localhost:5173`. Server-core: allow `https://hack-the-6ix-chi.vercel.app` (or reflect origin - hackathon).
@@ -100,5 +100,5 @@ judge's phone can't toggle it); reads (GET) stay open. Notes:
 3. Start `ngrok http 3001`; copy the HTTPS URL. (Free-tier ngrok URLs change per run - start once, leave running. Free tier also shows an interstitial page on first browser visit; click through once per phone, or use a reserved domain if anyone has a paid account.)
 4. `vercel env add VITE_SERVER_URL production` (rm the old value first if re-adding: `vercel env rm VITE_SERVER_URL production -y`), then `vercel deploy --prod --yes`.
 5. Open https://hack-the-6ix-chi.vercel.app on a phone over cell data - confirm live telemetry.
-6. Set the panic switch to `auto` (`curl -X POST …/api/force-sim -d '{"mode":"auto"}'`) so the demo self-heals if the robot drops - see *Demo panic switch* above.
+6. Set the panic switch to `auto` (`curl -X POST .../api/force-sim -d '{"mode":"auto"}'`) so the demo self-heals if the robot drops - see *Demo panic switch* above.
 7. Film it working (backup footage rule).

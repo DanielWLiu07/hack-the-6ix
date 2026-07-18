@@ -28,7 +28,7 @@ purpose-built collections) - not bolted-on.
 | **Operator-attributed audit** | optional `operator` (Auth0 `sub`/email) on `pick_events` + `commands`, sparse-indexed; `getPicks({operator})` / `getCommands({operator})` | db layer (needs server-core to stamp it - see below) |
 | **Impact aggregation** | waste-avoided / CO₂e / throughput computed in-DB + app layer from real picks | `docs/IMPACT.md` |
 | **Atlas Charts** (recommended) | embed a live Atlas Chart (picks/hr, yield) in the dashboard - visible "powered by Atlas" proof judges love | web-frontend: create a chart on `ht6.pick_events`, embed the iframe |
-| **Atlas Search** (stretch) | full-text index on `commands.text` → "search everything anyone asked the robot" | optional |
+| **Atlas Search** (stretch) | full-text index on `commands.text` -> "search everything anyone asked the robot" | optional |
 
 **Why Time Series is the flagship:** it's the clearest signal we chose Atlas
 *on purpose*. Robot telemetry (battery, state, arm, drive at 1 Hz) is textbook
@@ -59,16 +59,16 @@ Today: `web/src/main.jsx` + `pages/Teleop.jsx` gate teleop behind Auth0 login
    and reject non-operators - hiding a button isn't security. (server-core: verify
    the RS256 JWT against the Auth0 JWKS on the socket handshake; attach the
    verified identity to the socket.)
-3. **Identity → Atlas attribution.** From the verified token, stamp
+3. **Identity -> Atlas attribution.** From the verified token, stamp
    `operator: <sub or email>` onto every `pick_event` and `command` before
    `store.record*`. This is the bridge to the Mongo track (already supported +
    queryable).
-4. **Custom claims / Organizations** (stretch): an Auth0 Organization per farm →
+4. **Custom claims / Organizations** (stretch): an Auth0 Organization per farm ->
    maps to the Base44 "Orchard OS" multi-tenant story.
 
 ### Demo / judging checklist (Auth0)
-- [ ] Log in as a **viewer** → teleop controls disabled/hidden, dashboard visible.
-- [ ] Log in as an **operator** → controls enabled; drive the robot.
+- [ ] Log in as a **viewer** -> teleop controls disabled/hidden, dashboard visible.
+- [ ] Log in as an **operator** -> controls enabled; drive the robot.
 - [ ] Show the hub **rejecting** a forged/absent token on a control event (server-side).
 - [ ] Show the dashboard's **per-operator audit**: "operator jane@farm did 12 picks / 3 commands" - data straight from Atlas via `getPicks({operator})` / `getCommands({operator})`.
 
@@ -89,24 +89,24 @@ Today: `web/src/main.jsx` + `pages/Teleop.jsx` gate teleop behind Auth0 login
 
 ## Hackathon posture (decided)
 
-Login is **real and required**, but we **do not restrict data** — every
+Login is **real and required**, but we **do not restrict data** - every
 logged-in user sees the same shared dashboard. Auth0 identity is used only to
-**attribute** actions (`operator` on picks/commands → Atlas audit trail). So
-**roles/RBAC are optional** — skip them for now; the win is "real auth + every
+**attribute** actions (`operator` on picks/commands -> Atlas audit trail). So
+**roles/RBAC are optional** - skip them for now; the win is "real auth + every
 action attributed and stored in Atlas."
 
 ## Step-by-step setup (do this once)
 
 **In the Auth0 dashboard (manage.auth0.com):**
-1. **Create Application** → type **Single Page Application**. In its Settings add
+1. **Create Application** -> type **Single Page Application**. In its Settings add
    (comma-separated) to *Allowed Callback URLs*, *Logout URLs*, and *Web Origins*:
    `http://localhost:5173, https://<your-vercel-domain>`. Note the **Domain** +
    **Client ID**.
-2. **Create API** (Applications → APIs → Create API): Identifier =
+2. **Create API** (Applications -> APIs -> Create API): Identifier =
    `https://ht6-api` (any URI-like string; needn't resolve), Signing = **RS256**.
    The Identifier is the **audience**.
-3. **Create a user** (User Management → Users) with an email + password to log in
-   with (or turn on Google social login). One user is enough — no roles needed.
+3. **Create a user** (User Management -> Users) with an email + password to log in
+   with (or turn on Google social login). One user is enough - no roles needed.
 
 **Send me these 3 values:** Domain, Client ID, API Identifier (audience).
 
@@ -117,14 +117,14 @@ action attributed and stored in Atlas."
 - Hub `web/server/.env`: `AUTH0_DOMAIN`, `AUTH0_AUDIENCE` (already stubbed).
 
 **Code wired for the credentials:**
-- ✅ Hub JWT verification + operator attribution — **done** (`web/server/auth.js`;
+- Hub JWT verification + operator attribution - **done** (`web/server/auth.js`;
   handshake middleware + picks/commands stamped in `index.js`).
-- ✅ Frontend: the Auth0 provider requests the API `audience`; after login it
+- Frontend: the Auth0 provider requests the API `audience`; after login it
   obtains a token with `getAccessTokenSilently` and sends it on the Socket.IO
-  handshake (`web/src/main.jsx` → `src/lib/robot.jsx`).
-- ⏳ Dashboard: a small "who did what" audit panel from `/api/commands` +
+  handshake (`web/src/main.jsx` -> `src/lib/robot.jsx`).
+- Dashboard: a small "who did what" audit panel from `/api/commands` +
   `/api/picks` (both return `operator`).
 
-- Mongo: already live (`web/server/.env` → `MONGODB_URI`), telemetry is a Time
+- Mongo: already live (`web/server/.env` -> `MONGODB_URI`), telemetry is a Time
   Series collection. Atlas Charts (optional visual win): enable in the Atlas UI
   on the `hack-the-6ix` project and embed the chart iframe in the dashboard.

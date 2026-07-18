@@ -1,4 +1,4 @@
-# TRAINING.md — how to actually improve a model with Flash
+# TRAINING.md - how to actually improve a model with Flash
 
 > **If you are an AI agent asked to train a model here, read this first.**
 > `flash env setup` dropped this file next to your `environment.py` and `configs/`.
@@ -8,7 +8,7 @@
 
 A run that reaches `done` is **not** the same as a run that worked. Submitting a run
 is not a result. The whole job is to design the learning signal, read what the run
-actually produced, and decide — honestly — whether the model got better.
+actually produced, and decide - honestly - whether the model got better.
 
 ---
 
@@ -17,7 +17,7 @@ actually produced, and decide — honestly — whether the model got better.
 Flash is a **managed** training service with a thin CLI/client. You author an
 environment (the task + its reward), publish it, and submit SFT, GRPO, or on-policy
 **distillation** runs from a TOML config. Flash allocates the cheapest fitting managed GPU class, runs the job,
-streams logs back, and serves the result. You never handle infrastructure credentials —
+streams logs back, and serves the result. You never handle infrastructure credentials -
 you authenticate once with a freesolo API key, and everything below is a `flash` CLI
 command.
 
@@ -73,14 +73,14 @@ conversation across turns. The reward is the same `RewardResult` contract either
 
 ### 2. Publish the environment
 
-A managed run references a **published** environment by id — so push your folder first:
+A managed run references a **published** environment by id - so push your folder first:
 
 ```bash
 flash env push --name my-env .       # uploads this project; prints an env id like "your-org/my-env"
 flash env list                       # local env sources you can push
 ```
 
-To train against an env someone else published, just set its slug as `[environment] id` —
+To train against an env someone else published, just set its slug as `[environment] id` -
 no separate step is needed. Paste the returned id into `[environment] id` in **both** configs.
 Re-push after any
 edit to `environment.py` or `dataset/` so the managed run uses your change.
@@ -122,7 +122,7 @@ extra.toml` (deep-merge) and `--set key=value` (e.g. `--set train.epochs=3`).
 ### 4. Submit
 
 ```bash
-flash train configs/sft.toml --dry-run     # validate the config on the server — no GPU, no charge
+flash train configs/sft.toml --dry-run     # validate the config on the server - no GPU, no charge
 flash train configs/sft.toml --cost        # pre-flight USD estimate, then exit
 flash train configs/sft.toml               # submit and follow logs (Ctrl-C detaches)
 flash train configs/sft.toml --background  # submit and return immediately
@@ -150,7 +150,7 @@ flash undeploy <run-id>          # tear the endpoint down
 flash export --adapter-id <run-id> --repository <you>/<repo>  # copy adapter weights to your HF repo
 ```
 
-The rest of this file is about doing the above *well* — designing a reward that teaches,
+The rest of this file is about doing the above *well* - designing a reward that teaches,
 and deciding honestly whether a run improved.
 
 ---
@@ -160,18 +160,18 @@ and deciding honestly whether a run improved.
 Work in tight, attributable iterations. Each one is a hypothesis:
 
 ```
-1. Reconstruct state — what's the best run so far, and what have you already tried?
-2. Form a hypothesis — pick ONE lever and say WHY it will move the metric.
+1. Reconstruct state - what's the best run so far, and what have you already tried?
+2. Form a hypothesis - pick ONE lever and say WHY it will move the metric.
 3. Change that ONE lever.
-4. Validate — `flash train configs/sft.toml --dry-run` (server-side preview: catches config
-   errors, serving rank/context caps, and warm-start rank mismatches for free — no GPU, no charge;
+4. Validate - `flash train configs/sft.toml --dry-run` (server-side preview: catches config
+   errors, serving rank/context caps, and warm-start rank mismatches for free - no GPU, no charge;
    a paid run on a broken config or an all-zero reward is wasted budget).
-5. Submit — `flash train configs/sft.toml`.
-6. Judge — read the metric trend AND a sample of real rollouts (see below).
+5. Submit - `flash train configs/sft.toml`.
+6. Judge - read the metric trend AND a sample of real rollouts (see below).
 7. Keep the best run; revert the change if it didn't beat the noise band. Repeat.
 ```
 
-**Lever priority (highest impact first):** reward design → data / curriculum →
+**Lever priority (highest impact first):** reward design -> data / curriculum ->
 training knobs. The reward is the teacher; spend your effort there before touching
 hyperparameters.
 
@@ -181,17 +181,17 @@ different value.
 
 ---
 
-## Before you trust a run — the checklist
+## Before you trust a run - the checklist
 
 A run is only evidence of improvement when **all** of these hold:
 
 - [ ] The run reached `done` (confirmed via `flash status <run-id>`), not merely submitted.
-- [ ] The SFT loss fell or the reward trend rose (GRPO `reward`) — **beyond the noise band**, not within it.
-- [ ] You **probed the trained adapter on real inputs** (`flash deploy` + `flash chat`), including cases it should fail — not just the metrics.
+- [ ] The SFT loss fell or the reward trend rose (GRPO `reward`) - **beyond the noise band**, not within it.
+- [ ] You **probed the trained adapter on real inputs** (`flash deploy` + `flash chat`), including cases it should fail - not just the metrics.
 - [ ] The score is real behavior, not empty/truncated/templated outputs, skipped rows, leakage, a swallowed exception, or a format-only win.
 - [ ] If you track a clean success signal separately from the shaped reward (an explicit `RewardMetric`), *that* moved too.
 
-If any box is unchecked, the run is not done improving — keep training, don't declare success.
+If any box is unchecked, the run is not done improving - keep training, don't declare success.
 
 ---
 
@@ -211,7 +211,7 @@ spending another GPU run:
 | Thinking reward grades the wrong text | Rewards accidentally score hidden reasoning, or ignore reasoning you meant to inspect | By default, score the answer text. In thinking mode the response object is still string-compatible, but also exposes `.completion`, `.thinking`, and `.raw` when a reward intentionally needs those fields. |
 | All-zero or flat GRPO reward | `reward` stays near 0 and outputs do not improve | Make the reward dense: give partial credit for parse/format/execution/correctness tiers, and log a separate clean `success` metric. Do not keep rerunning an all-zero reward. |
 | Reward rises but behavior is worse | Short, templated, malformed, or reward-hacked outputs score well | Deploy the adapter and probe real examples. Add hard validity gates before judge calls, penalize degenerate shortcuts, and judge the outcome rather than the surface string. |
-| OPD makes the student worse, not better | The distilled adapter scores *below* its SFT/base start even though the per-token loss fell | The teacher, not a knob, is the ceiling. Reverse-KL only pulls the student toward the managed GLM-5.2 teacher, so a teacher that is weak or wrong on *your* task transfers its mistakes. Vet it first: roll GLM-5.2 through your own environment on a held-out split and confirm it clearly beats your student before submitting. If it doesn't, use GRPO or SFT instead — OPD cannot exceed a teacher that can't do the task. |
+| OPD makes the student worse, not better | The distilled adapter scores *below* its SFT/base start even though the per-token loss fell | The teacher, not a knob, is the ceiling. Reverse-KL only pulls the student toward the managed GLM-5.2 teacher, so a teacher that is weak or wrong on *your* task transfers its mistakes. Vet it first: roll GLM-5.2 through your own environment on a held-out split and confirm it clearly beats your student before submitting. If it doesn't, use GRPO or SFT instead - OPD cannot exceed a teacher that can't do the task. |
 | Output is truncated | Correct-looking answers cut off mid-response or JSON is incomplete | Increase `max_completion_tokens` for GRPO/OPD rollouts or `max_context_tokens` for total prompt+completion context only after seeing truncation. Oversizing them by default just burns memory/cost. |
 | Infrastructure, CUDA, OOM, vLLM, or kernel failure | Run errors before useful metrics, often during setup/model load | Treat this as infrastructure pressure, not proof the model is too large. Read `flash log <run-id>`, reduce footprint (`max_context_tokens`, `max_completion_tokens`, `group_size`) if needed, and let Flash retry/allocate another fitting GPU class. |
 | Run looks stuck after disconnecting | Terminal stopped streaming but the job may still be alive | Ctrl-C detaches. Use `flash log <run-id> --follow` to reattach, `flash log <run-id>` for the console/error output, or `flash cancel <run-id>` if you intentionally want to stop it. |
@@ -228,7 +228,7 @@ spending another GPU run:
   loss falling (SFT) or `reward` rising over steps (GRPO). Record the base/early
   value and the final value. A flat or noisy trend with no improvement is not success.
 - **Read the model's outputs, not just the metrics.** A rising reward can come from
-  reward-hacking or a degenerate output the reward still credits — metrics alone never
+  reward-hacking or a degenerate output the reward still credits - metrics alone never
   establish that the model got better. Flash does not expose training-time rollouts
   through the CLI (`flash log` gives you the metric trend and the worker's console/error
   logs, not the sampled generations), so to read real outputs **deploy the adapter and
@@ -243,18 +243,18 @@ spending another GPU run:
   ```
 
 - **Decide with the noise band.** When comparing two runs or two checkpoints, record
-  the eval-split size `N` and the metric's approximate sampling noise — about
+  the eval-split size `N` and the metric's approximate sampling noise - about
   `1.96·√(p(1-p)/N)` for a rate metric `p`. Treat a difference *inside* that band as
-  **no change** — neither improvement nor regression. A within-noise gain is not a win.
+  **no change** - neither improvement nor regression. A within-noise gain is not a win.
 
 ---
 
-## Reward design (GRPO) — your highest-impact lever
+## Reward design (GRPO) - your highest-impact lever
 
 The reward defines what the model learns; its quality sets the ceiling on what GRPO
 can reach. Rewards are rubric / `score_response` functions in your `environment.py`.
 
-### Make it graded and dense — avoid the all-zero cold start
+### Make it graded and dense - avoid the all-zero cold start
 
 If `reward` is flat at ~0.000, every rollout in the group scored the same, the
 advantage is zero, and the policy gets **no gradient**. That is a reward-design bug,
@@ -263,27 +263,27 @@ progress** so even an untrained base model earns a small nonzero score and bette
 attempts score strictly higher:
 
 ```text
-well-formed / parses → schema- & safety-valid → executes / runs → correct / relevant
+well-formed / parses -> schema- & safety-valid -> executes / runs -> correct / relevant
 ```
 
 Gate only the **top** tiers against gaming; keep the lower tiers dense. GRPO needs
-*within-group variance* to learn — if every rollout in a group scores identically,
+*within-group variance* to learn - if every rollout in a group scores identically,
 there is nothing to optimize.
 
 ### Separate the shaped reward from a clean success signal
 
-A good GRPO reward is usually **shaped** — partial credit so the model always has a
+A good GRPO reward is usually **shaped** - partial credit so the model always has a
 gradient to climb. But a shaped score is the wrong thing to judge *final quality* on:
 it can rise from reward-hacking while the outcome you care about stays flat. Report the
 shaped value as `score`, and surface the clean pass/fail as an **explicit
-`RewardMetric`** so it shows up in the run's metric breakdown — a bare `threshold` is
+`RewardMetric`** so it shows up in the run's metric breakdown - a bare `threshold` is
 used for grading but is *not* logged on its own, so it gives you nothing to judge:
 
 ```python
 from freesolo.environments import RewardResult, RewardMetric
 
 def score_response(self, example, response_text) -> RewardResult:
-    score = graded_score(example, response_text)         # shaped 0-1 — what GRPO optimizes
+    score = graded_score(example, response_text)         # shaped 0-1 - what GRPO optimizes
     return RewardResult(
         score=score,
         threshold=1.0,                                   # success = score >= threshold
@@ -292,7 +292,7 @@ def score_response(self, example, response_text) -> RewardResult:
 ```
 
 `score` is what GRPO optimizes (it becomes the run's `total`). Each `RewardMetric` you
-attach is logged by name in the per-scorer breakdown — that is how the clean success
+attach is logged by name in the per-scorer breakdown - that is how the clean success
 rate becomes visible. Use the shaped `score` to confirm the model is learning *at all*,
 and judge the run on the explicit `success` metric.
 
@@ -304,7 +304,7 @@ explicitly inspect the separated completion, reasoning, or original raw model ou
 
 ### Reward rules that prevent silent failure
 
-- **Return `0.0` explicitly — never let scoring raise.** An uncaught exception in
+- **Return `0.0` explicitly - never let scoring raise.** An uncaught exception in
   scoring fails the whole run. Guard every parse and lookup and return
   `RewardResult(score=0.0, error=...)` for missing evidence, a parse failure, or an
   unsafe/unsupported output.
@@ -313,13 +313,13 @@ explicitly inspect the separated completion, reasoning, or original raw model ou
   reward-hack a lenient judge with malformed-but-plausible text.
 - **Judge the realistic outcome, not the raw string.** Give a judge the runtime
   output, tool result, or executed-query records. For database / search / retrieval
-  tasks, grade the *returned records*, not the query text — the query is only
+  tasks, grade the *returned records*, not the query text - the query is only
   secondary validity evidence.
 - **A small format penalty beats a hard zero for shaping.** A useful trick:
   `reward = format_coef * (correct_format - 1) + correct_answer` with `format_coef≈0.1`
-  — a tiny penalty for bad formatting, full credit for a correct, well-formatted answer.
+  - a tiny penalty for bad formatting, full credit for a correct, well-formatted answer.
 - **Anti-patterns.** Don't reward length or verbosity. Don't ship a reward that is
-  always 0 or always 1 (no signal). Simpler rewards usually beat clever ones — a
+  always 0 or always 1 (no signal). Simpler rewards usually beat clever ones - a
   mediocre *stable* reward beats a "perfect" reward you keep tweaking. Changing the
   reward resets progress, so keep the best checkpoint before you do.
 
@@ -333,12 +333,12 @@ Pick SFT when you already have good answers and want the model to imitate them.
   A small set of high-quality examples beats a large mediocre one. Keep response format
   consistent (if you want JSON, *every* example is JSON) and keep the prompt format the
   same as inference time.
-- **Watch the loss fall — and check overfitting yourself.** Flash SFT logs **training
+- **Watch the loss fall - and check overfitting yourself.** Flash SFT logs **training
   loss only**; it runs no mid-training held-out eval (evaluation is deferred to the
   deploy/serving side). A falling train loss alone can be memorization, so keep an eval
   split the run never trains on, then **deploy the adapter and score it on that split**
   (`flash deploy` + `flash chat`). If held-out quality stalls or drops while train loss
-  keeps falling, reduce `epochs` or add more data — not more passes.
+  keeps falling, reduce `epochs` or add more data - not more passes.
 - **Start `max_context_tokens` small and grow it on evidence.** Begin from the smallest
   `max_context_tokens` that plausibly fits prompt + completion, and only raise it when you see
   truncation (outputs cut off mid-thought, degraded loss). A bigger context just costs
@@ -355,7 +355,7 @@ Pick SFT when you already have good answers and want the model to imitate them.
   emit another opener.
 - **SFT is a great warm start for GRPO.** SFT first to teach the format and a competent
   baseline, then GRPO to optimize past it. Across that lineage keep the **same base
-  model**. Warm-start CONTINUES the one SFT adapter in place — GRPO/OPD keep training
+  model**. Warm-start CONTINUES the one SFT adapter in place - GRPO/OPD keep training
   the same LoRA (VL and text-only alike), so the run trains and serves at the SFT
   adapter's rank-`r` and just has to fit the selected model's serving `max_lora_rank` (some
   serving models allow rank 128, larger serving paths cap at 64). Do **NOT** set `lora_rank`
@@ -365,7 +365,7 @@ Pick SFT when you already have good answers and want the model to imitate them.
   source adapter whose rank exceeds the serving cap.
 
 ```toml
-# configs/rl.toml — warm-start GRPO from the SFT run's adapter
+# configs/rl.toml - warm-start GRPO from the SFT run's adapter
 algorithm = "grpo"
 
 [train]
@@ -391,43 +391,43 @@ run fails if a requested exact save cannot be saved and published.
 Pick distillation when a much stronger **teacher** model can grade your student's work
 token-by-token. The student samples on-policy (like GRPO), a managed teacher (GLM 5.2 by default,
 or another via `[train] teacher_model`) scores each of the *student's* completions, and a dense per-token
-loss teaches the student to match the teacher — far more sample-efficient than reward-based RL and
+loss teaches the student to match the teacher - far more sample-efficient than reward-based RL and
 with no reward to design. It supports `epochs` like SFT/GRPO and produces a LoRA served exactly like SFT.
 
-- **Vet the teacher on your task before you distil — this is a precondition, not a formality.**
+- **Vet the teacher on your task before you distil - this is a precondition, not a formality.**
   Reverse-KL can only pull the student *toward* the selected teacher, so OPD's ceiling is
   roughly the teacher's own competence at your task. If the teacher is weak, frequently wrong, or
   solves the task with a strategy your environment can't reward, distillation faithfully transfers
-  those flaws and **drives the student *below* its SFT/base starting point instead of above it** — a
+  those flaws and **drives the student *below* its SFT/base starting point instead of above it** - a
   low per-token loss just means it matched a bad teacher. So measure the teacher the way you'd score
   a candidate *before submitting*: roll your chosen teacher through your own environment on a held-out
   split and read both its score and a sample of its trajectories. Only run OPD when the teacher clearly
   beats your student (and your target bar) *and* solves the task the way you want the student to. When
-  the teacher is at or below your student on the task, OPD is the wrong tool — reach for GRPO
+  the teacher is at or below your student on the task, OPD is the wrong tool - reach for GRPO
   (reward-driven, can exceed any single teacher) or SFT on curated data instead. `[train] teacher_model`
   lets you pick the teacher that best fits your task without changing anything else.
 - **Pick the teacher with `[train] teacher_model`; the key stays managed.** The teacher defaults to
   the managed **GLM 5.2** and is selectable from a fixed, managed allow-list:
   `glm-5.2` (default), `deepseek-v4-pro`, `kimi-k2.6`. Every option is
   a Fireworks-hosted model reached with the platform's own key, so there is nothing to export or
-  declare — an opd run submits like any other, and a `FIREWORKS_API_KEY` in your shell is ignored.
+  declare - an opd run submits like any other, and a `FIREWORKS_API_KEY` in your shell is ignored.
   Arbitrary bring-your-own teacher models or keys are not supported (the allow-list is curated to
   teachers verified to echo-score the student's tokens). The key is never stored in the spec or needed
   at serving time; teacher token cost varies by model and is shown in the pre-flight estimate.
 - **The student (Qwen / MiniCPM) and the teacher have different tokenizers.** Flash
   bridges the vocabulary mismatch with **groupwise reverse-KL** (the collinear-ai *spider* / Tinker
   method): it aligns the two tokenizations by shared decoded-text spans and applies per-span reverse
-  KL using only realized-token logprobs — no vocabulary projection, so it covers every token exactly
+  KL using only realized-token logprobs - no vocabulary projection, so it covers every token exactly
   and works for any student tokenizer. When the tokenizers happen to agree it reduces to plain
   per-token reverse KL (Thinking Machines, *On-Policy Distillation*). Nothing to configure.
 - **Works for multi-turn envs too.** Against an `EnvironmentMultiTurn`, opd rolls out each episode
   (driving `step_episode` / observations just like GRPO) and distils EVERY assistant turn against the
-  teacher, each conditioned on the transcript up to that turn — the episode's total reverse-KL over
+  teacher, each conditioned on the transcript up to that turn - the episode's total reverse-KL over
   the student's generated tokens is the sum of its per-turn reverse-KLs. Env/observation tokens are
   never distilled (they're context, not the student's output). Set `[train] max_context_tokens` to bound the
   transcript; the teacher must cover it (the allow-listed teachers' contexts far exceed the default budget).
 - **Judge it like SFT.** Distillation logs a falling per-token loss; a low loss alone is not proof.
-  Keep a held-out split, `flash deploy` the adapter, and score it — confirm the student actually
+  Keep a held-out split, `flash deploy` the adapter, and score it - confirm the student actually
   moved toward the teacher's behavior, not just its surface tokens.
 
 ```toml
@@ -458,37 +458,37 @@ reasoning and extra multi-turn looping, so episodes still forfeit against the le
 regardless of stop-token behavior. Because the teacher scores the
 student's rollouts **conditioned on your environment's own system prompt**, you can shrink its target
 distribution at the source: give the prompt used for OPD rollouts a **hard, specific reasoning
-budget** — e.g. "reason in at most two or three sentences, then act; once you have started, do not
-reconsider" — rather than a vague "be brief." The phrasing matters. A soft brevity request can
+budget** - e.g. "reason in at most two or three sentences, then act; once you have started, do not
+reconsider" - rather than a vague "be brief." The phrasing matters. A soft brevity request can
 **backfire on a thinking teacher**, trimming the median while *inflating* the long tail (the model
 spirals when told to be brief on a problem it finds hard), which is exactly the tail that drives
 runaway. Constrain the content with the prompt and monitor `truncated_rollouts` for length-cap
 failures. This assumes the teacher is still strong at the task (vet it first, above).
 
-### Reverse-KL over-sharpens — cut steps and watch entropy (every model)
+### Reverse-KL over-sharpens - cut steps and watch entropy (every model)
 
 Reverse-KL is **mode-seeking**: it sharpens the student's next-token distribution toward the
 teacher's dominant mode, and it keeps sharpening for as long as you train. This affects **every OPD
-run, at every size** — the whole Flash catalog is small by frontier standards (0.8B-9B dense plus a
+run, at every size** - the whole Flash catalog is small by frontier standards (0.8B-9B dense plus a
 3B-active MoE), so treat over-sharpening as a default risk, not a small-model edge case. The student's
 per-token entropy falls as training proceeds; past the point where it has learned the task, extra
-steps only over-sharpen — *lowering* accuracy. Push it far enough and the distribution peaks so hard
+steps only over-sharpen - *lowering* accuracy. Push it far enough and the distribution peaks so hard
 that **greedy (temperature=0) decoding falls into a repetition loop** that repeats a phrase to the
 length cap and never emits your answer. The loss looks healthy the whole run (reverse-KL is being
-minimized *by* the collapse), so it is invisible in the loss curve and only surfaces at serving —
+minimized *by* the collapse), so it is invisible in the loss curve and only surfaces at serving -
 where **temperature=0 is the default**, so it hits real callers, not just a sampled eval.
 
 **Severity scales with size**: on the largest catalog models over-training mostly just leaves
 accuracy on the table (a late checkpoint slightly worse than an earlier one); on the smallest it
 turns into the full-blown greedy loop. But the fix is the same everywhere, and cutting steps helped
-*every* size tested. Four levers, each attacking the same over-sharpening — the first two apply to
+*every* size tested. Four levers, each attacking the same over-sharpening - the first two apply to
 every run, the last two matter more the smaller the model:
 
-- **Train fewer steps (highest leverage, every size).** The student typically peaks early — often
-  around ~20 optimizer steps — and every step after is pure over-sharpening that *lowers* accuracy
+- **Train fewer steps (highest leverage, every size).** The student typically peaks early - often
+  around ~20 optimizer steps - and every step after is pure over-sharpening that *lowers* accuracy
   while *raising* the loop rate. Cut `max_examples` (or `epochs`) so the run stops before the collapse,
   and deploy an early **checkpoint** (`flash checkpoints <run>`, `flash deploy <run>/step-N`) rather
-  than the final adapter. This helped at every size tested — a 4B went 42% acc / 44% loop at full
+  than the final adapter. This helped at every size tested - a 4B went 42% acc / 44% loop at full
   length -> **74% / 0% at step 20**, and even models that never looped came out equal-or-better at the
   earlier checkpoint. When in doubt, sweep a few checkpoints and pick the best, don't assume the last
   step is the best.
@@ -497,12 +497,12 @@ every run, the last two matter more the smaller the model:
   often clears the loop outright (a 4B sft->opd went 42%/44% at rank 32 -> 76%/2% at rank 16). Since
   the whole catalog is small, prefer a modest rank (16) as the default for OPD and only raise it with a
   reason.
-- **Match the teacher to the student.** A *stronger* teacher is not universally better — the harder
+- **Match the teacher to the student.** A *stronger* teacher is not universally better - the harder
   it is for the student to match, the harder the collapse. On a 2B, a closer/weaker teacher can beat a
   frontier one outright; a frontier `teacher_model` only earns its keep once the student is large
   enough to track it (~9B+). Early-stopping also largely neutralizes this gap, since the teacher-driven
   over-sharpening only compounds over many steps.
-- **Diagnose it in-band.** Watch the per-step **mean completion entropy** in the run's telemetry — a
+- **Diagnose it in-band.** Watch the per-step **mean completion entropy** in the run's telemetry - a
   steady decline toward zero is the collapse happening. Confirm at serving by evaluating at
   **temperature=0** and flagging `finish_reason=length` completions that never emit your answer token,
   and compare an early checkpoint against the final one to watch the loop emerge over steps.
@@ -510,16 +510,16 @@ every run, the last two matter more the smaller the model:
 ### Distilling from base with no format anchor
 
 `opd` straight from a base model (no SFT warm-start) faithfully distils the teacher's *reasoning* but
-the student never learns your **answer format** — it terminates (`finish_reason=stop`) without ever
+the student never learns your **answer format** - it terminates (`finish_reason=stop`) without ever
 emitting the boxed/tagged answer, so completions score unparseable even when the reasoning is fine.
 On-policy distillation reinforces the student's *own* tokens, so if the base never produces the
-format there is nothing to reinforce (and a downstream GRPO pass can't rescue it — with no
+format there is nothing to reinforce (and a downstream GRPO pass can't rescue it - with no
 correctly-formatted rollout to reward, RL has no signal to climb). Two fixes:
 
-- **Warm-start from an SFT adapter** (`[train] init_from_adapter`) — the SFT installs the output
+- **Warm-start from an SFT adapter** (`[train] init_from_adapter`) - the SFT installs the output
   format first, then OPD refines the content. This is the reliable default for structured-answer tasks.
 - **Constrain the rollouts with `[train] structured_outputs`** (guided decoding) to a schema whose
-  **answer field comes first** — the model learns to commit a parseable answer *before* any reasoning
+  **answer field comes first** - the model learns to commit a parseable answer *before* any reasoning
   that might run long, so the answer survives even if the reasoning still loops. This separates the
   *format* problem (fixed here) from the *loop* problem (fixed by the levers above).
 
@@ -527,16 +527,16 @@ correctly-formatted rollout to reward, RL has no signal to climb). Two fixes:
 
 ## GRPO knobs that matter
 
-Set these in `[train]`. Each is `None` by default — the worker's tuned recipe fills
+Set these in `[train]`. Each is `None` by default - the worker's tuned recipe fills
 in a sensible value, so only override with a reason.
 
 | Knob | Convention |
 | --- | --- |
 | `group_size` | Completions sampled per prompt (default 8). More = more signal and more cost; drop to 4 to trim cost. The group needs *within-group variance* for an advantage to exist. |
-| `max_completion_tokens` | Completion budget per rollout. Size it to the expected output length — too small silently truncates good answers and poisons the reward; too large just costs more. |
-| `temperature` | Rollout sampling temperature. Keep it near 1.0 for GRPO — too low collapses diversity (and the model can collapse within a few steps); raise it to widen exploration against uniform-reward groups. |
+| `max_completion_tokens` | Completion budget per rollout. Size it to the expected output length - too small silently truncates good answers and poisons the reward; too large just costs more. |
+| `temperature` | Rollout sampling temperature. Keep it near 1.0 for GRPO - too low collapses diversity (and the model can collapse within a few steps); raise it to widen exploration against uniform-reward groups. |
 | `kl_penalty_coef` | Keeps the trained model from drifting too far from the base. Raise it to anchor against entropy collapse; lower it for more freedom to move. |
-| `thinking_length_penalty_coef` | Per-reasoning-token reward deduction — curb overthinking, but watch it doesn't push the model into terse degeneracy. |
+| `thinking_length_penalty_coef` | Per-reasoning-token reward deduction - curb overthinking, but watch it doesn't push the model into terse degeneracy. |
 | `learning_rate` | Change it in small steps. Too high destabilizes RL and degrades output quality; if the model is collapsing, lower it. |
 | `batch_size` | The effective prompts-per-step. Too small and the reward trend is pure noise; size it so the trend is readable. |
 | `structured_outputs` | Guided decoding for every GRPO/OPD rollout: a JSON schema (inline table or JSON string), `regex`, or `choice`. The sampler then *cannot* emit off-format text, so the reward measures content instead of formatting. Works with `thinking = true`: the grammar is held until the `</think>` boundary (via a reasoning-aware decoding gate), so the model reasons freely first and only its answer is constrained. |
@@ -549,23 +549,23 @@ environment calls.
 
 > **The reward-hacking signature:** a smoothed reward rising while mean generated
 > length collapses. Whenever any shortness or format pressure is active, verify the
-> gate by scoring a few truncated or opener-only probe responses — they should score low.
+> gate by scoring a few truncated or opener-only probe responses - they should score low.
 
 ---
 
-## Curriculum — start easy, scale up
+## Curriculum - start easy, scale up
 
 Starting too hard produces zero learning signal; the model never succeeds, the reward
 stays at 0, and there is nothing to climb. Start where the base model can *partially*
-succeed, then raise difficulty as it improves. The "Goldilocks zone" — where most
-rollouts score somewhere between all-fail and all-pass — is where GRPO has the most
+succeed, then raise difficulty as it improves. The "Goldilocks zone" - where most
+rollouts score somewhere between all-fail and all-pass - is where GRPO has the most
 signal.
 
-- If nearly every prompt is solved (most groups score ~1.0): **increase difficulty** —
+- If nearly every prompt is solved (most groups score ~1.0): **increase difficulty** -
   harder prompts, tighter format/reward, more epochs, or more data.
-- If nearly nothing is solved (most groups score ~0.0): **decrease difficulty** —
+- If nearly nothing is solved (most groups score ~0.0): **decrease difficulty** -
   easier or few-shot prompts, a more lenient (denser) reward, or warm-start with SFT.
-- In between: good signal — keep iterating at this difficulty.
+- In between: good signal - keep iterating at this difficulty.
 
 ---
 
@@ -580,12 +580,12 @@ targeted fix rather than leaning on the reward gate to slowly select against it.
 | Failure mode | What you see | Targeted fix |
 | --- | --- | --- |
 | Repetition / looping collapse | the same phrase repeats until truncation | repetition or length penalty; lower `temperature` |
-| Overthinking / verbose reasoning | reasoning eats the whole token budget | `thinking_length_penalty_coef`; tighten the prompt with a *hard, specific* budget ("reason in at most N sentences, then act") — a vague "be brief" can backfire on a thinking model and lengthen the tail |
+| Overthinking / verbose reasoning | reasoning eats the whole token budget | `thinking_length_penalty_coef`; tighten the prompt with a *hard, specific* budget ("reason in at most N sentences, then act") - a vague "be brief" can backfire on a thinking model and lengthen the tail |
 | Completion truncation | answers cut off mid-thought | raise `max_completion_tokens` / `max_context_tokens` |
 | OPD rollouts never stop (high `truncated_rollouts`) | on-policy completions run to the length cap without an EOS; raising the cap barely helps | No auxiliary EOS loss is applied. Warm-start from SFT and shrink what has to terminate: constrain the *teacher's* reasoning at the source with a hard, specific budget in the env prompt used for OPD rollouts (the teacher scores the student conditioned on it); a vague "be brief" can backfire on a thinking teacher. First confirm the teacher itself terminates and is strong on the task; a bad teacher is distilled in, not out. |
 | Unparsed / over-escaped output | reward can't read the answer | robust parser; return `0.0` on parse fail; format gate |
 | Wrapper / markdown around structured output | prose around the JSON/answer | a format gate; `stop_sequences` |
-| Uniform-reward groups | every rollout in a group scores the same → no gradient | shape the reward for partial credit; raise `temperature` |
+| Uniform-reward groups | every rollout in a group scores the same -> no gradient | shape the reward for partial credit; raise `temperature` |
 | Too-hard prompts | the base never succeeds, reward stays at 0 | curriculum / easier prompts; warm-start with SFT |
 | Judge-rewarded degenerate output | short, templated answers a judge still rates well | a minimum-substance zero-gate ahead of the judge |
 
@@ -598,16 +598,16 @@ A plateau is not automatically a capability ceiling. Before you call it one:
 1. **Probe with best-of-N.** Run a best-of-N / pass@k probe at a coverage temperature
    (well above greedy) on a less-fitted checkpoint.
 2. **Read the result.** High best-of-N but a collapsed greedy output and low sample
-   diversity is **entropy collapse**, not a ceiling — and it's fixable: anchor harder
+   diversity is **entropy collapse**, not a ceiling - and it's fixable: anchor harder
    with `kl_penalty_coef`, lower the `learning_rate`, or widen exploration. Only if the
    probe shows no headroom is it a genuine ceiling.
 3. **Change a different lever.** If there's real headroom, try a *different* lever from
-   the one that just failed — a different knob, reward shape, or data family — one
+   the one that just failed - a different knob, reward shape, or data family - one
    controlled change at a time.
 
 Actively research established GRPO/SFT techniques (exploration / entropy control, KL
 scheduling, reward shaping, curriculum / difficulty filtering, rejection-sampling SFT
-on high-reward rollouts) rather than guessing — and count a technique as helpful only
+on high-reward rollouts) rather than guessing - and count a technique as helpful only
 on a beyond-noise improvement.
 
 ---
@@ -628,7 +628,7 @@ on a beyond-noise improvement.
 
 > A CUDA / OOM / vLLM / kernel / infrastructure error is an **infrastructure** problem, not a
 > sign the model is too big. Lower `max_context_tokens`, `max_completion_tokens`, or `group_size` to shrink
-> the run's footprint and let the allocator retry onto the next fitting GPU class — do
+> the run's footprint and let the allocator retry onto the next fitting GPU class - do
 > **not** switch to a smaller model to make a crash disappear. That silently destroys
 > quality.
 

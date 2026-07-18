@@ -8,7 +8,7 @@
 // HACKATHON POSTURE: we authenticate + ATTRIBUTE, we do NOT restrict data -
 // every logged-in user sees the same shared dashboard. The identity is used
 // only to stamp `operator` on picks/commands (the Atlas audit trail) - the
-// MongoDB↔Auth0 synergy for the tracks. See docs/MONGODB_AUTH0.md.
+// MongoDB<->Auth0 synergy for the tracks. See docs/MONGODB_AUTH0.md.
 
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
@@ -26,7 +26,7 @@ export function authEnabled() {
   return !!(DOMAIN() && AUDIENCE());
 }
 
-// Verify a bearer access token → { sub, email, name, roles } or null (invalid,
+// Verify a bearer access token -> { sub, email, name, roles } or null (invalid,
 // absent, or auth disabled). Never throws.
 export async function verifyToken(token) {
   if (!authEnabled() || !token) return null;

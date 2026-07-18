@@ -58,7 +58,7 @@ test("sim traffic conforms to schemas", { skip: !up, timeout: 60000 }, async () 
   }
 });
 
-test("hub relays robot→web events verbatim", { skip: !up, timeout: 15000 }, async () => {
+test("hub relays robot->web events verbatim", { skip: !up, timeout: 15000 }, async () => {
   const robot = connect("robot");
   const browser = connect("browser");
   await Promise.all([connected(robot), connected(browser)]);
@@ -87,14 +87,14 @@ test("hub relays robot→web events verbatim", { skip: !up, timeout: 15000 }, as
   }
 });
 
-test("hub relays web→robot commands verbatim", { skip: !up, timeout: 15000 }, async () => {
+test("hub relays web->robot commands verbatim", { skip: !up, timeout: 15000 }, async () => {
   const robot = connect("robot");
   const browser = connect("browser");
   await Promise.all([connected(robot), connected(browser)]);
   await sleep(200);
   try {
-    // nl_command is excluded: per root CLAUDE.md it routes web → server →
-    // FarmHand LLM → robot (structured), so a verbatim relay isn't required.
+    // nl_command is excluded: per root CLAUDE.md it routes web -> server ->
+    // FarmHand LLM -> robot (structured), so a verbatim relay isn't required.
     for (const event of WEB_TO_ROBOT_EVENTS.filter((e) => e !== "nl_command")) {
       const p = waitFor(robot, event, 4000);
       browser.emit(event, SAMPLES[event]);

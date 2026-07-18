@@ -4,7 +4,7 @@
 
 .teleop-layout { display: flex; flex-direction: column; gap: 1rem; }
 
-/* ---- centered rigged-controller hero ---- */
+/* centered rigged-controller hero */
 .ctrl-hero-panel { display: flex; flex-direction: column; }
 .hero-head {
   display: flex;
@@ -229,7 +229,7 @@
 .estop-panel { display: flex; }
 .estop-panel .estop-btn { width: 100%; }
 
-/* ---- full-screen manga control room ---- */
+/* full-screen manga control room */
 .teleop-stage {
   position: fixed;
   inset: 0;
@@ -249,18 +249,16 @@
   left: 0;
   right: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.4rem;
-  border-bottom: 2px solid #171914;
-  background: rgba(255, 255, 255, .82);
-  backdrop-filter: blur(10px);
+  gap: .1rem;
+  padding: 1.1rem 1.4rem .9rem;
+  text-align: center;
+  pointer-events: none; /* let the scene behind it stay draggable */
+  background: linear-gradient(180deg, rgba(244,243,238,.92), rgba(244,243,238,0));
 }
-.teleop-stage-head h1 { margin: .1rem 0 0; font: 900 clamp(1rem, 2vw, 1.55rem)/1 var(--ui-mono); letter-spacing: .1em; }
-.teleop-kicker { font-size: .62rem; font-weight: 800; letter-spacing: .2em; opacity: .65; }
-.teleop-back { color: #171914; text-decoration: none; font-size: .7rem; font-weight: 800; letter-spacing: .12em; }
-.teleop-back:hover { text-decoration: underline; }
+.teleop-stage-head h1 { margin: 0; color: #14160f; font: 900 clamp(1.15rem, 2.4vw, 1.8rem)/1 var(--ui-mono); letter-spacing: .14em; }
+.teleop-kicker { font-size: .64rem; font-weight: 800; letter-spacing: .22em; color: #14160f; opacity: .6; }
 .teleop-stage .drivesrc { color: #171914; border-color: #171914; background: rgba(255,255,255,.6); font-weight: 800; }
 .teleop-stage .drivesrc.src-gamepad { background: #111; color: #fff; }
 .teleop-stage .drivesrc.src-estop { background: #111; color: #fff; }
@@ -301,10 +299,9 @@
 .controller-callouts .stick-callout .stick-dot { fill: #111; stroke: #111; }
 .ctrl-hero-stage, .ctrl-canvas-stage { width: 100%; height: 100%; }
 .ctrl-canvas-stage { border: 0; border-radius: 0; background: transparent; }
-/* Two stacked layers: painterly world in back, ink controller in front. */
-.stage-world-canvas, .stage-controller-canvas { position: absolute; inset: 0; }
-.stage-controller-canvas { pointer-events: none; }
-.stage-controller-canvas canvas { filter: drop-shadow(0 22px 14px rgba(17,18,15,.32)); }
+/* Single stage canvas: ink scene + controller with the painterly fruit props
+   composited on top, all in one WebGL context. */
+.stage-world-canvas { position: absolute; inset: 0; }
 .scene-editor {
   position: absolute;
   z-index: 6;
@@ -335,6 +332,14 @@
 .scene-editor-title { display: block; margin-bottom: .45rem; font-weight: 900; letter-spacing: .12em; }
 .scene-editor select, .scene-editor button { width: 100%; border: 1px solid #171914; background: #fff; color: #171914; font: inherit; padding: .32rem; }
 .scene-editor button { margin-top: .35rem; cursor: pointer; font-weight: 900; }
+.scene-editor button:hover { background: #171914; color: #fff; }
+.scene-edit-add { display: flex; gap: .3rem; align-items: stretch; }
+.scene-edit-add select { flex: 1; }
+.scene-edit-add button { width: auto; margin-top: 0; padding: .32rem .6rem; }
+.scene-edit-sep { margin: .6rem 0 .25rem; font-weight: 900; letter-spacing: .1em; font-size: .53rem; opacity: .7; }
+.scene-edit-actions { display: flex; gap: .3rem; }
+.scene-edit-actions button { flex: 1; }
+.scene-edit-reset { margin-top: .5rem; background: #f0ede4; }
 .scene-edit-row { margin-top: .52rem; display: grid; gap: .2rem; }
 .scene-edit-row b { font-size: .53rem; letter-spacing: .1em; }
 .scene-edit-row label { display: grid; grid-template-columns: .55rem 1fr; align-items: center; gap: .25rem; }
@@ -345,43 +350,45 @@
   align-items: center;
   flex-wrap: wrap;
   justify-content: center;
-  gap: .3rem;
-  padding: .13rem .23rem;
+  gap: .34rem;
+  padding: .2rem .38rem;
   color: #161616;
-  background: rgba(255,255,255,.78);
-  border: 1px solid rgba(22,22,22,.55);
+  background: rgba(255,255,255,.82);
+  border: 1px solid rgba(22,22,22,.6);
   border-radius: 999px;
-  box-shadow: 1px 1px 0 rgba(22,22,22,.32);
-  font: 800 .46rem var(--ui-mono);
+  box-shadow: 1.5px 1.5px 0 rgba(22,22,22,.32);
+  font: 800 .62rem var(--ui-mono);
   white-space: nowrap;
 }
 .scene-control-label b { letter-spacing: .06em; }
-.scene-control-label em { font-size: .39rem; font-style: normal; opacity: .55; }
+.scene-control-label em { font-size: .5rem; font-style: normal; opacity: .55; }
 .scene-control-label > span.on { color: #fff; background: #111; border-color: #111; }
 .scene-control-label > span.on em { opacity: 1; }
 .scene-dpad {
   display: grid;
-  grid-template-columns: repeat(3, 6px);
-  grid-template-rows: repeat(3, 6px);
+  grid-template-columns: repeat(3, 8px);
+  grid-template-rows: repeat(3, 8px);
   gap: 1px;
   flex-basis: 100%;
   justify-content: center;
-  margin-top: .18rem;
+  margin-top: .2rem;
 }
-.scene-dpad > i { display: block; width: 6px; height: 6px; border: 1px solid currentColor; opacity: .52; }
+.scene-dpad > i { display: block; width: 8px; height: 8px; border: 1px solid currentColor; opacity: .52; }
 .scene-dpad-up { grid-column: 2; grid-row: 1; }
 .scene-dpad-left { grid-column: 1; grid-row: 2; }
 .scene-dpad-center { grid-column: 2; grid-row: 2; background: currentColor; opacity: .4 !important; }
 .scene-dpad-right { grid-column: 3; grid-row: 2; }
 .scene-dpad-down { grid-column: 2; grid-row: 3; }
 .scene-dpad > i.on { background: currentColor; opacity: 1; }
+/* wrapper breaks the joystick onto its own line and centers it; the circle
+   itself keeps a fixed square size so it never stretches into an ellipse */
+.scene-joy-wrap { flex-basis: 100%; display: flex; justify-content: center; margin-top: .2rem; }
 .scene-joy {
   position: relative;
   display: block;
-  flex-basis: 100%;
-  width: 18px;
-  height: 18px;
-  margin-top: .2rem;
+  flex: none;
+  width: 26px;
+  height: 26px;
   border: 1px solid currentColor;
   border-radius: 50%;
   background: linear-gradient(currentColor, currentColor) center / 1px 100% no-repeat,
@@ -390,10 +397,10 @@
 }
 .scene-joy-dot {
   position: absolute;
-  left: 6px;
-  top: 6px;
-  width: 5px;
-  height: 5px;
+  left: 9px;
+  top: 9px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
   transition: transform .08s linear;
@@ -414,9 +421,16 @@
   background: rgba(247,244,235,.9);
   box-shadow: 0 -9px 0 rgba(23,25,20,.88);
   backdrop-filter: blur(10px);
-  transition: padding .18s ease;
 }
-.teleop-dock.collapsed { padding-bottom: 0; }
+/* Smooth collapse: animate the body's grid track from 1fr to 0fr. Content is
+   always mounted so there is no pop; the inner wrapper clips during the slide. */
+.dock-body {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows .32s cubic-bezier(.4, 0, .2, 1);
+}
+.teleop-dock.collapsed .dock-body { grid-template-rows: 0fr; }
+.dock-body-inner { min-height: 0; overflow: hidden; }
 /* collapse / expand handle sits at the top of the dock, always visible */
 .dock-toggle {
   display: flex;
@@ -445,6 +459,34 @@
 .dock-chevron { font-size: .8rem; line-height: 1; }
 .dock-toggle:hover .dock-toggle-label { text-decoration: underline; }
 .teleop-dock-top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .1rem 0 .65rem; border-top: 1px solid rgba(23,25,20,.3); border-bottom: 1px solid rgba(23,25,20,.3); }
+.dock-top-left { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+/* voice command (Web Speech API) button */
+.voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font: 800 .7rem var(--ui-mono);
+  letter-spacing: .04em;
+  color: #171914;
+  background: #fffdf7;
+  border: 1px solid #171914;
+  border-radius: 999px;
+  padding: .32rem .7rem;
+  cursor: pointer;
+}
+.voice-btn:hover { background: #171914; color: #fff; }
+.voice-btn .voice-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .55;
+}
+.voice-btn.rec { background: #171914; color: #fff; }
+.voice-btn.rec .voice-dot { opacity: 1; background: #e5484d; animation: voice-pulse 1s ease-in-out infinite; }
+@keyframes voice-pulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: .4; } }
+.voice-readout { color: #171914; font-weight: 700; }
+.voice-readout b { color: #2f6b34; }
 .teleop-stage .mode-toggle { border-color: #171914; background: rgba(255,255,255,.7); }
 .teleop-stage .mode-toggle button { color: #43473d; }
 .teleop-stage .mode-toggle button.active { color: #fff; background: #171914; }

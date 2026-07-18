@@ -44,7 +44,7 @@ const io = new Server(server, {
 // Auth0 identity on the socket handshake. HACKATHON POSTURE: we attribute, we
 // don't restrict - everyone still sees the same shared dashboard. When Auth0 is
 // unconfigured this attaches null (dev bypass). The identity is used only to
-// stamp `operator` on commands/picks for the Atlas audit trail (Mongo↔Auth0).
+// stamp `operator` on commands/picks for the Atlas audit trail (Mongo<->Auth0).
 io.use(async (socket, next) => {
   try {
     socket.data.operator = operatorLabel(await verifyToken(socket.handshake.auth?.token));
@@ -137,7 +137,7 @@ io.on('connection', (socket) => {
         store.recordDetection(payload).catch(logStoreErr);
       } else if (event === 'pick_event') {
         store.recordPickEvent(payload).catch(logStoreErr);
-        forwardPickEvent(payload); // → Base44 Orchard OS (no-op unless env-gated on)
+        forwardPickEvent(payload); // -> Base44 Orchard OS (no-op unless env-gated on)
       }
     });
   }
@@ -145,7 +145,7 @@ io.on('connection', (socket) => {
   for (const event of CONTROL_EVENTS) {
     socket.on(event, (payload = {}) => {
       if (role === 'robot' || !isObj(payload)) return;
-      // this operator is now "in control" → attribute subsequent picks to them
+      // this operator is now "in control" -> attribute subsequent picks to them
       if (socket.data.operator) lastOperator = socket.data.operator;
       if (event === 'drive') {
         const l = Number(payload.l);
@@ -215,8 +215,7 @@ function dropInvalid(event, payload) {
   }
 }
 
-// --- REST -------------------------------------------------------------------
-
+// REST
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
@@ -256,7 +255,7 @@ app.get('/api/detections', async (req, res) => {
   }
 });
 
-// --- demo panic switch ------------------------------------------------------
+// demo panic switch
 // GET  /api/force-sim            -> current state
 // POST /api/force-sim {mode}     -> "off" | "on" | "auto"
 // POST /api/force-sim {on:bool}  -> simple button (on->"on", false->"off")
@@ -285,8 +284,7 @@ app.post('/api/force-sim', (req, res) => {
 
 app.get('/stream', streamHandler);
 
-// --- lifecycle --------------------------------------------------------------
-
+// lifecycle
 server.listen(PORT, () => {
   console.log(`[hub] listening on http://localhost:${PORT}  (stream: /stream, stats: /api/stats)`);
   console.log(`[hub] Base44 pick_event forwarding: ${base44Enabled() ? 'ON' : 'off (set BASE44_WEBHOOK_URL to enable)'}`);

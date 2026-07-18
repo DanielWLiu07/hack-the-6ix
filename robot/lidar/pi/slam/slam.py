@@ -91,7 +91,7 @@ class Slam:
             self._last_kf = np.array([x, y, th])
         return x, y, th
 
-    # -- internals ---------------------------------------------------------
+    # internals
     def _integrate(self, scan):
         if len(scan) == 0:
             return

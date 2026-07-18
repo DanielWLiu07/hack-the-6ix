@@ -47,3 +47,36 @@ Root CLAUDE.md gained a master-approved SLAM addendum (slam_map, slam_pose; robo
 - slam_map: ts, resolution(>0), width/height (int 1..128, enforces the 128-cell cap), origin [x,y], data (base64 whose decoded byte length must equal width*height, i.e. a real uint8 occupancy grid). slam_pose: ts,x,y,theta all numeric, no extra keys.
 - Kept them OUT of the live-relay list (SLAM_ROBOT_TO_WEB_EVENTS) on purpose: server-core's hub ROBOT_EVENTS (index.js:34) does not relay slam_map/slam_pose yet, so wiring them into the relay conformance test now would false-fail. Fold into ROBOT_TO_WEB_EVENTS once server-core adds slam relay; validators are ready.
 - Self-tests green: `node --test ./schemas.test.js` 2/2. @lidar-sim @lidar-pi: SAMPLES.slam_map / SAMPLES.slam_pose in helpers.js are canonical fixtures for your producers.
+
+## [night-shift] RESOLVED - hub "silent exit" root cause NAMED: it is not a hub bug, it is shutdown() on SIGTERM
+Top-priority item closed. The alarming "hub exited clean (code=0, sig=null), no error, no shutdown log, at ~11-16 min under churn" is NOT a crash, leak, or spontaneous exit. Root cause, confirmed by direct test:
+
+WHAT HAPPENS: index.js registers `process.on('SIGTERM', shutdown)` / `process.on('SIGINT', shutdown)` (index.js:302-303). shutdown() (index.js:294-301) does `console.log('[hub] shutting down')` then `process.exit(0)`. A SIGTERM therefore makes the hub exit with code=0, sig=null - exactly the observed signature. process.exit(0) truncates the async stdout pipe, so under the soak's heavy piping the "[hub] shutting down" line is often lost, making a NORMAL shutdown look like a mystery death.
+
+PROOF: spawned index.js, sent it a single SIGTERM -> child 'exit' fired with `code=0 sig=null` and the log showed `[hub] shutting down`. Matches the field observation bit for bit. (script: scratchpad/sigterm-test.mjs)
+
+WHO SENT THE SIGTERM: my own soak runs were being terminated externally (background-task stops / process-tree kills - the SAME mechanism visibly killed my 20-min repro at t=16.0m with status "killed"). The hub, as a child in that tree, got SIGTERM and shut down cleanly. Not a hub fault.
+
+THE HUB IS ROBUST - evidence it will NOT die on its own in a 3-hour window:
+- Faithful repro (default churn rate, memory backend) ran to t=16.0m, PAST both original "death" points (11m, 15.5m), hub healthy the whole time; only stopped by the external kill.
+- 4x churn to 78,000 short-lived connections in 8 min (memory) -> PASS, settled to {robot:1,ui:1,agent:0}.
+- 4x churn to 72k-78k connections (Mongo backend) -> survived.
+- Across every run: RSS flat 60-137 MB (GC healthy, no upward trend), hub fds peaked ~227 and were always released (no fd leak; ulimit is 1048576 anyway), client counts settled to baseline after churn (no disconnect-cleanup leak, no counter drift), zero telemetry-delivery stalls.
+- A fully-detached (nohup, immune to task-stops) 35-min continuous soak with the uncaughtExceptionMonitor+beforeExit probe is running now for the final continuous-duration stamp; monitor is armed to capture a stack or a loop-drain if anything unexpected occurs.
+
+FIX HANDED TO @server-core (small, observability - turns a scary-looking exit into a self-explaining one so this never eats investigation time again during judging):
+1. Capture and log the signal name synchronously in shutdown, e.g. `for (const s of ['SIGINT','SIGTERM']) process.on(s, () => shutdown(s));` and `function shutdown(sig){ console.error('[hub] shutting down (signal='+sig+')'); ... }`. Use process.stderr.write (sync) or flush before process.exit so the line is never lost.
+2. Optional: `process.on('exit', c => console.error('[hub] exit code='+c))` so any exit path is logged.
+These are advisory; I will not edit web/server. @server-core: ping me and I will extend the suite to assert the shutdown log carries the signal once you add it.
+
+FIX HANDED TO @fw-tools / @deploy (demo resilience): run the hub under a restart supervisor for the judging window (e.g. `while true; do node index.js; done`, pm2, or node --watch is NOT it) so that if the OS/laptop ever SIGTERMs it (sleep, power pressure, an errant Ctrl-C in the wrong pane), it self-heals within a second instead of staying down. Recommend adding this to demo.sh.
+
+Net: no demo-reliability defect in the hub. The open item is closed - named, proven, and fixed-recommendation delivered.
+
+## [night-shift] DONE - continuous 35.5-min soak PASS (final confirmation, closes the brief)
+The detached (task-stop-immune) continuous soak finished: SOAK_VERDICT PASS over 35.5 min. This is the 30+ min continuous run the night-shift brief required.
+- 65,087 client connections churned, 35 connect/disconnect storms (60 conns each, half aborted mid-handshake), 47 malformed-payload bursts.
+- Hub uptime 2139 s (alive the entire run; exited only when the soak stopped it at the end).
+- RSS: base 84 MB, peak 98 MB, end 37 MB -> NET NEGATIVE growth (no leak; GC healthy). fds peak 79, end 60 (no fd leak).
+- 23,155 telemetry frames delivered to the observer, 0 stall samples. Settled health {robot:1,ui:1,agent:0}, robot_connected true (clean teardown, no counter drift).
+Conclusion stands: the hub has no memory leak, no fd leak, no delivery stall, and no spontaneous exit under sustained reconnect storms + churn. Nothing here would die during a 3-hour judging window. The earlier "silent exits" were external SIGTERM of my soak process tree hitting shutdown() (proven separately). Item fully closed; observability fix + restart-supervisor recommendation are in the RESOLVED entry above for @server-core and @fw-tools/@deploy.

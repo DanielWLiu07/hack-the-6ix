@@ -49,7 +49,7 @@ scarce stoop labor with a cheap machine that runs all day on a battery, picking
 - **Understands plain English** - type or say "pick all ripe apples" and the
   **FarmHand** language model turns it into a validated structured command. Ambiguous
   ("pick the fruit")? It asks a clarifying question instead of guessing.
-- **Picks and sorts** - a SEEK → ALIGN → PICK → SORT → DROP state machine drives a
+- **Picks and sorts** - a SEEK -> ALIGN -> PICK -> SORT -> DROP state machine drives a
   5-DOF arm (smooth, interpolated servo motion) to grab the fruit and drop it into
   the correct bin by type **and** ripeness (`apple_ripe`, `apple_unripe`,
   `banana_ripe`, `banana_unripe`).
@@ -83,7 +83,7 @@ int8, consumed on-device via onnxruntime on the A53 cores. A zero-model OpenCV H
 blob detector ships as an always-works fallback, with the same interface.
 
 **FarmHand language model (`ml/freesolo-agent/`).** We generated ~2,300 synthetic
-command→action pairs (plus preference pairs), fine-tuned a small model on Freesolo,
+command->action pairs (plus preference pairs), fine-tuned a small model on Freesolo,
 and built an inference client that **validates every model output against a strict
 schema and rejects anything invalid before it can reach the robot** - the LLM never
 pipes raw text to hardware.
@@ -121,8 +121,8 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
   through the live stack (7 actions forwarded, 3 clarifications correctly withheld,
   0 invalid outputs reaching the robot).
 - **Live, defensible impact numbers** - the dashboard computes waste-avoided and
-  CO₂e-avoided from *real* pick data (≈400 fruit/hr → ~60 kg/hr kept out of the loss
-  gap → ~150 kg CO₂e/hr), every constant traced to an FAO/USDA source.
+  CO₂e-avoided from *real* pick data (≈400 fruit/hr -> ~60 kg/hr kept out of the loss
+  gap -> ~150 kg CO₂e/hr), every constant traced to an FAO/USDA source.
 - **A robot that maps a room from lidar alone**, rendered live in the 3D dashboard.
 - **Completeness** - one command boots the full demo, and every judged claim links
   to a file a judge can open.
@@ -137,10 +137,11 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
   survive judge Q&A; inflated ones don't.
 
 ## What's next
-- **Finish the FarmHand training loop** - score the trained SFT (and SFT→DPO) model
-  on the 30 held-out commands and publish the accuracy lift over the 93.3% regex
-  baseline. _(TODO: fill the trained-model number once the Freesolo endpoint is live -
-  it plugs into the running robot via a single env var.)_
+- **FarmHand is trained (done).** SFT + GRPO on Freesolo (Qwen3.5-0.8B) reached
+  **96.7%** exact-match on the held-out set, up from the 93.3% regex baseline, and
+  the trained model is deployed and driving the robot client live. Next: an
+  optional distillation (OPD) pass for a three-algorithm showcase, and expanding
+  the eval beyond 30 items.
 - **On-board vision benchmark** - quote the YOLOv8n-int8 FPS measured on the UNO Q
   itself. _(TODO: fill when the board bench runs; harness is ready.)_
 - **Voice commands** - browser speech-to-text into the same NL pipeline.
@@ -163,7 +164,7 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
 - **Deloitte AI-for-Green** *(or Environmental - pick one at submission)* -
   quantified, live waste-avoided/CO₂e math + 5 W edge inference. Evidence:
   `docs/IMPACT.md`, `docs/DEVPOST.md`.
-- **Freesolo - Best Model Trained** - FarmHand NL→validated-action model, SFT(+DPO)
+- **Freesolo - Best Model Trained** - FarmHand NL->validated-action model, SFT(+DPO)
   pipeline, held-out eval. Evidence: `ml/freesolo-agent/` (`data/`, `client/`,
   `DEMO_TRANSCRIPT.md`, `TRAINING.md`).
 - **MLH - MongoDB Atlas** and **MLH - Auth0** - both live in the web stack.
@@ -182,7 +183,7 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
 | On-device split + FPS harness | `docs/QUALCOMM.md`, `robot/vision/bench.py` |
 | Impact math + sources | `docs/IMPACT.md`, `web/server/db/impact.js` |
 | FarmHand eval (93.3% baseline) | `ml/freesolo-agent/data/eval.py` |
-| NL→robot end-to-end run | `ml/freesolo-agent/client/DEMO_TRANSCRIPT.md` |
+| NL->robot end-to-end run | `ml/freesolo-agent/client/DEMO_TRANSCRIPT.md` |
 | SLAM room-tour | `robot/lidar/sim/tour.py`, `scan_match.py` |
 | Full narrative draft | `docs/DEVPOST.md` |
 | 3-min pitch script | `docs/PITCH.md` |

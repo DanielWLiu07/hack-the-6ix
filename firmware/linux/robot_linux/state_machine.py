@@ -46,7 +46,7 @@ class PickStateMachine:
         self.continuous = True       # go back to SEEK after DROP
         self.stats = {"picks": 0, "failures": 0}
 
-    # ------------------------------------------------------------- control
+    # control
 
     def start(self, target="nearest"):
         """target: 'nearest'|'apple'|'banana' or dict {fruit, ripeness}."""
@@ -72,7 +72,7 @@ class PickStateMachine:
             self.bridge.clear_estop()
         self._transition(IDLE)
 
-    # ------------------------------------------------------------- helpers
+    # helpers
 
     def _transition(self, state):
         if state != self.state:
@@ -130,7 +130,7 @@ class PickStateMachine:
         self._seq = (steps, i, True)
         return False
 
-    # ---------------------------------------------------------------- tick
+    # tick
 
     def tick(self):
         if self.state in (IDLE, ESTOP):

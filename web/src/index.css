@@ -1,7 +1,12 @@
-/* Brand display face (subset of Katie Roze → 2.4KB woff2, self-hosted). */
+/* UI hand-lettered face. The real Katie Roze (firmware/.../KatieRoze.otf) is a
+   raster COLOR font: its letterforms live only in sbix/SVG PNG art, so a plain
+   webfont subset renders blank, and the color glyphs come in their own
+   watercolour grey (unreadable as cream-on-red button text). We keep the real
+   Katie Roze in the 3D scene where the watercolour shines, and use this small
+   monochrome script (Satisfy, 22KB, respects CSS color) for CSS UI labels. */
 @font-face {
   font-family: 'Katie Roze';
-  src: url('/fonts/katieroze.woff2') format('woff2');
+  src: url('/fonts/katieroze-ui.woff2?v=caveat') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;

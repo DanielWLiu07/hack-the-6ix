@@ -1,6 +1,21 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { useRobot } from '../lib/robot.jsx'
+import { useRobot, useRobotEvent } from '../lib/robot.jsx'
 import './teleop.css'
+
+const SpeechRecognitionCtor =
+  typeof window !== 'undefined'
+    ? window.SpeechRecognition || window.webkitSpeechRecognition
+    : null
+
+// Turn a parsed nl_action into a short human-readable confirmation string.
+function describeAction(a) {
+  if (!a) return null
+  if (!a.ok) return a.clarification || a.error || 'not understood'
+  if (a.clarification) return a.clarification
+  const { task, filter, fruit } = a.action || {}
+  const words = [task, filter, fruit].filter(Boolean)
+  return words.length ? words.join(' ') : 'ok'
+}
 
 // 3D bits are lazy so three.js stays out of the main bundle.
 const ControllerModel = lazy(() => import('../components/ControllerModel.jsx'))
@@ -25,7 +40,7 @@ const findPad = (index) => {
     ?? pads[0]
 }
 
-// keyboard → robot bindings (both WASD and arrows drive; J/K/L pick; Space estop)
+// keyboard -> robot bindings (both WASD and arrows drive; J/K/L pick; Space estop)
 const DRIVE_KEYS = new Set([
   'KeyW', 'KeyA', 'KeyS', 'KeyD',
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
@@ -171,7 +186,11 @@ function TeleopInner() {
   const [estopped, setEstopped] = useState(false)
   const [lastAction, setLastAction] = useState(null)
   const [inputMode, setInputMode] = useState('controller') // 'controller' | 'keyboard'
-  const [dockOpen, setDockOpen] = useState(true)
+  const [dockOpen, setDockOpen] = useState(false)
+  const [listening, setListening] = useState(false)
+  const [voiceText, setVoiceText] = useState(null)
+  const [voiceAction, setVoiceAction] = useState(null)
+  const recognitionRef = useRef(null)
 
   const heldRef = useRef({ l: 0, r: 0 }) // on-screen button drive
   const keysRef = useRef(new Set()) // currently-held keyboard codes
@@ -187,7 +206,7 @@ function TeleopInner() {
 
   const doPick = (target) => {
     emit('pick', { target })
-    setLastAction(`pick → ${target}`)
+    setLastAction(`pick -> ${target}`)
   }
   const doEstop = () => {
     setEstopped(true)
@@ -200,6 +219,48 @@ function TeleopInner() {
     setLastAction('estop cleared (drive re-enabled)')
   }
   actionsRef.current = { doPick, doEstop, clearEstop }
+
+  // Voice commands via the browser Web Speech API (no external service). The
+  // transcript is sent to the hub as nl_command; FarmHand's parsed reply comes
+  // back as nl_action and is shown as confirmation.
+  useEffect(() => {
+    if (!SpeechRecognitionCtor) return undefined
+    const rec = new SpeechRecognitionCtor()
+    rec.lang = 'en-US'
+    rec.interimResults = false
+    rec.maxAlternatives = 1
+    rec.onresult = (event) => {
+      const text = event.results[0]?.[0]?.transcript?.trim()
+      if (!text) return
+      setVoiceText(text)
+      setLastAction(`voice: ${text}`)
+      emit('nl_command', { text })
+    }
+    rec.onend = () => setListening(false)
+    rec.onerror = () => setListening(false)
+    recognitionRef.current = rec
+    return () => {
+      try { rec.abort() } catch { /* ignore */ }
+      recognitionRef.current = null
+    }
+  }, [emit])
+
+  useRobotEvent('nl_action', (action) => setVoiceAction(action))
+
+  const toggleVoice = () => {
+    const rec = recognitionRef.current
+    if (!rec) return
+    if (listening) {
+      rec.stop()
+      setListening(false)
+      return
+    }
+    setVoiceAction(null)
+    try {
+      rec.start()
+      setListening(true)
+    } catch { /* start() throws if already running; ignore */ }
+  }
 
   const pairController = () => {
     // Bluetooth/USB pairing happens in the operating system. This user gesture
@@ -290,7 +351,7 @@ function TeleopInner() {
     }
   }, [])
 
-  // 10 Hz control loop: merge gamepad + keyboard + on-screen → drive + rig state
+  // 10 Hz control loop: merge gamepad + keyboard + on-screen -> drive + rig state
   useEffect(() => {
     const id = setInterval(() => {
       const keys = keysRef.current
@@ -369,7 +430,7 @@ function TeleopInner() {
       if (pad) {
         inputRef.current = { lx, ly, rx, ry, btn }
       } else {
-        // no gamepad → show tank speed on the sticks
+        // no gamepad -> show tank speed on the sticks
         inputRef.current = { lx: 0, ly: l, rx: 0, ry: r, btn }
       }
 
@@ -409,15 +470,11 @@ function TeleopInner() {
       <div className="teleop-paper" />
       <div className="teleop-speedlines" />
       <header className="teleop-stage-head">
-        <a href="/stage" className="teleop-back">← STAGE</a>
-        <div>
-          <span className="teleop-kicker">FARMLAND // REMOTE PILOT</span>
-          <h1>DUALSENSE TELEOP</h1>
-        </div>
-        <span className={`drivesrc src-${driveSrc}`}>{driveSrc}</span>
+        <span className="teleop-kicker">FARMLAND // REMOTE PILOT</span>
+        <h1>DUALSENSE TELEOP</h1>
       </header>
       {!connected && !sim && (
-        <p className="teleop-offline">Server offline — commands will not reach the robot.</p>
+        <p className="teleop-offline">Server offline. Commands will not reach the robot.</p>
       )}
       <section className="teleop-scene" aria-label="Live controller scene">
         <ModelBoundary stage>
@@ -440,33 +497,52 @@ function TeleopInner() {
           </span>
           <span className="dock-chevron" aria-hidden="true">{dockOpen ? '▾' : '▴'}</span>
         </button>
-        {dockOpen && <>
+        <div className="dock-body">
+        <div className="dock-body-inner">
         <div className="teleop-dock-top">
-          <div className="mode-toggle" role="tablist">
+          <div className="dock-top-left">
+            <div className="mode-toggle" role="tablist">
+                <button
+                  className={inputMode === 'controller' ? 'active' : ''}
+                  onClick={() => setInputMode('controller')}
+                >
+                  Controller
+                </button>
+                <button
+                  className={inputMode === 'keyboard' ? 'active' : ''}
+                  onClick={() => setInputMode('keyboard')}
+                >
+                  Keyboard
+                </button>
+            </div>
+            {SpeechRecognitionCtor && (
               <button
-                className={inputMode === 'controller' ? 'active' : ''}
-                onClick={() => setInputMode('controller')}
+                className={`voice-btn${listening ? ' rec' : ''}`}
+                onClick={toggleVoice}
+                title="Speak a command like: pick the ripe apples"
               >
-                Controller
+                <span className="voice-dot" aria-hidden="true" />
+                {listening ? 'Listening, tap to stop' : 'Voice command'}
               </button>
-              <button
-                className={inputMode === 'keyboard' ? 'active' : ''}
-                onClick={() => setInputMode('keyboard')}
-              >
-                Keyboard
-              </button>
+            )}
           </div>
           <div className="ctrl-readout">
             <span className={padName ? 'on' : 'off'}>
               {padName ? `● ${padName}` : '○ No controller paired · keyboard / on-screen active'}
             </span>
             <button className="pair-controller" onClick={pairController}>
-              {pairStatus === 'searching' ? 'Press a PS5 button…' : padName ? 'Controller paired' : 'Pair PS5 controller'}
+              {pairStatus === 'searching' ? 'Press a PS5 button...' : padName ? 'Controller paired' : 'Pair PS5 controller'}
             </button>
             <span>
               L {sticks.l.toFixed(2)} · R {sticks.r.toFixed(2)} · drive @ 10 Hz
             </span>
             <span>last: {lastAction ?? '-'}</span>
+            {voiceText && (
+              <span className="voice-readout">
+                FarmHand: "{voiceText}"
+                {voiceAction && <b> -&gt; {describeAction(voiceAction)}</b>}
+              </span>
+            )}
           </div>
         </div>
         <div className="teleop-actions">
@@ -504,7 +580,8 @@ function TeleopInner() {
             </div>
           </div>
         </div>
-        </>}
+        </div>
+        </div>
       </aside>
     </main>
   )

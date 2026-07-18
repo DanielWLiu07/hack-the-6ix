@@ -1,5 +1,5 @@
 // OrchardHero - painterly 3D landing backdrop (the end-goal hero).
-// Long-lens painterly framing: a 25° camera, painted sky dome (paper→blue
+// Long-lens painterly framing: a 25° camera, painted sky dome (paper->blue
 // wash + hill ridges), meadow ground, and tree.glb + apple.glb, all run
 // through the vendored anisotropic-Kuwahara post chain (src/vendor/painterly.js).
 // Self-contained r3f - no external assets beyond the two GLBs.
@@ -11,6 +11,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, Text, useGLTF, useProgress } from '@react-three/drei'
 import * as THREE from 'three'
 import { PainterlyPipeline } from '../vendor/painterly.js'
+import { CanvasGuard, SAFE_DPR } from '../lib/canvasGuard.jsx'
 
 const TREE_URL = '/assets/tree.glb'
 const APPLE_URL = '/assets/apple.glb'
@@ -381,7 +382,7 @@ function PainterlyPass() {
 function LoadBadge() {
   const { active, progress } = useProgress()
   if (!active) return null
-  return <div className="orchard-load">painting orchard… {Math.round(progress)}%</div>
+  return <div className="orchard-load">painting orchard... {Math.round(progress)}%</div>
 }
 
 export default function OrchardHero({ authBoardOpen = false, authPanel = null }) {
@@ -389,10 +390,11 @@ export default function OrchardHero({ authBoardOpen = false, authPanel = null })
     <div className="orchard-canvas">
       <Canvas
         flat
-        dpr={[1, 1.5]}
+        dpr={SAFE_DPR}
         camera={{ position: CAM0, fov: 25, near: 0.1, far: 100 }}
         gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
+        <CanvasGuard />
         <color attach="background" args={[PAPER]} />
         <fog attach="fog" args={[FOG, 8, 24]} />
         <hemisphereLight args={['#f3f1e3', '#b7a988', 0.95]} />

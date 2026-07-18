@@ -89,50 +89,143 @@
 .site-nav-meta { display: flex; align-items: center; gap: .75rem; margin-left: auto; }
 .site-nav--control { position: sticky; top: 0; background: linear-gradient(105deg, #0e1713, #111b17 55%, #16121d); border-bottom: 1px solid var(--ui-border); }
 .site-nav--stage, .site-nav--landing { position: absolute; top: 0; left: 0; right: 0; background: linear-gradient(to bottom, rgba(8,9,12,.88), rgba(8,9,12,0)); pointer-events: none; }
+/* Match the Data Aggregation (analytics) look: a paper+ink manga bar with a
+   monospace uppercase segmented-control nav (paper chips, ink dividers, active
+   = ink fill, hover = track), same tokens as .az-seg. */
 .site-nav--stage {
   position: fixed;
   z-index: 2147483647;
-  min-height: 4.35rem;
-  padding: .7rem 1.35rem;
-  color: #fff7e4;
+  min-height: 3.1rem;
+  padding: .55rem 1.35rem;
+  color: #14110a;
   background: transparent;
   border: 0;
   box-shadow: none;
-  pointer-events: auto;
+  backdrop-filter: none;
+  pointer-events: none;
+  font-family: var(--ui-mono);
 }
-.site-nav--stage .site-nav-brand {
-  color: #fff7e4;
-  font-family: 'Brush Script MT', cursive;
-  font-size: clamp(1.9rem, 2.8vw, 2.65rem);
-  text-shadow: 2px 3px 0 #17120e, 0 0 16px rgba(0, 0, 0, .9);
+/* Stage nav: five little manga-toned TV monitors fanned in a semicircle arc
+   above the monkey, one per page. Each screen is a live halftone/crosshatch
+   manga texture; the label is colorful handwritten (landing font). The monitors
+   share a pivot far below so rotating each fans them onto a common arc. */
+.site-nav--stage { padding-top: .6rem; }
+.site-nav--stage .site-nav-links {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 208px;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
+  pointer-events: none;
 }
-.site-nav--stage .site-nav-brand span { color: #ff7894; }
+/* the monitor bezel - all stacked at top-center, then fanned by --arc around a
+   shared pivot 560px below, which lays them out along a dome arc. */
 .site-nav--stage .site-nav-links a {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  color: #fff7e4;
-  font-family: 'Brush Script MT', cursive;
-  font-weight: 400;
-  font-size: 1.8rem;
-  letter-spacing: .02em;
-  text-shadow: 2px 3px 0 #101010, 0 0 10px rgba(0, 0, 0, .95);
+  --arc: 0deg;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 144px;
+  height: 98px;
+  margin-left: -72px;
+  display: grid;
+  place-items: center;
+  padding: 7px;
+  border: 1px solid #050403;
+  border-radius: 15px;
+  background: linear-gradient(155deg, #574e44 0%, #322b24 34%, #1a1510 68%, #0c0906 100%);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, .16),
+    inset 0 -3px 5px rgba(0, 0, 0, .65),
+    inset 3px 0 6px rgba(0, 0, 0, .3),
+    inset -3px 0 6px rgba(0, 0, 0, .3),
+    0 8px 18px rgba(0, 0, 0, .6);
+  overflow: hidden;
+  pointer-events: auto;
+  transform-origin: 50% 720px;
+  transform: rotate(var(--arc));
+  transition: box-shadow .18s ease, filter .18s ease;
 }
-.site-nav--stage .site-nav-links a:nth-child(1) { color: #ffdc61; }
-.site-nav--stage .site-nav-links a:nth-child(2) { color: #ffab86; }
-.site-nav--stage .site-nav-links a:nth-child(3) { color: #8cdbff; }
-.site-nav--stage .site-nav-links a:nth-child(4) { color: #ff91bf; }
-.site-nav--stage .site-nav-links a:nth-child(5) { color: #8ee7a0; }
-.site-nav--stage .site-nav-links a:nth-child(6) { color: #c6a3ff; }
-.site-nav--stage .site-nav-links a:hover,
-.site-nav--stage .site-nav-links a.active {
-  border-color: transparent;
-  background: transparent;
-  filter: brightness(1.24) saturate(1.2);
-  box-shadow: none;
-  text-decoration: underline;
-  text-decoration-thickness: 2px;
-  text-underline-offset: 4px;
+.site-nav--stage .site-nav-links a:nth-child(1) { --arc: -24deg; }
+.site-nav--stage .site-nav-links a:nth-child(2) { --arc: -12deg; }
+.site-nav--stage .site-nav-links a:nth-child(3) { --arc: 0deg; }
+.site-nav--stage .site-nav-links a:nth-child(4) { --arc: 12deg; }
+.site-nav--stage .site-nav-links a:nth-child(5) { --arc: 24deg; }
+/* clear glossy CRT screen - a clean dark glass, no texture, no animation. */
+.tv-screen {
+  position: absolute;
+  inset: 8px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: radial-gradient(125% 135% at 50% 24%, #27323f 0%, #121820 48%, #070a0e 100%);
+  box-shadow:
+    inset 0 0 15px rgba(0, 0, 0, .7),
+    inset 0 0 0 1px rgba(0, 0, 0, .6);
+}
+/* static glass gloss: a soft diagonal sheen across the top-left */
+.tv-screen::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(133deg, rgba(255, 255, 255, .18) 0%, rgba(255, 255, 255, .04) 22%, transparent 46%);
+  pointer-events: none;
+  z-index: 1;
+}
+/* faint corner vignette for CRT curvature */
+.tv-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(135% 100% at 50% 50%, transparent 56%, rgba(0, 0, 0, .55));
+  pointer-events: none;
+}
+/* color-coded handwritten label glowing in its own colour on the dark screen */
+.tv-label {
+  position: relative;
+  z-index: 2;
+  color: var(--tv-ink, #ffcf3f);
+  font-family: var(--ui-display);
+  font-weight: 400;
+  font-size: 1.55rem;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 0 10px currentColor, 0 0 3px currentColor, 0 1px 2px rgba(0, 0, 0, .7);
+  transform: rotate(-1.5deg);
+}
+.site-nav--stage .site-nav-links a:nth-child(1) .tv-label { --tv-ink: #ffcf3f; }
+.site-nav--stage .site-nav-links a:nth-child(2) .tv-label { --tv-ink: #7cd4ff; }
+.site-nav--stage .site-nav-links a:nth-child(3) .tv-label { --tv-ink: #ff8fbf; }
+.site-nav--stage .site-nav-links a:nth-child(4) .tv-label { --tv-ink: #86e6a0; }
+.site-nav--stage .site-nav-links a:nth-child(5) .tv-label { --tv-ink: #c3a2ff; }
+/* Hover is a HIGHLIGHT, not a hop: the TV stays on the arc and lights up. */
+.site-nav--stage .site-nav-links a:hover {
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, .18),
+    inset 0 -3px 5px rgba(0, 0, 0, .65),
+    0 0 0 2px rgba(255, 255, 255, .3),
+    0 0 24px rgba(150, 200, 255, .45),
+    0 8px 18px rgba(0, 0, 0, .6);
+}
+.site-nav--stage .site-nav-links a:hover .tv-screen { filter: brightness(1.24); }
+.site-nav--stage .site-nav-links a:hover .tv-label { filter: brightness(1.2) saturate(1.25); }
+/* active page: brighter picture + a power LED */
+.site-nav--stage .site-nav-links a.active .tv-screen { filter: brightness(1.14); }
+.site-nav--stage .site-nav-links a.active .tv-label { filter: brightness(1.15); }
+.site-nav--stage .site-nav-links a.active::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #57e08a;
+  box-shadow: 0 0 7px #57e08a;
+  z-index: 3;
 }
 .site-nav--stage a, .site-nav--landing a { pointer-events: auto; color: #f4efe2; }
 .site-nav--landing { padding-right: 7rem; }
@@ -148,7 +241,10 @@
   .site-nav-links a { font-size: 1.08rem; padding-inline: .42rem; }
   .site-nav--landing { padding-right: .8rem; }
   .site-nav--landing .site-nav-links { padding-right: 4.8rem; }
-  .site-nav--stage { min-height: 3.9rem; padding: .55rem .8rem; }
+  .site-nav--stage { min-height: 3.9rem; padding: .55rem .8rem; overflow-x: auto; }
+  /* keep the segmented pill intact and let it scroll rather than overflow */
+  .site-nav--stage .site-nav-links { flex-wrap: nowrap; min-width: max-content; }
+  .site-nav--stage .site-nav-links a { font-size: .72rem; padding: .38rem .55rem; letter-spacing: .05em; }
   .site-nav--pov { top: 46px; overflow-x: auto; }
   .site-nav--pov .site-nav-links { flex-wrap: nowrap; min-width: max-content; }
 }

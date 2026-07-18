@@ -111,7 +111,7 @@ export function createMemoryBackend({ telemetryCap = 5000 } = {}) {
       }
       const avgConf = confCount ? round2(confSum / confCount) : 0;
 
-      // Elapsed window of recorded picks → drives the throughput rates the
+      // Elapsed window of recorded picks -> drives the throughput rates the
       // env/Deloitte tracks quote ("sorts N fruit / X kg per hour"). Use true
       // min/max ts, not positional, in case picks arrive slightly out of order.
       let firstTs = null;

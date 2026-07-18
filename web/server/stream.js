@@ -10,8 +10,7 @@ const W = 320;
 const H = 240;
 const FPS = 5;
 
-// --- test pattern -----------------------------------------------------------
-
+// test pattern
 let tick = 0;
 function renderTestFrame() {
   const data = Buffer.alloc(W * H * 4);
@@ -52,8 +51,7 @@ function serveTestPattern(res) {
   res.on('close', () => clearInterval(timer));
 }
 
-// --- proxy ------------------------------------------------------------------
-
+// proxy
 function proxyRobotStream(url, res) {
   const upstream = http.get(url, (up) => {
     res.writeHead(up.statusCode || 200, {

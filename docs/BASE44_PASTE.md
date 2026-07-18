@@ -12,7 +12,7 @@ CONTEXT for the app you're about to build (details follow in my next messages):
 
 **Core data shape - PickReport** (these arrive live via webhook from our real robot):
 ```json
-{ "job_id": "…", "fruit": "apple|banana", "ripeness": "ripe|unripe",
+{ "job_id": "...", "fruit": "apple|banana", "ripeness": "ripe|unripe",
   "bin": "apple_ripe|apple_unripe|banana_ripe|banana_unripe",
   "success": true, "duration_ms": 8246, "ts": 1784344325245 }
 ```
@@ -43,4 +43,4 @@ After pasting the block above, continue with **P1** from `docs/BASE44.md`. When 
 - **Base44 side**: builds/hosts Orchard OS on their platform - the business layer, judged by their team.
 - **Our side**: the robot stack keeps evolving independently - nothing in Base44 can break it.
 - **Only contact point**: the webhook (`BASE44_WEBHOOK_URL` + `BASE44_SECRET` in `web/server/.env`). If Base44's app changes shape, only that endpoint cares. If our robot changes, Base44 just receives the same JSON.
-- During judging, both run simultaneously: robot picks → our dashboard updates AND Orchard OS ticks its ROI, live.
+- During judging, both run simultaneously: robot picks -> our dashboard updates AND Orchard OS ticks its ROI, live.

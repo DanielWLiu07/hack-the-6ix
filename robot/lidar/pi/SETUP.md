@@ -1,7 +1,7 @@
 # Lidar node - Raspberry Pi setup
 
 Reads an RPLIDAR-style 360° lidar over USB serial and streams `lidar_scan`
-Socket.IO events (`{"ts":…,"points":[[x,y],…]}`, meters, robot frame,
+Socket.IO events (`{"ts":...,"points":[[x,y],...]}`, meters, robot frame,
 ≤360 pts, ~2 Hz) to the laptop hub.
 
 ## Quick start (any machine)

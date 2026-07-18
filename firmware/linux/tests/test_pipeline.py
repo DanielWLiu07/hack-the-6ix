@@ -40,7 +40,7 @@ def _machine(seed=1, speed=INSTANT, **kw):
     return sm, b, c
 
 
-# ------------------------------------------------------------- state machine
+# state machine
 
 def test_full_pick_cycle_emits_schema_events():
     events = []
@@ -106,7 +106,7 @@ def test_estop_is_latched_and_ignores_start():
     assert not b.estopped
 
 
-# ----------------------------------------------------------------- servoing
+# servoing
 
 def test_bbox_error_signs():
     ex, ey = bbox_error([config.FRAME_W - 90, config.FRAME_H - 90, 90, 90])
@@ -131,7 +131,7 @@ def test_servo_step_moves_toward_target_and_clamps():
         assert 0 <= j <= 180
 
 
-# ----------------------------------------------------------------- detector
+# detector
 
 def test_nms_dedupes_overlapping_boxes():
     a = Detection("apple", "ripe", 0.9, [0, 0, 100, 100])
@@ -143,7 +143,7 @@ def test_nms_dedupes_overlapping_boxes():
     assert _iou([0, 0, 10, 10], [100, 100, 10, 10]) == 0.0
 
 
-# --------------------------------------------------------------- robot node
+# robot node
 
 def test_node_telemetry_payload_schema():
     from robot_linux.robot_node import RobotNode

@@ -8,6 +8,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useGLTF, useAnimations } from '@react-three/drei'
 import * as THREE from 'three'
 import { MangaPass } from '../lib/mangaPass.js'
+import { CanvasGuard, SAFE_DPR } from '../lib/canvasGuard.jsx'
 
 const MONKEY_URL = '/assets/monkey.glb'
 const RISE_FROM = -2.2 // world units below final pose
@@ -74,10 +75,11 @@ export default function MonkeyMascot() {
     <div className="monkey-mascot" aria-hidden>
       <Canvas
         flat
-        dpr={[1, 1.5]}
+        dpr={SAFE_DPR}
         gl={{ alpha: true, antialias: true, premultipliedAlpha: false }}
         camera={{ position: [0, 0.9, 3.4], fov: 32 }}
       >
+        <CanvasGuard />
         <ambientLight intensity={0.55} />
         <directionalLight position={[2, 3, 4]} intensity={1.15} />
         <directionalLight position={[-3, 1, -2]} intensity={0.4} />

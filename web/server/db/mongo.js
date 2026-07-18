@@ -15,7 +15,7 @@ export async function createMongoBackend({
   await client.connect();
   const db = client.db(dbName);
 
-  // Telemetry → a native Atlas **Time Series collection** (purpose-built for
+  // Telemetry -> a native Atlas **Time Series collection** (purpose-built for
   // high-rate sensor data: automatic time-bucketing + columnar storage + TTL
   // expiry). This is a deliberate "use Atlas properly" choice for the MongoDB
   // track - not a plain collection. Falls back to a capped collection if the
@@ -50,7 +50,7 @@ export async function createMongoBackend({
     detections.createIndex({ ts: -1 }),
     detections.createIndex({ fruit: 1, ripeness: 1 }),
     commands.createIndex({ ts: -1 }),
-    // Auth0 operator attribution (optional field → sparse).
+    // Auth0 operator attribution (optional field -> sparse).
     pickEvents.createIndex({ operator: 1 }, { sparse: true }),
     commands.createIndex({ operator: 1 }, { sparse: true }),
   ]);

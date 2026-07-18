@@ -110,3 +110,30 @@ Verify: `npm run build` clean (OrchardHero 4.7KB gz chunk; three shared in Gltf 
 BROADCAST phase-2 asks me to render lidar-pi's `web/public/world.glb` (iPhone-lidar colored 3D reconstruction) as the environment with the live C1 scan overlaid in LidarView. lidar-pi's `robot/lidar/phone/` is still empty (no sample GLB, no conventions doc) and no `world.glb` exists yet — their ASSIGNMENTS task 4 isn't delivered. Holding; will build the overlay the moment the sample GLB + conventions land. LidarView already renders the live scan, so this is purely additive.
 
 Note for master: server-core's hub (:3001) and lidar-sim's sim died in the crash — both are other workers' processes (not mine). Live-data pages (non-sim) need those restarted; the frontend itself is fully functional via `?sim=1` meanwhile.
+
+## [night] DONE - GPU hardening + style-clean v2 + /stage mimic mode
+GPU crisis task (Chrome GPU process crashing under combined WebGL load):
+- New `src/lib/canvasGuard.jsx`: `<CanvasGuard/>` pauses the r3f frameloop on `document.hidden` (setFrameloop never/always) and adds webglcontextlost/restored handlers so a GPU reset recovers instead of going black. Exports `SAFE_DPR = [1,1.5]`.
+- Dropped `<CanvasGuard/>` + `SAFE_DPR` into every Canvas: MonkeyStage, OrchardHero, MonkeyMascot, AnalyticsHero, LidarViewport, and all 3 ControllerModel canvases. ControllerModel was dpr 1.8, now capped 1.5.
+- /stage embedded scene iframe: relays a `stage-visibility` postMessage on visibilitychange and forces `src=about:blank` on unmount so the embedded WebGL context releases (scene already self-parks on hidden tabs).
+- AUDIT (pages mounting two heavy scenes at once, flagged for human):
+  1. Landing `/` (App.jsx): always mounts MonkeyStage (r3f canvas + manga pass + its own /scene iframe) alongside OrchardHero (r3f canvas) OR a second /scene iframe. Two heavy scenes.
+  2. Teleop (ControllerModel stage mode): two stacked r3f canvases (stage-world + stage-props).
+  3. RobotPOV: /scene/pov.html iframe + LidarViewport r3f canvas.
+  These pre-date this task; not changed, just reported.
+
+Style-clean v2 across web/src (build passes): comment unicode arrows -> `->`, box-drawing banner comments stripped to plain (RobotPOV.jsx, pov.css), unicode ellipsis -> `...`, em dashes -> hyphen/restructure, dead-code emoji removed from the orphan IntroSequence.jsx. KEPT designed UI glyphs per the rule: D-pad/arrow-pad direction glyphs and the PlayStation face-button symbols in Teleop/ControllerModel, plus the CTA and sort-bin arrows.
+
+/stage mimic mode (webcam body -> monkey, on-device):
+- `src/lib/poseRig.js`: retargets MediaPipe BlazePose world-landmarks onto the rigged GLB's Mixamo bones (arms + legs look-at, top-down, slerp-smoothed, visibility-gated). Rest pose captured once from the bind pose.
+- `src/components/MimicCam.jsx`: browser PoseLandmarker (wasm + model self-hosted under `public/mediapipe/` so it runs on an offline venue hotspot), lazy-loaded, live preview PiP, full teardown on unmount.
+- Wired into MonkeyStage: "mimic me" + "mirror" toolbar toggles; the monkey copies the operator's pose each frame. Not hardware-verified (needs a real webcam); build is clean.
+
+## [night] DONE - scene mobile diet (public/scene 126M -> 17M)
+Target was <12MB total; the mobile LANDING scene is now 6.55MB (heavy props are POV-only).
+- Font KatieRoze.otf 24MB -> 5.3KB: it was a COLOR font (13.7MB SVG table + 10.2MB sbix bitmap strikes); the scene draws text with canvas fillText+fillStyle (monochrome), so I dropped SVG/sbix/meta and subset to Latin (U+0020-00FF). glyf outlines intact, same filename so no code change. NOTE: text now renders as monochrome outlines instead of the font's colored glyphs - correct for the painterly scene but worth an eyeball.
+- GLBs 90MB -> 13.6MB via gltf-transform meshopt (EXT_meshopt_compression) + webp textures + 1024 cap, no simplify (geometry preserved). roboeye 21M->3.5M, gears 16M->2.5M, apple 7.6M->0.83M, etc. Verified the decode path in Node (three GLTFLoader + MeshoptDecoder parsed roboeye: 349603 verts).
+- Wired MeshoptDecoder into every scene GLTFLoader (natureScene.js, snakeArms.js, pov.js) via a `_glbLoader()` factory - REQUIRED or the compressed GLBs will not load. All three syntax-check clean.
+- Textures 12MB -> 3.2MB: resized the 2048 painterly patterns (watercolor normal, crosshatch, paper) to 1024 with sips, PNG format kept so no reference changes.
+- Per-page: landing (natureScene + snakeArms + textures + font) = 6.55MB. POV page props (roboeye/gears/beacon/console/manifold/vent2) ~10MB, loaded only on /pov.
+- Originals backed up to session scratchpad. Not browser-verified visually (headless); decode path proven in Node. Someone should open the landing + /pov once to confirm models render.

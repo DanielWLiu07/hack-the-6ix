@@ -1,4 +1,4 @@
-// Base44 "Orchard OS" webhook forwarder (docs/BASE44.md → Integration).
+// Base44 "Orchard OS" webhook forwarder (docs/BASE44.md -> Integration).
 // On every real pick_event, POST a PickReport to the Base44 app's webhook so a
 // pick on stage shows up in Orchard OS seconds later (ROI ticks up live).
 //

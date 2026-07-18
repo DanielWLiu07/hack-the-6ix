@@ -54,7 +54,7 @@ class TestFilterRanges:
 
 class TestDownsample:
     def test_caps_point_count(self):
-        # 720 measurements at 0.5° spacing → ≤360 out
+        # 720 measurements at 0.5° spacing -> ≤360 out
         dense = [(i * 0.5, 1.0) for i in range(720)]
         out = downsample_by_angle(dense, 360)
         assert len(out) <= 360

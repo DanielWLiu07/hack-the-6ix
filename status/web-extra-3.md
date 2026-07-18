@@ -63,3 +63,62 @@ MESHY banana retry SUCCEEDED this time (banana2.glb 3.28MB -> optimized to banan
 UI fix: bumped frosted card opacity to 0.92 so data stays readable over the busy orchard.
 Verify: `npm run build` ✓, `oxlint` ✓ clean, no emoji/em dash, data still fully live. Headless swiftshader still can't render painterly (shows paper), so real-browser check needed. Opened for the human.
 Assets note: my scene reuses shared public/assets GLBs (tree/apple/crate.min/banana.min). banana.min.glb + crate.min.glb are new optimized files I added.
+
+## [03:45] DONE — 3D background removed; clean black-and-white manga dashboard
+Human final call: stop generating the 3D scene, keep the background clean/empty (it was overlapping/blocking the data), they will add the fruit models manually later. Removed ALL 3D from the page: dropped the AnalyticsHero import + the `.az-scene` element + the HeroBoundary boundary; `.az` is back to the clean manga paper page (paper bg, hairline border, soft shadow), `.az-overlay` is a plain data column.
+Result = the black-and-white manga data dashboard only: "DATA AGGREGATION" title, ink-on-paper cards, screentone bin bars (ripe solid / unripe dot), monochrome matrix, ink sparklines, window control, live status chip. Fully live data (sim + server), no emoji, no em dash, no hardcoded data. `npm run build` ✓, `oxlint` ✓ clean. Renders faithfully in headless (no 3D dependency).
+Note: AnalyticsHero.jsx (single painterly orchard scene) is left in the tree but no longer imported - available if the human wants to wire fruit back in. canvasGuard.jsx (added by another worker) is what flagged the too-many-WebGL-contexts problem from the earlier per-fruit approach.
+
+## [03:55] WIP — light painterly SKY + GRASS backdrop (landing look), fruit later
+Human: bg can be the sky+grass painterly like the landing. Rebuilt `AnalyticsHero.jsx` as a LIGHT painterly backdrop: gradient sky (CanvasTexture, blue->paper horizon) + one grass ground plane, run through the landing's `PainterlyPipeline` (same painted look), with `CanvasGuard` + `SAFE_DPR`. NO GLB models (loads instantly, cheap, no context pressure) - fruit gets added on top later. One canvas, fixed full-viewport, z0, pointer-events none, so it does not block the data.
+Page: `.az` transparent; `.az-scene` = the backdrop; `.az-overlay` = the black-and-white manga data column, centered (max 940px) so the sky+grass shows around it. Manga cards unchanged (opaque, readable). Data still fully live; no emoji/em dash/hardcoded. `npm run build` ✓, `oxlint` ✓.
+Headless swiftshader still can't render painterly (shows paper), so real-browser check needed - opened for the human.
+
+## [04:05] WIP — backdrop = the LANDING's exact sky + meadow (verbatim), no fruit
+Human: "the same sky as the landing, dont make your own." The landing's SkyDome + MeadowGround shaders live INLINE in web-frontend's OrchardHero.jsx (not exported, and I must not edit their file). So `AnalyticsHero.jsx` now replicates those two shaders VERBATIM (same GLSL SKY_FRAG/GROUND_FRAG, same sphere/plane, pinned to the landing's calibrated camera CAM0 [5.2,2.4,6.9] fov 25 so the horizon lines up) + the shared PainterlyPipeline + CanvasGuard. Sky + grass only, no trees/apples/auth-sign - human adds fruit later. Fixed backdrop, pointer-events none, manga cards centered on top.
+⚠️ REQUEST to @web-frontend / master: I had to COPY SkyDome + MeadowGround (SKY_FRAG/GROUND_FRAG) out of OrchardHero.jsx because they are inline + unexported. Please extract them into a shared exported module (e.g. components/natureScene.jsx or lib/) so OrchardHero AND my Analytics backdrop import ONE source and cannot drift. I will switch to importing it the moment it exists.
+`npm run build` ✓, `oxlint` ✓ clean. Real-browser check needed (headless can't render painterly).
+
+## [04:15] WIP — backdrop is now the landing's OrchardHero directly (identical)
+Human: verbatim copy "still not the same, just copy the landing page one." So Analytics now lazy-imports and renders web-frontend's actual `OrchardHero` component as the `.az-scene` backdrop (fixed, pointer-events none) - literally the same scene as the landing, zero drift. Includes its sky/meadow/tree/apples AND the FARMHAND auth signboard (that is part of the landing). My verbatim-copy AnalyticsHero.jsx is now unused (left in tree).
+Manga B/W data cards centered on top. `npm run build` ✓, `oxlint` ✓. Real-browser check needed.
+If the auth signboard in the scene is unwanted on the analytics page, OrchardHero would need a prop to hide it (web-frontend's file) - will request if human wants it gone.
+
+## [04:30] DONE(pending real-browser ok) — sky+grass ONLY backdrop + clean GLASS UI
+Human: "only sky and grass exactly like the landing" + "fix the ui, use glass, make it cleaner." Backdrop switched back to my verbatim sky+grass `AnalyticsHero` (landing's exact SkyDome + MeadowGround shaders, CAM0/fov25) and ADDED the landing's `<color background #dcd6c4>` it was missing - so it's the landing sky+grass with NO tree/fruit/sign. UI fully restyled to clean glassmorphism: frosted translucent cards (backdrop-blur + saturate), thin light edges, big whitespace, "Data Aggregation" in a glass pill, green(ripe)/amber(unripe) accents, dark-green readable text.
+Render-verified in headless (this time the sky+grass shaders rendered too): sky + grass visible, glass cards clean + readable over it. Live data (3 picks/100%/0.45kg), bins/matrix/throughput all live. `npm run build` ✓, `oxlint` ✓, no emoji/em dash, no hardcoded data. Blur only shows in real browser.
+AnalyticsHero.jsx = sky+grass copy (in use); OrchardHero no longer imported by analytics.
+
+## [04:45] DONE — reverted to black-and-white MANGA UI, no painterly/3D/glass
+Human: "revert to manga styled UI black and white, none of the painterly stuff." Removed the `.az-scene` backdrop + AnalyticsHero import + HeroBoundary; `.az` back to the clean manga paper page. UI = pure B/W manga: "DATA AGGREGATION" title, ink-on-paper cards, screentone bin bars (ripe solid / unripe tone), monochrome matrix, ink sparklines, window control, live chip. No colour, no 3D, no glass.
+Fully live data (sim + server /api/stats), no emoji/em dash/hardcoded. `npm run build` ✓, `oxlint` ✓, render-verified in headless (faithful, no 3D). AnalyticsHero.jsx (sky+grass copy) left in tree but unused.
+
+## [04:55] DONE — manga UI upgraded: full-bleed page + stronger manga styling
+Human: the plain manga floating in the dark shell "too bad", wanted a better black-and-white manga look. Fixed the framing + polished:
+- `.az` now FULL-BLEED (margin-left/right calc(50% - 50vw), min-height ~100vh) so the paper page fills the viewport - no more card floating in the dark shell.
+- Manga treatment: subtle screentone paper texture across the bg, section headers as inverted ink labels (black bg / paper text), 2px ink panel borders with hard offset shadows, "PICK / SORT LEDGER" tagline beside the title, bolder numbers, ink-topped sparklines, screentone bin bars (ripe solid / unripe tone), inverted-header matrix.
+- Still pure black-and-white, no 3D/painterly/glass, all live data. `npm run build` ✓, render-verified. Reads as a cohesive manga page now, not a plain card.
+
+## [05:10] DONE — refined: airy editorial B&W (was cramped / felt AI)
+Human: "everything too close together, make it nicer, feels a bit too AI generated." Reworked to a refined editorial black-and-white:
+- Much more whitespace: bigger panel padding (1.6rem), 1.5-2rem gaps, 3rem page top pad, roomy metric cards, subtitle under the title with a thin rule.
+- Removed the AI-tells: dropped the inverted black label-tags on every panel (now quiet uppercase mono labels), dropped the heavy 2px borders + hard offset shadows (now single hairline borders), matrix is a clean line-table instead of a boxed grid.
+- Kept the B/W manga identity: bold italic title, ink, screentone bin bars (ripe solid / unripe tone). Full-bleed page retained.
+- Pure black-and-white, all live data, no emoji/em dash/hardcoded. `npm run build` ✓, `oxlint` ✓, render-verified faithful.
+
+## [05:20] DONE — manga-SHADER look (halftone screentone + crosshatch + ink)
+Human clarified: they want the black-and-white manga SHADER look (mangaPass aesthetic), not clean editorial. Reworked the CSS to emulate the manga shader in-page (no WebGL, keeps data live/interactive): inked comic panels (2.5px ink borders), halftone screentone tone (panel top strips + a screentone chip before each label + unripe bars + unripe swatches), crosshatch shadow wedge on the note, hand-lettered inked drop-shadow on the title, paper grain bg, inked matrix grid. Kept generous whitespace so it is not cramped. Fixed matrix total readability (solid light tone, not halftone-over-numbers).
+Pure B/W, full-bleed, all live data, no emoji/em dash/hardcoded. `npm run build` ✓, render-verified. (True mangaPass is a WebGL post-process for 3D canvases and can't run over live HTML; this reproduces its screentone/crosshatch/ink look in CSS.)
+
+## [05:30] DONE — opened up the spacing (panels were too close)
+Human: panels too close together. Increased section gap (overlay 1.7->2.6rem), grid gap (1.5->2.2rem), panel padding (1.4->1.6rem), overlay max-width 1100->1140. The inked manga panels now have clear breathing room between them; manga-shader look (ink borders, screentone strips/chips, crosshatch note, screentone bars) unchanged. Render-verified, build ✓.
+
+## [05:38] DONE — real gap fix: `.az-main` had no CSS rule
+Root cause of the cramping: the inner sections (controls, note, metric grid, matrix grid, throughput) are wrapped in `.az-main`, which had NO css rule -> block flow, ~0 gap between sections; the `.az-overlay` gap only spaced the title from the block. Added `.az-main { display:flex; flex-direction:column; gap:2.2rem }`. Now every section has consistent breathing room. Also shortened the waste-card subtext. Render-verified, build ✓, all live data.
+
+## [05:48] DONE — cleanup pass: even cards, consistent gaps, dedup CSS
+Full polish pass: metric cards now even height (waste subtext -> 1 line "0.15 kg per fruit") so sparklines align; consistent section spacing via `.az-main` gap; removed redundant/duplicate CSS (merged the two `.az-head` blocks, merged the split `.az-note` padding, dropped the unused `--halftone-soft` var). Manga-shader look intact, whole page reads clean + evenly spaced. `npm run build` ✓, `oxlint` ✓, render-verified, all live data.
+
+## [06:05] DONE — restyled to MATCH the Teleop page design
+Human: use the design from Teleop. Read web-extra-1's `pages/teleop.css` (read-only) and matched Analytics to it: cream paper page (#f4f3ee) + ink (#171914), MONO font throughout incl. the title, kicker + heavy mono title ("FARMHAND // PICK + SORT LEDGER" / "DATA AGGREGATION" mirroring teleop's kicker+DUALSENSE TELEOP), inked panels with the teleop hard offset shadow (4px 4px 0), inverting buttons (active/hover -> ink bg), green used only as a tiny live-dot accent. Kept the screentone bin bars (functional ripe/unripe). Consistent with the rest of the app's control-room/manga pages now.
+Pure paper+ink, full-bleed, all live data, no emoji/em dash/hardcoded. `npm run build` ✓, render-verified. (Did NOT edit teleop.css / any web-frontend file - only referenced it.)

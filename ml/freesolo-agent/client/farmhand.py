@@ -7,6 +7,8 @@ forwarded to the robot. Raw LLM output never reaches the robot.
 Modes (picked automatically):
   - FARMHAND_URL set   -> call the Freesolo (OpenAI-compatible) chat endpoint
   - FARMHAND_URL unset -> built-in regex rules (works today, no network)
+  - endpoint error/timeout with FARMHAND_FALLBACK != 0 (default) -> fall back to
+    the built-in rules so the NL box never dies mid-demo (reply carries "fallback")
 
 Config is read from the environment, and from a git-ignored `.env` file next to
 this module if present (see .env.example). Freesolo serves trained models over
@@ -67,7 +69,7 @@ ALLOWED_KEYS = {"task", "fruit", "filter", "zone"}
 MAX_CLARIFICATION_LEN = 200
 
 
-# ---------------------------------------------------------------- validation
+# validation
 
 def validate_action(obj):
     """Return (action_dict, None) if valid, else (None, error_string).
@@ -95,6 +97,22 @@ def validate_action(obj):
     return {"task": task, "fruit": fruit, "filter": filt, "zone": zone}, None
 
 
+_PUNCT = {"—": "-", "–": "-", "…": "...", "→": "->",
+          "‘": "'", "’": "'", "“": '"', "”": '"'}
+
+
+def _clean_text(s):
+    """Normalize the model's clarification punctuation to plain ASCII.
+
+    Clarifications are shown to the user in the dashboard; the team style rule
+    bans em dashes / smart quotes / unicode ellipsis in UI strings, and the
+    trained model still emits them (its data predates the rule).
+    """
+    for bad, good in _PUNCT.items():
+        s = s.replace(bad, good)
+    return s
+
+
 def _normalize_model_output(obj):
     """Model may answer with an action or a clarification question.
 
@@ -106,7 +124,7 @@ def _normalize_model_output(obj):
     if isinstance(obj, dict):
         for key in ("clarify", "clarification", "question"):
             if key in obj and isinstance(obj[key], str) and obj[key].strip():
-                return "clarification", obj[key].strip()[:MAX_CLARIFICATION_LEN]
+                return "clarification", _clean_text(obj[key].strip())[:MAX_CLARIFICATION_LEN]
         if "action" in obj and isinstance(obj["action"], dict):
             obj = obj["action"]
     action, err = validate_action(obj)
@@ -115,7 +133,7 @@ def _normalize_model_output(obj):
     return "action", action
 
 
-# ---------------------------------------------------------------- mock model
+# mock model
 
 _WORD = lambda w: r"\b" + w + r"\b"
 _RE_STOP = re.compile(r"\b(stop|halt|freeze|e-?stop|abort|cancel|stand\s*down)\b", re.I)
@@ -188,7 +206,7 @@ def mock_model(text):
     )
 
 
-# ------------------------------------------------------------ endpoint model
+# endpoint model
 
 DEFAULT_SYSTEM = (
     "You convert farm-robot commands into a single JSON object and nothing else. "
@@ -284,7 +302,7 @@ def parse_model_body(body):
     return None
 
 
-# -------------------------------------------------------------------- public
+# public
 
 def handle(text, url=None):
     """text -> envelope dict (see module docstring). Never raises."""
@@ -297,16 +315,23 @@ def handle(text, url=None):
     env["text"] = text
 
     url = url if url is not None else os.environ.get("FARMHAND_URL", "")
+    fallback_ok = os.environ.get("FARMHAND_FALLBACK", "1").lower() not in ("0", "false", "no", "")
     if url:
+        obj = None
         try:
-            body = endpoint_model(text, url)
+            obj = parse_model_body(endpoint_model(text, url))
+            reason = None if obj is not None else "invalid_model_output: no JSON object in response"
         except (urllib.error.URLError, OSError, ValueError) as e:
-            env.update(ok=False, error="endpoint error: %s" % e)
-            return env
-        obj = parse_model_body(body)
+            reason = "endpoint error: %s" % e
         if obj is None:
-            env.update(ok=False, error="invalid_model_output: no JSON object in response")
-            return env
+            # Demo robustness: a cold-start / timeout / flaky venue network must not
+            # break the NL box. Fall back to the built-in rules and flag it honestly.
+            if fallback_ok:
+                obj = json.loads(mock_model(text))
+                env["fallback"] = reason
+            else:
+                env.update(ok=False, error=reason)
+                return env
     else:
         obj = json.loads(mock_model(text))
         env["mock"] = True

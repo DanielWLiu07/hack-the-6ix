@@ -51,7 +51,7 @@ require_uri() {
 
 latest_snapshot() { ls -1t "$SNAP_DIR"/*.gz 2>/dev/null | head -1; }
 
-# --- commands ---------------------------------------------------------------
+# commands
 
 cmd_dump() {
   require_uri; need_tools
@@ -59,7 +59,7 @@ cmd_dump() {
   local ts file
   ts="$(date +%Y%m%d-%H%M%S)"
   file="$SNAP_DIR/${DB}-${ts}.gz"
-  echo "→ dumping '$DB' from Atlas → $file"
+  echo "-> dumping '$DB' from Atlas -> $file"
   mongodump --uri="$MONGODB_URI" --db="$DB" --archive="$file" --gzip --quiet
   local size; size="$(du -h "$file" | cut -f1)"
   echo "snapshot $file ($size)"
@@ -80,7 +80,7 @@ cmd_list() {
 _restore_into() {
   local target="$1" archive="$2"
   [[ -f "$archive" ]] || { echo "archive not found: $archive" >&2; exit 1; }
-  echo "→ restoring $(basename "$archive") → $target/$DB  (--drop)"
+  echo "-> restoring $(basename "$archive") -> $target/$DB  (--drop)"
   mongorestore --uri="$target" --gzip --archive="$archive" \
     --nsInclude="${DB}.*" --drop --quiet
   echo "restore complete"
@@ -99,7 +99,7 @@ cmd_restore_local() {
   need_tools
   local archive="${1:-$(latest_snapshot)}"
   [[ -n "$archive" ]] || { echo "no snapshot to restore (run 'dump' while Atlas is up)" >&2; exit 1; }
-  echo "→ starting local mongod on :$LOCAL_PORT"
+  echo "-> starting local mongod on :$LOCAL_PORT"
   "$LOCAL_MONGO" start
   _restore_into "$LOCAL_URI" "$archive"
   cat <<EOF
@@ -109,18 +109,18 @@ Failover DB is live locally. Point the hub at it and restart:
     export MONGODB_URI="$LOCAL_URI"
     # (in web/server/) node index.js
 
-  When Atlas is back:  scripts/db-snapshot.sh restore   # push local → Atlas
+  When Atlas is back:  scripts/db-snapshot.sh restore   # push local -> Atlas
   Stop local mongod:   $LOCAL_MONGO stop
 EOF
 }
 
 cmd_auto() {
   local interval="${1:-300}"
-  echo "→ auto-snapshot every ${interval}s (Ctrl-C to stop). Keeping newest $KEEP."
+  echo "-> auto-snapshot every ${interval}s (Ctrl-C to stop). Keeping newest $KEEP."
   while true; do cmd_dump || echo "  (dump failed - will retry)"; sleep "$interval"; done
 }
 
-# --- dispatch ---------------------------------------------------------------
+# dispatch
 load_env
 case "${1:-}" in
   dump)          cmd_dump ;;

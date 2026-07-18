@@ -30,6 +30,7 @@ import struct
 import threading
 import time
 import tempfile
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import numpy as np
 
@@ -38,11 +39,13 @@ WORLD_OUT = os.environ.get("WORLD_OUT",
                            os.path.normpath(os.path.join(_HERE, "..", "..", "..", "web", "public", "world.glb")))
 PORT = int(os.environ.get("PORT", "9353"))
 EXPORT_EVERY_S = float(os.environ.get("EXPORT_EVERY_S", "2"))
-VOXEL_M = float(os.environ.get("VOXEL_M", "0.06"))
-MAX_VERTS_PER_UPDATE = int(os.environ.get("MAX_VERTS_PER_UPDATE", "12000"))
 
-# Persistent fused world: voxel key -> [sum_r, sum_g, sum_b, count]
-_voxels = {}
+# Persistent world = the REAL ARKit surface mesh, not voxels. ARKit partitions
+# the scene into mesh anchors and continuously re-meshes each one in place, so
+# keeping the latest mesh per anchor and concatenating them reconstructs the
+# actual scanned surface (smooth triangles + per-vertex color the phone streams).
+# uuid(bytes) -> (world_verts Nx3 float, faces Mx3 int, colors Nx3 uint8)
+_anchors = {}
 _lock = threading.Lock()
 _dirty = False
 _stats = {"frames": 0, "clients": 0}
@@ -84,38 +87,6 @@ def _parse_payload(p):
     return uuid, world, faces, colors
 
 
-def _voxel_keys(points):
-    return np.floor(points / VOXEL_M).astype(np.int32)
-
-
-def _fuse_vertices(world_verts, colors):
-    """Accumulate colored points into the persistent voxel map.
-
-    We intentionally fuse vertices rather than trusting ARKit anchor identity:
-    anchors are local, unstable reconstruction fragments; world voxels are the
-    persistent state the demo actually needs.
-    """
-    if len(world_verts) == 0:
-        return 0
-    step = max(1, len(world_verts) // MAX_VERTS_PER_UPDATE)
-    pts = world_verts[::step]
-    cols = colors[::step]
-    keys = _voxel_keys(pts)
-    added = 0
-    for key, col in zip(keys, cols):
-        k = (int(key[0]), int(key[1]), int(key[2]))
-        slot = _voxels.get(k)
-        if slot is None:
-            _voxels[k] = [int(col[0]), int(col[1]), int(col[2]), 1]
-            added += 1
-        else:
-            slot[0] += int(col[0])
-            slot[1] += int(col[1])
-            slot[2] += int(col[2])
-            slot[3] += 1
-    return added
-
-
 class Handler(socketserver.BaseRequestHandler):
     def handle(self):
         global _dirty
@@ -145,10 +116,11 @@ class Handler(socketserver.BaseRequestHandler):
                     print(f"[mesh] parse error: {e}", flush=True)
                     continue
                 with _lock:
-                    if len(verts) > 0:
-                        added = _fuse_vertices(verts, colors)
-                        if added:
-                            _dirty = True
+                    # Latest mesh per anchor wins - that's ARKit's own model of
+                    # the world (each anchor re-meshed in place as you scan).
+                    if len(verts) > 0 and len(faces) > 0:
+                        _anchors[bytes(uuid)] = (verts, faces, colors)
+                        _dirty = True
                     _stats["frames"] += 1
         finally:
             print(f"[mesh] client disconnected: {peer}", flush=True)
@@ -162,27 +134,34 @@ class Server(socketserver.ThreadingTCPServer):
 def export_loop():
     global _dirty
     import trimesh
-    from trimesh.voxel.ops import multibox
     while True:
         time.sleep(EXPORT_EVERY_S)
         with _lock:
-            if not _dirty or not _voxels:
+            if not _dirty or not _anchors:
                 continue
-            items = list(_voxels.items())
+            anchors = list(_anchors.values())
             frames = _stats["frames"]
             _dirty = False
-        if not items:
+        # Concatenate every anchor's latest mesh into one, offsetting face indices
+        # into the shared vertex buffer. This is the real scanned surface.
+        vparts, fparts, cparts = [], [], []
+        base = 0
+        for verts, faces, colors in anchors:
+            n = len(verts)
+            if n == 0 or len(faces) == 0:
+                continue
+            vparts.append(verts)
+            fparts.append(faces + base)
+            # per-vertex RGB -> RGBA (opaque) for glTF vertex colors
+            cparts.append(np.hstack([colors, np.full((len(colors), 1), 255, np.uint8)]))
+            base += n
+        if not vparts:
             continue
-        centers = np.array(
-            [[(x + 0.5) * VOXEL_M, (y + 0.5) * VOXEL_M, (z + 0.5) * VOXEL_M] for (x, y, z), _ in items],
-            dtype=np.float64,
-        )
-        rgb = np.array(
-            [[r / c, g / c, b / c] for _, (r, g, b, c) in items],
-            dtype=np.uint8,
-        )
+        V = np.vstack(vparts)
+        F = np.vstack(fparts)
+        C = np.vstack(cparts).astype(np.uint8)
         try:
-            mesh = multibox(centers=centers, pitch=VOXEL_M, colors=rgb)
+            mesh = trimesh.Trimesh(vertices=V, faces=F, vertex_colors=C, process=False)
             os.makedirs(os.path.dirname(os.path.abspath(WORLD_OUT)), exist_ok=True)
             out_dir = os.path.dirname(os.path.abspath(WORLD_OUT))
             fd, tmp_path = tempfile.mkstemp(prefix="world.", suffix=".glb", dir=out_dir)
@@ -194,10 +173,45 @@ def export_loop():
                 if os.path.exists(tmp_path):
                     os.unlink(tmp_path)
             mb = os.path.getsize(WORLD_OUT) / 1e6
-            print(f"[mesh] world.glb updated: {len(items)} voxels, {len(mesh.vertices)} verts, "
-                  f"{len(mesh.faces)} faces, {mb:.1f} MB (frames rx: {frames})", flush=True)
+            print(f"[mesh] world.glb updated: {len(anchors)} anchors, {len(V)} verts, "
+                  f"{len(F)} faces, {mb:.1f} MB (frames rx: {frames})", flush=True)
         except Exception as e:
             print(f"[mesh] export failed: {e}", flush=True)
+
+
+CONTROL_PORT = int(os.environ.get("CONTROL_PORT", "9355"))
+
+
+class Control(BaseHTTPRequestHandler):
+    """Tiny HTTP control endpoint for the web UI. GET /clear resets the world to
+    empty so a fresh scan visibly builds from nothing."""
+
+    def _cors(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+
+    def do_OPTIONS(self):
+        self.send_response(204); self._cors(); self.end_headers()
+
+    def do_GET(self):
+        global _dirty
+        if self.path.startswith("/clear"):
+            with _lock:
+                _anchors.clear()
+                _dirty = False
+            try:
+                if os.path.exists(WORLD_OUT):
+                    os.remove(WORLD_OUT)
+            except Exception:
+                pass
+            print("[mesh] CLEARED - world reset to empty (fresh scan will rebuild)", flush=True)
+            self.send_response(200); self._cors()
+            self.send_header("Content-Type", "text/plain"); self.end_headers()
+            self.wfile.write(b"cleared")
+        else:
+            self.send_response(404); self._cors(); self.end_headers()
+
+    def log_message(self, *a):
+        pass
 
 
 def main():
@@ -205,7 +219,11 @@ def main():
     print(f"[mesh] receiver listening on 0.0.0.0:{PORT}", flush=True)
     print(f"[mesh] in the iPhone app, set laptop IP = {ip}", flush=True)
     print(f"[mesh] world output: {WORLD_OUT}", flush=True)
+    print(f"[mesh] control (clear) on 0.0.0.0:{CONTROL_PORT}/clear", flush=True)
     threading.Thread(target=export_loop, daemon=True).start()
+    threading.Thread(
+        target=lambda: ThreadingHTTPServer(("0.0.0.0", CONTROL_PORT), Control).serve_forever(),
+        daemon=True).start()
     Server(("0.0.0.0", PORT), Handler).serve_forever()
 
 

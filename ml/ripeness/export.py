@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export trained weights → export/model.onnx (+ int8 quantized model.int8.onnx).
+"""Export trained weights -> export/model.onnx (+ int8 quantized model.int8.onnx).
 
     python3 export.py                              # uses runs/detect/v0/weights/best.pt
     python3 export.py --weights path/to/best.pt
@@ -42,7 +42,7 @@ def sanitize_onnx(path):
 
 
 def letterbox(img, size):
-    """Match ultralytics preprocessing: BGR→RGB, letterbox to size, /255, CHW."""
+    """Match ultralytics preprocessing: BGR->RGB, letterbox to size, /255, CHW."""
     h, w = img.shape[:2]
     r = min(size / h, size / w)
     nh, nw = round(h * r), round(w * r)
@@ -99,14 +99,14 @@ def main():
     shutil.copy(onnx_out, EXPORT / "model.onnx")
     shutil.copy(ROOT / "classes.json", EXPORT / "classes.json")
     sanitize_onnx(EXPORT / "model.onnx")  # scrub local paths/username before shipping
-    print(f"→ {EXPORT/'model.onnx'} ({(EXPORT/'model.onnx').stat().st_size/1e6:.1f} MB)")
+    print(f"-> {EXPORT/'model.onnx'} ({(EXPORT/'model.onnx').stat().st_size/1e6:.1f} MB)")
 
     if not args.no_int8:
         try:
             q = quantize_int8(EXPORT / "model.onnx", args.imgsz)
             if q:
                 sanitize_onnx(q)  # quantizer re-stamps the leaky description; scrub again
-                print(f"→ {q} ({q.stat().st_size/1e6:.1f} MB)")
+                print(f"-> {q} ({q.stat().st_size/1e6:.1f} MB)")
         except Exception as e:  # int8 is an optimization, never block the deliverable
             print(f"int8 quantization failed ({e}); model.onnx still valid")
 

@@ -7,7 +7,7 @@ clean - it's a Qualcomm-track judging criterion.
 
 ## What this core does
 
-- **Tank drive** - `set_drive(l,r)` normalized [-1,1] → PWM + direction, with a
+- **Tank drive** - `set_drive(l,r)` normalized [-1,1] -> PWM + direction, with a
   slew limiter (no rail-spiking step changes) and a deadband.
 - **5-servo arm** via PCA9685 over I2C - `move_servos(joints[5], ms)` starts an
   **always-interpolated** (smoothstep-eased) move; poses never snap (snapping
@@ -61,7 +61,7 @@ PCA9685 channels (do **not** reorder - BRIDGE.md joint order):
 ### Hardware cautions
 
 - **Servo power is its own ≥5 A 5 V buck + 1000 µF cap**, common ground with the
-  UNO Q. PCA9685 `VCC`(logic)←3.3 V, `V+`(servo)←buck; **never jumper them**.
+  UNO Q. PCA9685 `VCC`(logic)<-3.3 V, `V+`(servo)<-buck; **never jumper them**.
   Brownout = mystery reboots + dropped fruit.
 - **HC-SR04 ECHO must be level-divided** to 3.3 V before D3 (skip only for a
   3.3 V RCWL-1601). TRIG at 3.3 V is fine.

@@ -28,14 +28,14 @@ setup() {
   fi
   command -v python3 >/dev/null || { log "python3 not found"; exit 1; }
   [[ -d "$VENV" ]] || python3 -m venv "$VENV"
-  log "installing pinned deps (opencv-headless + onnxruntime)…"
+  log "installing pinned deps (opencv-headless + onnxruntime)..."
   "$PY" -m pip install --upgrade pip -q
   "$PY" -m pip install -q -r requirements.txt
   log "deps installed. $("$PY" -c 'import cv2,numpy; print("cv2",cv2.__version__,"numpy",numpy.__version__)')"
 }
 
 verify() {
-  log "detector eval (synthetic ground truth, schema check)…"
+  log "detector eval (synthetic ground truth, schema check)..."
   "$PY" test_detector.py --frames 200
 }
 

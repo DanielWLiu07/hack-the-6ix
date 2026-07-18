@@ -64,13 +64,26 @@ def _valid_action(obj):
     )
 
 
-def farmhand_reward(example: TaskExample, response_text: str) -> RewardResult:
-    """JSON-aware reward (reusable for a later GRPO stage).
+def _norm(a):
+    return {
+        "task": a.get("task"),
+        "fruit": a.get("fruit", "any"),
+        "filter": a.get("filter", "any"),
+        "zone": a.get("zone", "any"),
+    }
 
-    1.0  response parses to the same action dict as the target (all 4 keys), OR
-         both target and response are clarify questions.
-    0.5  response is a schema-valid action but not the exact target (partial credit).
-    0.0  invalid / unparseable / wrong shape.
+
+def farmhand_reward(example: TaskExample, response_text: str) -> RewardResult:
+    """Graded JSON-aware reward (v2 - denser signal for GRPO).
+
+    Freesolo's docs: reward quality is the ceiling. A 0/0.5/1 cliff gives GRPO
+    almost no gradient between "wrong action" and "invalid"; this version scores
+    per-field so the model is pulled toward the right answer field by field.
+
+      1.0   exact action match (all 4 fields), OR both target+response clarify
+      0.6..0.9  schema-valid action, graded 0.6 + 0.1*(fields correct) up to 3/4
+      0.0   invalid JSON / wrong shape / clarified when an action was expected
+            (the over-clarification failure mode is penalized to zero on purpose)
     """
     expected = _first_json_obj(str(example.output or ""))
     got = _first_json_obj(response_text)
@@ -80,26 +93,29 @@ def farmhand_reward(example: TaskExample, response_text: str) -> RewardResult:
     exp_clarify = isinstance(expected, dict) and "clarify" in expected
     got_clarify = "clarify" in got
     if exp_clarify or got_clarify:
+        # clarify is right only when the gold is a clarify; over-clarifying = 0
         return RewardResult(score=1.0 if (exp_clarify and got_clarify) else 0.0, threshold=1.0)
 
-    if not _valid_action(got):
+    if not _valid_action(got) or not isinstance(expected, dict):
         return RewardResult(score=0.0, threshold=1.0)
 
-    def norm(a):
-        return {
-            "task": a.get("task"),
-            "fruit": a.get("fruit", "any"),
-            "filter": a.get("filter", "any"),
-            "zone": a.get("zone", "any"),
-        }
-
-    if isinstance(expected, dict) and norm(got) == norm(expected):
+    g, e = _norm(got), _norm(expected)
+    correct = sum(1 for f in ("task", "fruit", "filter", "zone") if g[f] == e[f])
+    if correct == 4:
         return RewardResult(score=1.0, threshold=1.0)
-    return RewardResult(score=0.5, threshold=1.0)
+    return RewardResult(score=0.6 + 0.1 * correct, threshold=1.0)
+
+
+def _load_train():
+    rows = load_jsonl(HERE / "dataset" / "train.jsonl")
+    aug = HERE / "dataset" / "augment.jsonl"
+    if aug.exists():
+        rows = rows + load_jsonl(aug)  # v2: typo/slang robustness augmentation
+    return rows
 
 
 class FarmHandEnv(EnvironmentSingleTurn):
-    dataset = load_jsonl(HERE / "dataset" / "train.jsonl")
+    dataset = _load_train()
 
     def build_prompt_messages(self, example: TaskExample, prompt_text: str):
         return [

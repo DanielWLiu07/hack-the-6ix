@@ -4,7 +4,7 @@ import RobotFringe from '../components/RobotFringe.jsx'
 import LidarViewport from '../components/LidarViewport.jsx'
 import '../pov.css'
 
-// ── Robot POV ────────────────────────────────────────────────────────────
+// Robot POV 
 // Fullscreen first-person "what the robot sees". Bottom tabs switch the whole
 // view between the robot's sensors: the arm camera, the live C1 SLAM scan, and
 // the iPhone-lidar 3D reconstruction. A manga machine-fringe frames every view.
@@ -50,33 +50,46 @@ function LidarLayer({ world }) {
     }
   }, [world])
 
+  // iPhone-lidar reconstruction: embed the standalone viewer.html. The React
+  // viewport shared the GPU with this page's second WebGL context (the manga
+  // fringe) and rendered inconsistently; viewer.html is a single-context
+  // three.js scene that renders the phone mesh reliably (leak-free, disposes on
+  // reload, recovers from GPU context loss). Served same-origin from /public.
+  if (world) {
+    return (
+      <div className="pov-view">
+        <iframe
+          title="iPhone lidar reconstruction"
+          src="/phone.html?world=/world.glb"
+          style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="pov-view">
       <LidarViewport
-        showWorld={world}
+        showWorld={false}
         camera={{ position: [0, 4.2, 4.6], fov: 55 }}
         controls
-        pointColor={world ? '#111111' : '#111111'}
+        pointColor="#111111"
         gridCellColor="#d8d2c6"
         gridSectionColor="#b9b2a6"
-        fitView={world}
         controlTarget={[0, 0.35, 0]}
         backgroundColor="#fffdf8"
-        showGrid={!world}
-        scanDecayMs={world ? 0 : 12000}
-        showOriginMarker={!world}
-        maxScans={world ? 0 : 48}
-        showScans={!world}
-        showSlam={!world}
-        worldStatus={world ? worldStatus : ''}
-        autoFitEnabled={world ? allowAutoFit : false}
-        onInteract={() => setAllowAutoFit(false)}
+        showGrid
+        scanDecayMs={12000}
+        showOriginMarker
+        maxScans={48}
+        showScans
+        showSlam
       />
     </div>
   )
 }
 
-// ── Optical layer (arm camera + detection boxes) ─────────────────────────
+// Optical layer (arm camera + detection boxes) 
 function CameraLayer({ detections }) {
   const [noStream, setNoStream] = useState(false)
   return (
@@ -122,7 +135,7 @@ function CameraLayer({ detections }) {
   )
 }
 
-// ── small helpers ────────────────────────────────────────────────────────
+// small helpers 
 function NotConnected({ sub }) {
   return (
     <div className="pov-notconn">
@@ -132,7 +145,7 @@ function NotConnected({ sub }) {
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────
+// Page 
 export default function RobotPOV() {
   const { connected, telemetry, detections: detLog } = useRobot()
   const rootRef = useRef(null)
@@ -196,14 +209,21 @@ export default function RobotPOV() {
 
   return (
     <div className="pov-root" ref={rootRef}>
-      {/* ── active sensor view ── */}
+   {/* active sensor view */}
       <div className="pov-main">{view}</div>
       <div className="pov-vignette" />
 
-      {/* machine fringe hanging from the top of frame (manga cutout overlay) */}
-      <RobotFringe />
+      {/* Machine fringe (manga cutout overlay) - eyeball/gear/prop models hang
+          into the top of the view. It runs its own transparent WebGL canvas.
+          Safe on the camera tab (no other canvas) and the iPhone tab (its 3D
+          runs in an isolated iframe). NOT on the SLAM tab: that tab's
+          LidarViewport is a second in-document WebGL context, and two heavy
+          contexts make Chrome drop one - which would vanish the live map. To put
+          the fringe there too, the SLAM view needs to move into an iframe like
+          the iPhone tab (web-frontend). */}
+      {tab !== 'slam' && <RobotFringe />}
 
-      {/* ── HUD ── */}
+   {/* HUD */}
       <div className="pov-hud">
         <span className="pov-tick tl" />
         <span className="pov-tick tr" />

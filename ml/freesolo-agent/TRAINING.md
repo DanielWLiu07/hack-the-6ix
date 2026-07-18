@@ -2,7 +2,7 @@
 
 **Who runs this:** the teammate with the Freesolo account (has the event credits).
 **Why it's easy:** all the hard parts - dataset, eval, the client that consumes
-the model - are already built and tested. This is just upload → click → paste a URL.
+the model - are already built and tested. This is just upload -> click -> paste a URL.
 
 **What you're doing in one sentence:** teaching a small LLM to turn a plain-English
 robot command into one line of validated JSON, by showing it ~2,300 examples.
@@ -36,7 +36,7 @@ converted copies into `data/export/`. Upload whichever Freesolo asks for.
 
 ## Step 1 - SFT (the actual training)
 
-1. Log into Freesolo → **New fine-tune / training run**.
+1. Log into Freesolo -> **New fine-tune / training run**.
 2. **Base model:** pick the smallest instruct model they offer (a 1–3B is plenty -
    the task is narrow, small = fast + cheap + edge-friendly, and "distilled a big
    model's ability into a small one" is a *selling point* for the Best-Model track).
@@ -48,11 +48,11 @@ converted copies into `data/export/`. Upload whichever Freesolo asks for.
 
 ## Step 2 - DPO (optional, ~15 more min, worth it for the track)
 
-1. New run → same base, but this time load **your Step-1 model** as the starting point.
+1. New run -> same base, but this time load **your Step-1 model** as the starting point.
 2. Method: **DPO / preference optimization**. Data: `farmhand_prefs.jsonl` (or the
    `dpo-flat` export). This teaches it to prefer clean JSON over the 9 common failure
-   modes (prose instead of JSON, guessing instead of asking, schema violations…).
-3. This gives you the "**SFT → DPO**, two-stage pipeline" story that beats teams who
+   modes (prose instead of JSON, guessing instead of asking, schema violations...).
+3. This gives you the "**SFT -> DPO**, two-stage pipeline" story that beats teams who
    only fine-tuned once.
 
 ## Step 3 - hand me the endpoint (30 seconds, then the robot is live on the real model)
@@ -61,8 +61,8 @@ Give me (or drop in `NOTES.md`): the **endpoint URL** + **API key** + whether th
 response is bare JSON or wrapped. Then:
 
 ```bash
-export FARMHAND_URL="https://…your-endpoint…"
-export FARMHAND_API_KEY="…"        # if needed
+export FARMHAND_URL="https://...your-endpoint..."
+export FARMHAND_API_KEY="..."        # if needed
 ```
 
 That's the whole integration. `client/farmhand.py` already POSTs `{"text": "..."}`,

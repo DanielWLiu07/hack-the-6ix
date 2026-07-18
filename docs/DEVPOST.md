@@ -22,10 +22,10 @@
 
 ## What it does (60-second version)
 
-- **Sees** - eye-in-hand camera → on-device vision model → `{fruit, ripeness, bbox}`.
-- **Understands** - natural-language commands ("pick all ripe apples") → the
-  **FarmHand LLM** → a validated structured action → the robot.
-- **Acts** - SEEK → ALIGN → PICK → SORT → DROP state machine, servo-interpolated
+- **Sees** - eye-in-hand camera -> on-device vision model -> `{fruit, ripeness, bbox}`.
+- **Understands** - natural-language commands ("pick all ripe apples") -> the
+  **FarmHand LLM** -> a validated structured action -> the robot.
+- **Acts** - SEEK -> ALIGN -> PICK -> SORT -> DROP state machine, servo-interpolated
   arm, ultrasonic e-stop + watchdog.
 - **Reports** - telemetry, detections, pick events, and a live lidar map stream
   to the dashboard; MongoDB Atlas persistence; quantified waste-avoided stats.
@@ -34,9 +34,9 @@
 
 | Track | Section |
 |---|---|
-| Freesolo LLM (FarmHand NL commands) | [↓ Freesolo](#freesolo-llm-track--farmhand-natural-language-commands) |
-| Qualcomm UNO Q (on-device AI) | [↓ Qualcomm](#qualcomm-uno-q-track--on-device-ai) |
-| Deloitte AI-for-Green (quantified impact) | [↓ Deloitte](#deloitte-ai-for-green--quantified-impact) |
+| Freesolo LLM (FarmHand NL commands) | [Freesolo](#freesolo-llm-track--farmhand-natural-language-commands) |
+| Qualcomm UNO Q (on-device AI) | [Qualcomm](#qualcomm-uno-q-track--on-device-ai) |
+| Deloitte AI-for-Green (quantified impact) | [Deloitte](#deloitte-ai-for-green--quantified-impact) |
 | Overall / Hardware | arm + vision + lidar sophistication; see hardware writeup |
 
 ---
@@ -59,7 +59,7 @@ Every model output is one of two JSON shapes:
 {"clarify":"Which fruit - apples, bananas, or both?"}
 ```
 
-Color language maps to ripeness (red apple / yellow banana → `ripe`, green →
+Color language maps to ripeness (red apple / yellow banana -> `ripe`, green ->
 `unripe`). Ambiguous commands ("pick the fruit") return a clarification instead
 of guessing - the robot stays put until the user answers.
 
@@ -73,33 +73,44 @@ of guessing - the robot stays put until the user answers.
 | `farmhand_prefs.jsonl` | **600** | preference pairs (chosen/rejected) for DPO/RL - bonus |
 
 - **2,752 assistant turns** total across train+val: **2,432 actions + 320
-  clarifications** (multi-turn clarify→answer→action dialogs included).
+  clarifications** (multi-turn clarify->answer->action dialogs included).
 - Task distribution: `pick` 1,468 · `drive` 550 · `sort` 224 · `stop` 190.
 - Varied phrasing, typos, slang, and caps; generator is seeded so re-runs are
   byte-identical, and eval texts are excluded from the training pool.
 - Exportable to `prompt-completion` / `alpaca` / `dpo-flat` if Freesolo's
   trainer wants a different shape.
 
-### Eval _(regex baseline on the 30 held-out commands - the comparison row)_
+### Eval _(30 held-out commands - trained on Freesolo Flash)_
 
-| Metric | Accuracy |
-|---|---|
-| **Exact match (all 4 fields)** | **28/30 (93.3%)** |
-| `task` | 30/30 (100%) |
-| `fruit` | 30/30 (100%) |
-| `filter` | 29/30 (96.7%) |
-| `zone` | 29/30 (96.7%) |
+We trained FarmHand on Freesolo (Qwen3.5-**0.8B**, a deliberately tiny edge-sized
+model) with a two-stage pipeline and scored every stage the same way on the same
+held-out set:
 
-The two misses are the idiomatic cases only a trained model should nail -
-_"bananas ripe or not"_ (→ `filter:any`) and _"come back to the charging
-station"_ (→ `zone:home`). This regex baseline is the floor the trained
-FarmHand model beats; `eval.py --endpoint <url>` scores the real model the same
-way for a side-by-side row. _(Trained-model number: TODO once teammate's
-endpoint is live - one env var flips the client from mock to real.)_
+| Model | Exact match | Over-clarify | Valid-JSON |
+|---|---|---|---|
+| Regex baseline | 28/30 (93.3%) | - | - |
+| Freesolo **SFT** (0.8B) | 28/30 (93.3%) | 2/30 | 100% |
+| Freesolo **SFT + GRPO** (0.8B) | **29/30 (96.7%)** | **1/30** | 100% |
+
+**What moved the number: reward-driven RL, not more data.** SFT matched the regex
+baseline but generalized better (it learned the idiomatic phrasings the regex
+missed). We then diagnosed the SFT model's only failures as _over-clarification_
+- on typos like `kil it now` it asked a question instead of committing to `stop`.
+We wrote a JSON-aware reward that scores over-clarification as zero and ran
+**GRPO** against it; the model learned to commit, reaching 96.7% and halving
+over-clarification. Every output is 100% schema-valid JSON.
+
+**An honest negative result we kept.** We also tried naive typo/slang data
+augmentation (226 extra rows); it _regressed_ exact-match to 86.7% by trading
+cautious clarifications for confident wrong answers. We did not ship it. This
+matches Freesolo's own thesis - **reward/environment quality is the ceiling, not
+dataset size** - and we have the ablation to prove it. Reproducible: our
+`training/` env + configs, and `training/eval_model.py` (rich metrics + a 26-case
+held-out typo stress set with verified zero train/eval leakage).
 
 ### End-to-end integration (works today)
 
-`nl_command` text → hub → **FarmHand service** → validate → hub → **UI echo +
+`nl_command` text -> hub -> **FarmHand service** -> validate -> hub -> **UI echo +
 robot forward**. Proven live against the real Socket.IO hub - 10 commands
 driven through as a real UI client while observing the actual robot-forward:
 
@@ -108,12 +119,12 @@ driven through as a real UI client while observing the actual robot-forward:
 | `pick all ripe apples` | `{task:pick, fruit:apple, filter:ripe}` | `pick{apple}` |
 | `sort the unripe apples into the left bin` | `{task:sort, fruit:apple, filter:unripe, zone:left}` | |
 | `yo can u snag me a banana thats not ripe` | `{task:pick, fruit:banana, filter:unripe}` | `pick{banana}` |
-| `stop!!!` | `{task:stop}` | mapped → `estop` |
-| `pick the fruit` | `clarify: "Which fruit…"` | withheld - awaits reply |
-| `asdf qwerty zzz` | `clarify: "I can pick, sort, drive, or stop…"` | withheld |
+| `stop!!!` | `{task:stop}` | mapped -> `estop` |
+| `pick the fruit` | `clarify: "Which fruit..."` | withheld - awaits reply |
+| `asdf qwerty zzz` | `clarify: "I can pick, sort, drive, or stop..."` | withheld |
 
 **Full run:** 7 valid actions forwarded, 3 clarifications correctly withheld, 0
-invalid outputs reached the robot. Reproducible: `client/demo_driver.py` →
+invalid outputs reached the robot. Reproducible: `client/demo_driver.py` ->
 `client/DEMO_TRANSCRIPT.md`.
 
 ### FarmHand demo video - shot list
@@ -121,9 +132,9 @@ invalid outputs reached the robot. Reproducible: `client/demo_driver.py` →
 1. **Hook (5s)** - dashboard NL box on screen, operator types
    _"pick all ripe apples"_ and hits enter.
 2. **The parse (5s)** - cut to a terminal/overlay showing the model's JSON
-   action appear next to the raw text: text in → `{task:pick,…}` out.
-3. **Validation gate (5s)** - split screen: type garbage (_"asdf qwerty"_) →
-   red "REJECTED, not forwarded" badge; then _"pick the fruit"_ → yellow
+   action appear next to the raw text: text in -> `{task:pick,...}` out.
+3. **Validation gate (5s)** - split screen: type garbage (_"asdf qwerty"_) ->
+   red "REJECTED, not forwarded" badge; then _"pick the fruit"_ -> yellow
    clarification bubble _"Which fruit - apples, bananas, or both?"_. Sell that
    the robot **cannot** be driven by bad output.
 4. **Robot acts (10s)** - the arm executes the ripe-apple pick from shot 1,
@@ -156,7 +167,7 @@ and safety. Unplug the network and the robot still sees, picks, and stops.
 QRB2210 (quad Cortex-A53, Debian Linux) with an STM32U585 real-time MCU, and we
 split the robot along the line that actually matters - *latency and safety*:
 
-- **MPU (Linux, ~5 W)** - camera capture → detector → ripeness classification →
+- **MPU (Linux, ~5 W)** - camera capture -> detector -> ripeness classification ->
   annotated MJPEG + `detection` events; visual-servoing and the pick/sort state
   machine. Everything that wants a filesystem, OpenCV/onnxruntime, and the
   network stack.
@@ -209,21 +220,21 @@ directly - fruit is graded into the right bin the moment it's picked instead of
 joining the post-harvest loss pile. That's the "Battery, not Blood" pitch, in
 one machine.
 
-**Throughput → waste avoided (live, not projected).** The dashboard computes
+**Throughput -> waste avoided (live, not projected).** The dashboard computes
 these from *actual* `pick_event`s in real time (`web/server/store.js`,
 `docs/DATA.md`), so we cite measured numbers on stage, not slideware:
 
-- Pick+sort cycle ≈ **8.4 s** measured → a single arm grades **~400+ fruit/hr**.
+- Pick+sort cycle ≈ **8.4 s** measured -> a single arm grades **~400+ fruit/hr**.
 - Mass per graded fruit: **apple 0.18 kg, banana 0.12 kg** (USDA medium-fruit
-  averages) → **~0.15 kg/pick avg**.
-- **Waste avoided = 0.15 kg × successful picks** → on the order of **~60 kg/hr**
+  averages) -> **~0.15 kg/pick avg**.
+- **Waste avoided = 0.15 kg × successful picks** -> on the order of **~60 kg/hr**
   graded at harvest, for one arm.
 - **CO₂e avoided = waste_avoided × 2.5 kg CO₂e/kg** (conservative end of the FAO
-  food-wastage-footprint range, 2–4) → **~150 kg CO₂e/hr**. We say "conservative"
+  food-wastage-footprint range, 2–4) -> **~150 kg CO₂e/hr**. We say "conservative"
   on stage.
 
 Every figure the judges see ticks up live as the robot picks - the impact/ROI
-widget is driven by real pick data (`/api/stats` → `waste_avoided_kg`,
+widget is driven by real pick data (`/api/stats` -> `waste_avoided_kg`,
 `co2e_avoided_kg`), not a static number.
 
 **Green AI - the compute itself is sustainable.** The perception model runs

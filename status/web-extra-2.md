@@ -62,4 +62,61 @@ Human: the tab selector looked cheap; wanted glass + standardized + manga theme,
 - **One glass vocabulary**: top-bar chips (EXIT/STATE/PWR/GO LIVE/FULL), bottom telemetry chips, and the segmented control all share the same glass tokens (border `rgba(255,255,255,.16)`, `backdrop-filter: blur(16px)`, inset highlight).
 - **Black & white, no green**: dropped every colour accent. Palette is paper `#f2f0e9` / ink `#0b0e0d` / greys. Detection boxes = white (ripe solid, unripe dashed); battery fill = paper/greys; reticle + scanline + ticks white; LIVE active = inverted paper chip; swatches = filled vs outlined paper. Matches the B&W manga fringe.
 Build + oxlint + style sweep clean.
+NOTE: since then RobotPOV/RobotFringe/pov.css/main.jsx were further edited by the human/other panes (new LidarViewport component, paper-white lidar bg, /pov EXIT -> /stage, default tab iphone). Not reverting. Open POV feedback from human to still address: manga fringe should be "seamless" (blend the top fringe into the view, no hard seam) and "no blinking" (kill any flicker). Deferred while I build the harvest page.
+
+## [03:20] WIP - CLAIM: Harvest / pick-photo gallery page
+Human: "we need a page to store the apple photos when we pick it up." Building a gallery of the per-pick photos.
+Contract (from server/index.js + sim.js): pick_event carries `image_url` (absolute hub URL, e.g. `${SERVER_URL}/media/pick_<ts>.svg`; real robot writes JPEG); photos served static at `/media/`; history via `GET /api/picks` (returns stored pick rows incl image_url). Photos never in Atlas, only the /media ref.
+FILES I OWN / am adding:
+- `web/src/pages/Harvest.jsx` - NEW, mine (the gallery)
+- `web/src/harvest.css` - NEW, mine
+- `web/src/main.jsx` - SHARED: additive only, one import + one `<Route path="/harvest">` under Layout. (Layout has no nav bar anymore, so no nav-link edit; page reachable at /harvest.)
+@web-frontend / whoever owns nav: /harvest is live but unlinked - wire it into the hub/nav wherever nav now lives (stage?) if you want it discoverable.
+
+## [03:30] DONE - Harvest / pick-photo gallery page at /harvest
+Built `pages/Harvest.jsx` + `harvest.css`; route added under Layout in main.jsx (additive: one import + one Route). Control-room green theme, reuses ui.css .tag/.empty.
+- Loads history from `GET ${SERVER_URL}/api/picks?limit=500`, merges live `pick_event`s from useRobot().picks, dedupes by ts, newest first.
+- Responsive card grid: per-pick photo (`image_url` -> /media, lazy-loaded), SORTED/MISS badge, fruit + ripeness tag + bin + timestamp. Filter chips (All/Apples/Bananas). Stat tiles (total picked, sort-success %). Honest empty state when no picks; graceful when API unreachable (falls back to session picks).
+- **Verified rendering** via headless screenshot (DOM+img, no WebGL): shows 500 picks, 91% sorted-ok, cards with the sim's SVG pick photos (red apple / yellow banana). Real robot JPEGs will drop into the same /media path -> zero web change. Build + oxlint + style-char sweep clean. Opened in the human's browser.
+Note: photos shown now are sim placeholders; they are real pick records from the hub store, so this is the true pipeline, not fabricated frontend data.
+
+## [03:40] DONE - Harvest redesign + IN-BROWSER ripeness ML (human: "run through the ml ripeness thing")
+Human approved running the ONNX model in the browser. Delivered:
+- **Harvest UI redesign** (photos-first): square photo cards with ripeness chips (RIPE/UNRIPE), SORTED/MISS badge, click-to-open lightbox (full photo + metadata + model class). Added Ripe/Unripe filters + a "ripe" stat tile.
+- **In-browser ripeness classifier** `src/lib/ripeness.js`: runs the SAME YOLOv8n model (`ml/ripeness/export/model.int8.onnx`) via onnxruntime-web (WASM). Letterbox preprocess -> [1,3,320,320] -> decode YOLOv8 top class -> {fruit, ripeness, conf}. onnxruntime is dynamic-imported (stays out of main bundle; loads on first classify).
+- **Wired into Harvest**: an Upload/drop-a-photo panel classifies a real photo in-browser; the lightbox has a "Run ripeness model" button that classifies the stored photo. Shows fruit + ripeness + confidence.
+- **VERIFIED end-to-end** in headless Chrome (WASM, no GPU needed): a real training image (ground truth banana_unripe) classified as banana_unripe @ 82% conf in 60ms. Decode + pipeline correct.
+
+New deps/assets (COORDINATION):
+- Added `onnxruntime-web ^1.27.0` to web/package.json (shared - ran npm install).
+- Staged `public/models/ripeness/model.int8.onnx` (3.3MB) + classes.json, and `public/ort/` wasm (jsep + non-jsep, ~40MB total) for offline self-hosting.
+- Vite dev can't serve the ORT `.mjs` glue from /public, so `ripeness.js` loads ORT wasm from the version-matched jsDelivr CDN in DEV and from `/ort/` in the PROD build (offline-safe).
+- @deploy: the prod build emits a ~26MB ort wasm asset PLUS the /ort copies -> Vercel bundle grows a lot. If that's a problem, we can externalize onnxruntime-web's bundled wasm (vite.config, web-frontend's) so only /ort/ ships, or lazy-host the model. Flag if the deploy size bites.
+Qualcomm note: this is the dashboard re-running the model on stored/uploaded photos (edge/browser), NOT cloud and NOT the robot control loop - reinforces the on-device story rather than violating it.
+Build + oxlint + style sweep clean. Opened in the human's browser; drop a real apple/banana photo on /harvest to see it classify.
+
+## [03:50] DONE - restyled Harvest to the monochrome manga+glass theme (match POV)
+Rewrote harvest.css from the green control-room theme to the POV manga palette: paper `#f2f0e9` / ink / frosted glass, no colour. Glass stat chips + filter pills (active = inverted paper), paper Upload button, glass cards. Photos get the manga print treatment: `grayscale + contrast` with a faint halftone dot screen (`::after` radial-dot pattern, multiply blend). Ripeness in B&W: RIPE = filled paper chip, UNRIPE = dashed outline; SORTED = paper chip, MISS = outlined. Lightbox reskinned to glass. Verified via headless screenshot - cohesive with /pov. Build + style sweep clean.
+
+## [03:58] DONE - corrected Harvest to the PAPER-WHITE manga theme (the actual /pov look)
+The POV pages' manga theme is light: warm paper bg (`#fffdf8`/`#fbf8f0`) + black ink + halftone (the LidarViewport uses paper bg + black points). My first manga pass made Harvest dark, which didn't match. Re-themed harvest.css to the paper-manga palette: paper page background with a halftone dot screen, black ink text, light-glass chips, ink-filled active states (filters/upload = solid ink on paper), photos grayscale + black halftone screen, ripeness RIPE=filled paper / UNRIPE=dashed outline, paper lightbox. `.harvest` bleeds to the page edges (negative margin) so it reads as a manga sheet. Build + style sweep clean; verified via headless - now matches /pov's paper-and-ink look.
+
+## [04:05] DONE - Harvest restyled to the Data Aggregation (Analytics) manga-comic design
+Human: use the design like the data aggregation page. Rewrote harvest.css to mirror analytics.css (az-) exactly: same palette (ink #14110a / paper #f7f4ea / page #eae5d9 / track), full-bleed inked page with paper grain, halftone/hatch tone vars. "HARVEST LOG" as Arial-Black italic uppercase with the inked drop-shadow logo + 3px ink header rule. Stat tiles + classify panel + cards + lightbox are inked comic panels (2.5px ink border, sharp radius, halftone top strip / crosshatch wedge). Filters = inked segmented pills (active solid ink). Ripeness encoded like the analytics legend: RIPE = solid ink, UNRIPE = halftone screentone. Photos get grayscale + halftone screentone. Card hover = hard 4px ink drop-shadow. Verified via headless - visually consistent with /analytics. Build + style sweep clean.
+
+## [04:25] DONE - polish: real-photo annotations (model detection box) + blob-ready + impact stat
+Human: real apple photos, annotations for each, using blob storage.
+- **Annotations**: extended `lib/ripeness.js` to return the detection BOX (mapped through the letterbox back to original-image normalized coords), not just the class. New `AnnotatedPhoto` component draws the model's box + `FRUIT RIPENESS conf%` label over each photo in the manga ink style (SVG viewBox 0..100, slice for cover / meet for contain so it registers with object-fit). Used in gallery cards, the upload panel, and the lightbox.
+- **Blob storage ready**: photos are fetched to a blob before detect (`detectUrl`) so CORS-enabled Vercel Blob / hub-media URLs read off-canvas cleanly. Detection is lazy (IntersectionObserver, 150px margin), concurrency-limited (2), and cached by URL. SVG placeholders are skipped (only real JPEG/blob photos get annotated), so no wasted inference on the current sim data.
+- Cards now show the LIVE model label in the overlay chip (falls back to the logged label); lightbox shows "Model detection: <class> <conf>%" vs the logged class.
+- **Impact stat**: added a "kg saved" tile (sorted picks * 0.15kg) for the Environmental / Deloitte-Green track.
+- **VERIFIED**: detectImage on a real training image returns banana_unripe @82% with box [0.283,0.473,0.134,0.178] that lands exactly on the banana. Annotation overlay math confirmed. Build + oxlint + style sweep clean.
+Note: gallery shows annotations only once REAL photos flow (sim writes .svg placeholders which are intentionally skipped); demoable NOW by dropping a real apple/banana photo on the upload panel.
+
+## [04:40] DONE - more Harvest polish
+- **Manga glyph placeholder**: picks without a real photo (sim .svg) now render an inked apple/banana glyph on paper with a "no photo yet" tag, instead of the dark stand-in SVG. Gallery now looks intentional/on-theme immediately (verified via headless).
+- **Lightbox nav**: prev/next buttons + keyboard (arrows to move, Esc to close) + "N / M" position counter. Flip through picks like a contact sheet.
+- **Result count** ("N shown") on the filter row; lightbox model row reads "awaiting real photo" for placeholders (not a stuck "running...").
+- Made the UNRIPE chip an outlined dashed chip (legible) vs RIPE solid ink.
+Build + oxlint + style sweep clean.
 

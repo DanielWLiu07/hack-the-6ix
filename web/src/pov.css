@@ -33,7 +33,7 @@
   --blur: blur(12px) saturate(1.02);
 }
 
-/* ── active sensor view fills the viewport ── */
+/* active sensor view fills the viewport */
 .pov-main { position: absolute; inset: 0; }
 .pov-view { position: absolute; inset: 0; }
 .pov-main canvas { display: block; width: 100% !important; height: 100% !important; }
@@ -83,7 +83,7 @@
   filter: contrast(1.08);
 }
 
-/* ── detection boxes (ink on the feed; ripe = solid, unripe = dashed) ── */
+/* detection boxes (ink on the feed; ripe = solid, unripe = dashed) */
 .pov-boxes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .pov-box { animation: pov-box-life var(--ttl) ease-out forwards; }
 .pov-box rect {
@@ -110,7 +110,7 @@
   100% { opacity: 0; }
 }
 
-/* ── HUD layer ── */
+/* HUD layer */
 .pov-hud { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
 .pov-hud button, .pov-hud a { pointer-events: auto; }
 
@@ -133,7 +133,7 @@
   50% { top: 78%; opacity: 0.12; }
 }
 
-/* ── glass primitives (shared vocabulary) ── */
+/* glass primitives (shared vocabulary) */
 .pov-glass {
   border: 1px solid var(--edge);
   background: var(--glass);
@@ -141,7 +141,7 @@
   box-shadow: var(--glass-hi);
 }
 
-/* ── top bar ── */
+/* top bar */
 .pov-top {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -216,7 +216,7 @@
   border-color: var(--ink);
 }
 
-/* ── center reticle ── */
+/* center reticle */
 .pov-reticle {
   position: absolute;
   top: 46%; left: 50%;
@@ -244,7 +244,7 @@
   50% { transform: translate(-50%, -50%) scale(1.07); }
 }
 
-/* ── bottom: uniform glass chips + glass segmented control ── */
+/* bottom: uniform glass chips + glass segmented control */
 .pov-bottom {
   position: absolute;
   left: 0; right: 0; bottom: 0;

@@ -16,9 +16,9 @@ world-frame accumulation; without pose it just smears.
 
 Keep the last K scans; fade each by age; drop when fully faded.
 
-- 2 Hz input, fade time T = 4 s → K = 8 scans ≈ ≤2 880 points. Trivial for three.js.
+- 2 Hz input, fade time T = 4 s -> K = 8 scans ≈ ≤2 880 points. Trivial for three.js.
 - Per-scan alpha: `alpha = max(0, 1 - age/T)` (linear) or `exp(-age/tau)`, tau ≈ 1.5 s.
-- Newest scan full brightness; optionally tint by age (e.g. lerp cyan → deep blue).
+- Newest scan full brightness; optionally tint by age (e.g. lerp cyan -> deep blue).
 
 ### Simple version (recommended first): one `<points>` per scan
 
@@ -59,7 +59,7 @@ obvious, and a faint 1 m grid for scale. Room in the sim is 8×6 m - camera at
 
 ## Nice-to-haves (cheap)
 
-- Color newest scan white/cyan, older scans darker blue → motion trails read instantly.
+- Color newest scan white/cyan, older scans darker blue -> motion trails read instantly.
 - `sizeAttenuation` on, point size 0.05–0.08 world units.
 - Clamp/ignore scans with `points.length === 0` (possible on dropout).
 - If scans stop arriving (robot offline), let everything fade out - free "signal lost" UX.

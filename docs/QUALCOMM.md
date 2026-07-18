@@ -1,4 +1,4 @@
-# Qualcomm / Arduino UNO Q track - on-device AI + MPU↔MCU split
+# Qualcomm / Arduino UNO Q track - on-device AI + MPU<->MCU split
 
 **What this track rewards:** an *intentional* split between the UNO Q's Linux MPU
 and its real-time MCU, and **genuine on-device AI** - no cloud inference. This
@@ -15,7 +15,7 @@ and the on-device numbers that prove the AI runs on the board.
 The **Arduino UNO Q** is a dual-brain module:
 
 - **MPU - Qualcomm Dragonwing QRB2210** (quad Cortex-A53, Debian Linux, ~5 W).
-  Runs our whole vision stack: camera capture → detector → annotated MJPEG +
+  Runs our whole vision stack: camera capture -> detector -> annotated MJPEG +
   detections. This is where "on-device AI" lives.
 - **MCU - STM32U585** (Cortex-M33, bare-metal / Zephyr sketch). Owns real-time
   motion + safety: tank drive PWM, PCA9685 servo interpolation, ultrasonic
@@ -46,16 +46,16 @@ architecture Qualcomm's track is asking for - a genuine hard-real-time / rich-OS
 partition, each doing what only it can.
 
 ```
-        ┌──────────────────────── UNO Q ────────────────────────┐
- camera │  MPU (QRB2210, Linux, ~5W)          MCU (STM32U585)   │
-  ──────┼─▶ capture ─▶ detector ─▶ detections   drive PWM       │──▶ motors
-        │      │         (HSV / YOLOv8 ONNX)     servo interp    │──▶ arm
-        │      ▼            ON-DEVICE AI         ultrasonic reflex│◀── sonar
-        │  annotated MJPEG :8080          ▲  watchdog 500ms      │
-        │      │        App Lab Bridge ───┘  (safety, MCU-local) │
-        └──────┼──────── (MsgPack-RPC) ──────────────────────────┘
-               ▼
-       Socket.IO telemetry ──▶ laptop server ──▶ web dashboard
+        +------------------------ UNO Q ------------------------+
+ camera |  MPU (QRB2210, Linux, ~5W)          MCU (STM32U585)   |
+  ------+-> capture -> detector -> detections   drive PWM       |--> motors
+        |      |         (HSV / YOLOv8 ONNX)     servo interp    |--> arm
+        |      v            ON-DEVICE AI         ultrasonic reflex|<-- sonar
+        |  annotated MJPEG :8080          ^  watchdog 500ms      |
+        |      |        App Lab Bridge ---+  (safety, MCU-local) |
+        +------+-------- (MsgPack-RPC) --------------------------+
+               v
+       Socket.IO telemetry --> laptop server --> web dashboard
        (dashboard/analytics only - NEVER inference)
 ```
 
@@ -142,7 +142,7 @@ even without it.
 
 ## Files that back this up
 
-- `firmware/BRIDGE.md` - the MCU↔Linux RPC contract (the split, formalized).
+- `firmware/BRIDGE.md` - the MCU<->Linux RPC contract (the split, formalized).
 - `robot/vision/detector.py` / `hsv_detector.py` / `onnx_detector.py` - the
   on-device detector (auto-selects ONNX over HSV).
 - `robot/vision/bench.py` + `deploy_unoq.sh` - the on-device FPS harness.

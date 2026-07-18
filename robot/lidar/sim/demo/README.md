@@ -1,6 +1,6 @@
 # SLAM room-tour demo segment
 
-Backup demo-video footage of the **on-device SLAM** (RPLIDAR C1 → Raspberry Pi):
+Backup demo-video footage of the **on-device SLAM** (RPLIDAR C1 -> Raspberry Pi):
 a 360° lidar streams pose-less scans, and `scan_match.py` (scan-to-map ICP)
 recovers the robot's trajectory *and* a global occupancy map in real time - no
 cloud, no wheel/IMU odometry.
@@ -9,7 +9,7 @@ cloud, no wheel/IMU odometry.
 
 | File | What |
 |------|------|
-| `slam_room_tour.mp4` | The segment: intro title card → live map build-up (HUD: scan #, map pts, match residual) → outro hold on the finished map. ~13 s. |
+| `slam_room_tour.mp4` | The segment: intro title card -> live map build-up (HUD: scan #, map pts, match residual) -> outro hold on the finished map. ~13 s. |
 | `slam_room_tour.gif`  | Same, GIF (for Devpost/README embeds). |
 | `slam_room_tour_map.png` | Hero still: completed room map + full recovered trajectory. |
 
@@ -22,7 +22,7 @@ cd robot/lidar/sim
 .venv/bin/python tour.py demo/slam_room_tour.gif --demo            # GIF variant
 ```
 
-Fixed random seed ⇒ byte-stable footage. `--seconds` longer = more room coverage
+Fixed random seed => byte-stable footage. `--seconds` longer = more room coverage
 but more open-loop drift smear (no loop closure); 16 s is the tuned sweet spot.
 
 ## Notes for the video editor / pitch

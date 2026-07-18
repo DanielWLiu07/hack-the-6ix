@@ -18,7 +18,7 @@ fi
 : "${SERVER_URL:=http://localhost:3001}"
 export SERVER_URL
 
-echo "[run.sh] lidar node → $SERVER_URL (Ctrl-C to stop)"
+echo "[run.sh] lidar node -> $SERVER_URL (Ctrl-C to stop)"
 
 STOP=0
 trap 'STOP=1' INT TERM

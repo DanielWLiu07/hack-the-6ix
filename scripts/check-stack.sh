@@ -4,8 +4,8 @@
 #   ./scripts/check-stack.sh            # checks localhost defaults
 #   SERVER_URL=http://192.168.1.5:3001 ./scripts/check-stack.sh
 #
-# Checks: hub port up → socket.io handshake → sim emitting telemetry →
-# REST endpoints → /stream → (informational) Vite dev server.
+# Checks: hub port up -> socket.io handshake -> sim emitting telemetry ->
+# REST endpoints -> /stream -> (informational) Vite dev server.
 # Exit 0 = all required checks pass. Nonzero = something's broken.
 
 set -u
@@ -60,12 +60,12 @@ for EP in /api/stats /api/picks; do
   CODE=$(curl -s -o /tmp/check-stack-body.$$ -w '%{http_code}' --max-time 3 "$SERVER_URL$EP")
   if [ "$CODE" = "200" ]; then
     if node -e "JSON.parse(require('fs').readFileSync('/tmp/check-stack-body.$$','utf8'))" 2>/dev/null; then
-      ok "GET $EP → 200, valid JSON"
+      ok "GET $EP -> 200, valid JSON"
     else
-      bad "GET $EP → 200 but body is not valid JSON"
+      bad "GET $EP -> 200 but body is not valid JSON"
     fi
   else
-    bad "GET $EP → HTTP $CODE (expected 200)"
+    bad "GET $EP -> HTTP $CODE (expected 200)"
   fi
   rm -f /tmp/check-stack-body.$$
 done
@@ -75,7 +75,7 @@ CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 3 -r 0-1024 "$SERVER_UR
 if [ "$CODE" = "200" ] || [ "$CODE" = "206" ]; then
   ok "/stream answers (HTTP $CODE)"
 else
-  warn "/stream → HTTP ${CODE:-none} (P1 for demo; test pattern expected even without robot)"
+  warn "/stream -> HTTP ${CODE:-none} (P1 for demo; test pattern expected even without robot)"
 fi
 
 # 4b. Informational: /api/health surfaces the phase-2 wiring (agent + Base44).
@@ -83,7 +83,7 @@ CODE=$(curl -s -o /tmp/check-stack-health.$$ -w '%{http_code}' --max-time 3 "$SE
 if [ "$CODE" = "200" ]; then
   HEALTH=$(cat /tmp/check-stack-health.$$)
   case "$HEALTH" in
-    *'"agent":0'*) warn "no FarmHand agent connected (nl_command→nl_action will get no reply until llm-client's service.py runs)" ;;
+    *'"agent":0'*) warn "no FarmHand agent connected (nl_command->nl_action will get no reply until llm-client's service.py runs)" ;;
     *'"agent":'*)  ok "FarmHand agent connected (NL command path live)" ;;
   esac
   case "$HEALTH" in

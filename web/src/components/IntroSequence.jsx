@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 // Landing intro beat: an apple flies up, the "camera" pulls out, and the
-// monkey mascot pops in with a speech bubble — then it fades to reveal the
+// monkey mascot pops in with a speech bubble - then it fades to reveal the
 // scene + nav. Skippable (click) and plays once per session.
 export default function IntroSequence({ onDone }) {
   const [gone, setGone] = useState(false)
@@ -30,8 +30,8 @@ export default function IntroSequence({ onDone }) {
   return (
     <div className="intro" onClick={finish} role="presentation">
       <div className="intro-stage">
-        <div className="intro-apple" aria-hidden>🍎</div>
-        <div className="intro-monkey" aria-hidden>🐒</div>
+        <div className="intro-apple" aria-hidden></div>
+        <div className="intro-monkey" aria-hidden></div>
         <div className="intro-bubble">
           Battery, <span className="accent">not Blood.</span>
         </div>

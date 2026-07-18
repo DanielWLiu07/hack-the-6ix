@@ -1,23 +1,14 @@
-import {
-  Component,
-  Suspense,
-  lazy,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
+import { Component, Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
 import '../analytics.css'
 
-// Full-page painterly orchard backdrop (same painterly pipeline + palette as the
-// landing, populated with fruit all around). Lazy so three/r3f stays out of the
-// analytics data path.
-const AnalyticsHero = lazy(() => import('../components/AnalyticsHero.jsx'))
+// Manga-shader crust texture for the page background only. Lazy so three/r3f
+// stays out of the analytics data path.
+const MangaBackdrop = lazy(() => import('../components/MangaBackdrop.jsx'))
 
-// Green painterly orchard palette.
-const C_LEAF = '#52803a'
-const C_GOLD = '#b57e28'
-const C_INK = '#33452b'
+// Ink for the data marks.
+const C_INK = '#171914'
+const C_GREY = '#6f6a61'
 
 const BINS = ['apple_ripe', 'apple_unripe', 'banana_ripe', 'banana_unripe']
 const KG_PER_PICK = 0.15 // avg fruit mass, waste-avoided estimate
@@ -247,14 +238,12 @@ export default function Analytics() {
 
   return (
     <div className="az">
-      {/* entire page = painterly orchard scene (landing pipeline + palette) */}
-      <div className="az-scene" aria-hidden>
-        <HeroBoundary>
-          <Suspense fallback={null}>
-            <AnalyticsHero />
-          </Suspense>
-        </HeroBoundary>
-      </div>
+      {/* manga-shader crust behind the UI (background only) */}
+      <HeroBoundary>
+        <Suspense fallback={null}>
+          <MangaBackdrop />
+        </Suspense>
+      </HeroBoundary>
 
       <div className="az-overlay">
         <div className="az-head">
@@ -302,7 +291,7 @@ export default function Analytics() {
           value={fmt(total)}
           sub={`${okCount} ok / ${winPicks.length - okCount} fail (${winLabel})`}
           series={series.picksCum}
-          color={C_LEAF}
+          color={C_INK}
         />
         <Metric
           label="Sort success"
@@ -314,16 +303,16 @@ export default function Analytics() {
               : 'no picks yet'
           }
           series={series.successRoll}
-          color={C_LEAF}
+          color={C_INK}
           area={false}
         />
         <Metric
           label="Waste avoided"
           value={fmt(waste, 2)}
           unit="kg"
-          sub={`at ${KG_PER_PICK} kg per fruit saved`}
+          sub={`${KG_PER_PICK} kg per fruit`}
           series={series.wasteCum}
-          color={C_GOLD}
+          color={C_INK}
         />
         <Metric
           label={co2eShown ? 'CO2e avoided' : 'Avg pick time'}
@@ -339,7 +328,7 @@ export default function Analytics() {
             avgMs != null ? `avg cycle ${(avgMs / 1000).toFixed(1)}s` : undefined
           }
           series={series.wasteCum}
-          color={C_INK}
+          color={C_GREY}
           area={co2eShown}
         />
       </div>
@@ -404,7 +393,7 @@ export default function Analytics() {
       {/* throughput strip */}
       <div className="az-panel az-strip">
         <h3>Throughput / picks over {winLabel === 'ALL' ? 'session' : winLabel}</h3>
-        <Sparkline data={series.buckets} color={C_LEAF} area height={58} />
+        <Sparkline data={series.buckets} color={C_INK} area height={58} />
       </div>
         </div>
       </div>

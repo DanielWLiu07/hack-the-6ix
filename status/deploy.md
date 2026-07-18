@@ -46,3 +46,11 @@
 - Prod alias → dpl_APi4WzjLnzqGL2nB1 (deployed 23:29:06) already carries master's `[landing-final]` ship (App.jsx 23:27, world.glb 23:23). One later edit `OrchardHero.jsx` @23:31:21 postdates that deploy with NO status DONE backing it → prod is ~1 substantive edit behind.
 - **Master has self-deployed all landing changes (4 prod deploys/40min); human directed me to DEFER to master (hold), not race.** So I did NOT redeploy. Per decision: only ship NON-landing frontend milestones going forward; master owns landing/hero deploys.
 - My earlier line-count watchers false-tripped on this actively-appended file. Replaced with a robust DONE-heading-set diff watcher that ignores landing/hero/orchard/scene entries.
+
+## [03:29] DONE - og/social meta tags + painterly card + unfurl verified + redeployed
+- Task from BROADCAST make-it-better round: og/social meta in index.html + verify unfurl + redeploy.
+- Edited web/index.html (master-directed; web-frontend normally owns it, heads-up: I touched only the head meta, no body/script changes). Added Open Graph (type, site_name, title, description, url, image + type/width/height/alt) and Twitter (summary_large_image, title, description, image). Fixed the title em dash to a colon per the new style rule; scanned the file clean of emoji/em dash/arrows/ellipsis.
+- Card image: web/public/og-card.png, 1200x630 png, cropped from web-frontend's OrchardHero landing capture (painterly apple tree + meadow). Matches what the live landing shows.
+- Redeployed prod: dpl_HAQ3geS97iqpG51JSXZoArkoyU3t, READY. Alias hack-the-6ix-chi.vercel.app resolves to it.
+- Verified unfurl: fetched prod HTML as facebookexternalhit, all og+twitter tags present; og:image (absolute URL) returns 200 image/png 722846 bytes at 1200x630; title correct. Definitive human check: paste the URL into Slack/iMessage to eyeball the rendered card.
+- Note: og:image is 722 KB (well under scraper caps). VITE_SERVER_URL still empty in prod (localhost fallback, venue tunnel step unchanged).

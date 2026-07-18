@@ -11,15 +11,14 @@ This is the **spatial-AI half** of that split, running on the MPU alongside the
 vision inference:
 
 ```
-        UNO Q  ┌─────────────────────────────────────────────┐
-        (MPU,  │  camera → on-device fruit/ripeness inference  │  vision-infer
-        Linux) │  C1 lidar → on-device 2D SLAM (this) ─────────┼─► slam_update
-               └───────────────┬───────────────────────────────┘
-                               │ bridge RPC (fw-tools BRIDGE.md)
-        (MCU, STM32)  ┌────────▼────────┐
-                      │ real-time motor  │  fw-mcu
-                      │ + servo control  │
-                      └──────────────────┘
+        UNO Q  +-----------------------------------------------+
+        (MPU,  |  camera -> on-device fruit/ripeness inference |  vision-infer
+        Linux) |  C1 lidar -> on-device 2D SLAM (this) --------+--> slam_update
+               +-----------------------+-----------------------+
+                                       | bridge RPC (fw-tools BRIDGE.md)
+        (MCU, STM32)  +---------------v---------------+
+                      |  real-time motor + servo ctrl |  fw-mcu
+                      +-------------------------------+
 ```
 No cloud, no ROS, no GPU - 5 W edge compute doing SLAM. That's the pitch.
 
@@ -45,7 +44,7 @@ SERVER_URL=http://<laptop-hotspot-ip>:3001 ./run_slam.sh
 (drops the matplotlib dependency entirely).
 
 ## Data flow
-1. C1 reader (`lidar_node/`) emits `lidar_scan` → hub.
+1. C1 reader (`lidar_node/`) emits `lidar_scan` -> hub.
 2. This node subscribes (hub role `ui`), runs SLAM, emits `slam_update`.
 3. Web lidar view renders the occupancy grid + pose (needs the hub relay + the
    web render - see coordination below).
@@ -56,7 +55,7 @@ SERVER_URL=http://<laptop-hotspot-ip>:3001 ./run_slam.sh
                "origin":[ox,oy],"cells":[[cx,cy],...]}  // world-m occupied cells, ≤1500
 ```
 - **server-core**: the hub whitelists relayed events (`ROBOT_EVENTS`). Add a
-  `slam_update` relay `ui → uis` (it's a compute/telemetry event; the producing
+  `slam_update` relay `ui -> uis` (it's a compute/telemetry event; the producing
   node connects as `ui` because it must *receive* `lidar_scan`). One handler,
   mirrors the existing relay loop. Requested via status/lidar-pi.md.
 - **web-frontend**: render `cells` as a ground-plane occupancy overlay (grid of

@@ -59,3 +59,65 @@ Per human direction: use an ACCURATE PS5 controller (the procedural one looked g
 - **Keyboard/Controller toggle** in the hero header. Controller mode = the 3D DualSense + badges + legend. Keyboard mode = a clean keycap diagram (WASD, arrows, JKL, Space) that highlights keys as pressed. Only one shows at a time (cleaner UI). Both input methods keep working regardless of which view is shown; three.js only mounts in controller mode.
 - Removed the old procedural rig + corner deco. `mangaPass.js` untouched (still used by MonkeyMascot). Build + oxlint clean, no em dash / no emoji.
 - Verify: `/teleop?sim=1`, toggle Controller/Keyboard; in Controller press WASD/JKL/Space or a PS pad -> matching badge glows.
+
+## [03:25] DONE, paint-shader fruit layer + dock/annotation polish + navbar removal
+Per human direction on the Teleop page. My three claimed files only (Teleop.jsx, ControllerModel.jsx, teleop.css), plus two flagged shared-file edits below. `npm run build` clean, render-verified on a REAL GPU via headless Chrome (--use-angle=metal; swiftshader cannot run the multi-pass WebGL, so I used Metal).
+- **Paint shader on the surrounding fruit/props only, scene stays ink.** Reused the shared `vendor/painterly.js` (anisotropic Kuwahara), did NOT write a new shader. Single canvas, two passes per frame: the ink pass draws the manga world + controller as the opaque base, then the painterly pass draws the fruit props in a new premultiplied cutout mode and blends on top. Passes are separated by toggling group visibility, so there is only ONE WebGL context (fits CanvasGuard's combined-load concern). Props: two apples (fresh flat-tinted material, since apple.glb's own material rendered near-white), plus the crate and tree on their own materials.
+- **Crash fix:** removed the `banana.glb` prop (that asset is a 357-byte HTML placeholder, not a GLB, and it was throwing and tripping the "3D controller unavailable" boundary). Added a per-prop error boundary so any single bad asset drops just that prop instead of killing the scene.
+- **Collapsible dock** now animates smoothly (grid-template-rows 1fr->0fr transition, content stays mounted) instead of an instant show/hide.
+- **Annotations** pushed further out from the controller and enlarged (bigger Html via lower distanceFactor + larger label font/dpad/joystick glyphs).
+- **Object manipulation:** wrapped each fruit prop in drei `<DragControls>` so the props can be dragged around the scene.
+- **Top navbar removed:** dropped the back-link + drive-source bar; the title (kicker + DUALSENSE TELEOP) now sits alone at the top, prominent, pointer-events:none so it never blocks dragging.
+
+## [03:25] DONE, full style clean v2 on my files
+Per [full style clean v2, mandatory]. Swept my three files: zero em dashes, zero unicode ellipsis, zero emoji, no unicode arrows in comments. Removed two decorative banner comments (`/* ---- x ---- */` -> `/* x */`). KEPT design-intentional UI glyphs the rule explicitly permits: the on-screen drive-pad arrows, the arrow-key diagram, the PS face-button symbols, and the expand/collapse chevron. Build passes.
+
+## [03:25] DONE, voice command mic (Web Speech API -> FarmHand)
+Per [make-it-better] @web-extra-1. Added a "Voice command" mic button to the Teleop dock using the browser Web Speech API (`webkitSpeechRecognition`), no external service. Flow: transcript -> `emit('nl_command', {text})` to the hub -> FarmHand parses -> `nl_action` reply shown inline as confirmation ("FarmHand: <transcript> -> pick ripe apple"). Recording state pulses a red dot; unsupported browsers simply hide the button.
+- **COORDINATION FLAG for @web-frontend** (I edited two of your files, both additive and backward-compatible, needed for the assigned task):
+  1. `src/lib/robot.jsx`: added `'nl_action'` to the socket event-forward list (the hub already relays nl_action to uis per server/index.js; the UI just was not subscribing).
+  2. `src/lib/sim.js`: added an `nl_command` branch + exported `parseNlCommand()` FarmHand stand-in (keyword parse -> nl_action matching the root-CLAUDE schema, then acts on it) so voice works in `?sim=1` with no live agent.
+  Also, earlier in this session I added an additive `cutout` mode to `src/vendor/painterly.js` (new `uCutout` uniform + a premultiplied cutout branch, default off) for the fruit paint layer; existing consumers (OrchardHero/AnalyticsHero) are unaffected (default path unchanged). Please fold these in / re-claim if you want them back.
+- Verify: `/teleop?sim=1`, click Voice command, say "pick the ripe apples"; the confirmation line shows the parsed action. parseNlCommand unit-checked against the schema.
+
+## [03:45] DONE, scene editor upgrade + camera lock + joystick circle fix
+Per human direction. My claimed files only (Teleop.jsx unchanged this round; ControllerModel.jsx, teleop.css). Build clean, render-verified on real GPU (Metal).
+- **Removed camera drift:** the stage camera no longer moves with stick/keyboard input (dropped CameraRig from the stage canvas). Fixed camera at [0,0,7] so the scene is stable to edit in. Non-stage hero keeps its CameraRig.
+- **Joystick indicator was an ellipse, now a circle:** the `.scene-joy` had `flex-basis:100%` which stretched it to the label width. Wrapped it in a centering element so the circle keeps a fixed square size.
+- **Full scene editor (add / remove / move / rotate / scale any object):** props are now runtime state (not a fixed array). EDIT SCENE panel gained: a LIBRARY dropdown + ADD (Apple, Apple gold, Crate, Tree, TV, Monkey), an OBJECTS selector, POSITION + ROTATION + SCALE sliders per object, DUPLICATE, REMOVE, and RESET SCENE. StageProp normalizes each GLB to unit size once and applies pos/rot/scale on a wrapper group so scale edits are cheap. Replaced the earlier DragControls (it fought the new items state).
+- **Meshy / more assets:** the scene is now extensible via `PROP_LIBRARY` in ControllerModel.jsx. Any GLB exported into `public/assets` + one line here appears in the editor's Add list. Live Meshy generation needs the Meshy API run (async, needs the key) - can wire that as a separate step; for now the library + editor cover add/remove/transform of any asset.
+
+## [03:58] DONE, whole stage back to manga shader (per human)
+Per human direction: make everything on the Teleop stage the manga shader (not the paint shader), keep the add/remove/all-settings-incl-size editor.
+- Reverted the two-pass paint layer: the stage is now ONE canvas with a SINGLE manga ink pass over the whole scene (world + controller + every prop), so it reads as one continuous B/W manga panel. Removed StageComposite/PropLights and the PainterlyPipeline import from ControllerModel.jsx.
+- The scene editor is unchanged and still does add (library) / remove / duplicate / position / rotation / SCALE (size) / reset on every object. Fixed camera + circular joystick indicators retained.
+- The `cutout` mode I added to `vendor/painterly.js` is now dormant for this page (still backward-compatible, other consumers unaffected). @web-frontend can keep or drop it.
+- Build clean, render-verified on real GPU: all props now render as manga ink.
+
+## [04:15] DONE, drag props in scene + dock defaults
+Per human direction: everything on the stage draggable EXCEPT the PlayStation controller; control panel closed by default and layered above the 3D annotations.
+- **Drag:** each prop (not the controller) is now mouse-draggable. On grab I set a camera-facing plane at the object's depth and attach window-level pointermove/up listeners (not r3f pointer-capture, which did not track reliably), raycast to the plane, and write the new position back to scene state so the editor stays in sync. VERIFIED end-to-end via Chrome DevTools Protocol: dispatched a real pointer drag, console showed `[drag] down/move apple-1`, and the apple visibly moved from the corner to where it was dropped. Controller has no drag handler, stays fixed.
+- **Dock:** control panel is now closed by default (opens to the slim SHOW CONTROLS bar); the drei Html annotations had their zIndexRange capped low so the dock/header/editor DOM panels sit above them.
+- My files (ControllerModel.jsx, Teleop.jsx, teleop.css, + the earlier robot.jsx/sim.js voice hooks) are lint-clean and transform fine (teleop route served + driven live).
+- NOT MINE / FLAG: `npm run build` currently fails on `src/pages/Harvest.jsx` importing `classifyFile` from `src/lib/ripeness.js` (that export does not exist) - a concurrent worker mid-edit on Harvest/ripeness, unrelated to my files. Whoever owns Harvest/ripeness needs to land the export.
+
+## [04:30] DONE, bananas added (procedural, no valid GLB exists)
+Per human (too much focus on apples). banana.glb in the repo is a 357-byte HTML placeholder, so I added a PROCEDURAL banana: a curved CatmullRom tube tapered at both ends, normalized to unit size + centered so the scale field behaves like every other prop. Reads as a clean banana crescent under the manga shader.
+- Extracted the drag logic into a shared `usePropDrag` hook; both StageProp (GLB) and the new BananaProp use it, so bananas are draggable + editable identically.
+- Default scene rebalanced: 1 apple, 2 bananas, crate, tree (was 2 apples). Banana is now the first entry in the editor's Add library.
+- Verified in the dev server: both bananas render as curved crescents; my file lints clean and transforms fine.
+- Still flagged (NOT mine): full `npm run build` remains blocked by src/pages/Harvest.jsx importing a missing `classifyFile` from src/lib/ripeness.js (concurrent worker).
+
+## [04:40] DONE, copy scene values + demo-breaking describeAction fix
+- **Copy values:** added a COPY VALUES button to the scene editor (next to RESET). It serializes every object's live transform (id, url/geo, pos, rot, scale, tint) into a ready-to-paste `DEFAULT_ITEMS` array and writes it to the clipboard (prompt() fallback if clipboard API unavailable), so a layout arranged by dragging/editing can be pasted back into ControllerModel.jsx as the new default. Verified the editor renders the button.
+- **Demo-breaking fix (flagged by @llm-client, gap 1):** Teleop.jsx `describeAction()` now returns `a.clarification` when present even with `ok:true`. Real FarmHand can reply `{ok:true, clarification:"Apples, bananas, or both?"}`; previously the UI showed "ok" and dropped the question. Exact 1-liner added: `if (a.clarification) return a.clarification` after the `!a.ok` branch. Verified across 5 cases (ok+clarify -> shows clarify, ok+action -> action words, !ok+clarify, !ok+error, ok+empty -> "ok"); Teleop.jsx lints clean.
+
+## [04:55] DONE, applied copied layout + idle animation + annotation audit
+- Applied the human's copied DEFAULT_ITEMS (their dragged/scaled arrangement) as the new default scene.
+- **Idle animation:** side props now bob + sway gently via an inner AnimatedProp group (per-id seed so they desync), applied on an INNER group so it never fights the base transform (drag/editor own the outer group). Controller is NOT animated. Verified in motion with two CDP frames ~1s apart: bananas/tree/crate/apple visibly moved, controller identical.
+- **Annotation audit:** re-derived LIVE_LABELS targets against the actual model. Validated the screen<->world mapping (~205 px/unit at the button plane) via the d-pad, then corrected the off ones: L1/L2 + R1/R2 were floating above the body (now on the shoulder corners), and circle/cross/square were pushed too far right of the real cluster (now on the buttons). Re-rendered: lines land on the correct controls.
+- Lint clean. (Full build still blocked by the unrelated Harvest.jsx/ripeness.js concurrent breakage.)
+
+## [05:05] DONE, softened prop animation + added controller idle float
+- Toned the prop idle animation down/slower (bob 0.12->0.045, sway ~10deg->~3.5deg, freqs ~halved) per human ("too fast, too big").
+- Added a matching subtle idle float to the CONTROLLER (bob 0.04, sway ~2deg, slow). Animated the whole DualSense group (model + annotations together) so the callout lines stay locked to the buttons. Verified with two CDP frames ~1s apart: controller visibly floats/tilts, lines track it.

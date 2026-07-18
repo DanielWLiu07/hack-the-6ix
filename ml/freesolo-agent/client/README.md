@@ -1,11 +1,11 @@
 # FarmHand client (`ml/freesolo-agent/client/`)
 
-NL command → structured robot action, with strict schema validation between the
+NL command -> structured robot action, with strict schema validation between the
 LLM and the robot. Two pieces:
 
 - **`farmhand.py`** - core translator. Zero dependencies (pure stdlib).
-  - `FARMHAND_URL` unset → deterministic mock regex rules (works today).
-  - `FARMHAND_URL` set → POSTs `{"text": ...}` to the teammate's Freesolo model
+  - `FARMHAND_URL` unset -> deterministic mock regex rules (works today).
+  - `FARMHAND_URL` set -> POSTs `{"text": ...}` to the teammate's Freesolo model
     endpoint (`FARMHAND_API_KEY` optional bearer token, `FARMHAND_TIMEOUT` secs).
   - Every model output is validated against the action schema; anything invalid
     is rejected with `{"ok": false, "error": ...}`. Raw LLM output never
@@ -48,6 +48,6 @@ real model.
 ## Swapping in the teammate's real model
 
 Set `FARMHAND_URL`. If their request/response format differs from
-`{"text": ...}` → JSON body, adjust `endpoint_model()` / `parse_model_body()`
+`{"text": ...}` -> JSON body, adjust `endpoint_model()` / `parse_model_body()`
 in `farmhand.py` - that's the only place the wire format lives. Open questions
 for them are in `../NOTES.md`.

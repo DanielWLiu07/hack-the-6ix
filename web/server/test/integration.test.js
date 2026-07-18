@@ -33,8 +33,7 @@ after(async () => {
   if (hub) await hub.close();
 });
 
-// --- NL command / FarmHand routing -----------------------------------------
-
+// NL command / FarmHand routing
 test("hub routes nl_command from ui to the FarmHand agent", async () => {
   const ui = connectTo(hub.url, "ui");
   const agent = connectTo(hub.url, "agent");
@@ -56,7 +55,7 @@ test("hub routes nl_command from ui to the FarmHand agent", async () => {
 // robots, because nl_command sits in server-core's generic CONTROL_EVENTS list
 // (index.js:83-92) which fan-outs to robots, in addition to the agent routing.
 // Per root CLAUDE.md, nl_command is meant to reach the robot only *structured*
-// (via FarmHand → nl_action). The robot ignores the raw copy, so this is
+// (via FarmHand -> nl_action). The robot ignores the raw copy, so this is
 // harmless today - logged as an informational finding for server-core, not
 // asserted here. This test pins the current behavior so a future change is
 // visible in the diff.
@@ -179,8 +178,7 @@ test("nl_action from a non-agent (spoofing ui) is ignored", async () => {
   }
 });
 
-// --- robot-client persistence + control ------------------------------------
-
+// robot-client persistence + control
 test("robot pick_event is persisted and served by GET /api/picks", async () => {
   const robot = connectTo(hub.url, "robot");
   await connected(robot);
