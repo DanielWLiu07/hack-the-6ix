@@ -90,6 +90,13 @@ class RobotNode:
             if hasattr(self.bridge, "mcu_state") and self.bridge.mcu_state() == 3:
                 state = ESTOP
             battery = self.bridge.battery_v()
+        # The web telemetry schema (server-core) only accepts a coarse state set
+        # {IDLE, SEEK, PICK, SORT, ESTOP}; report the fine-grained drive-to-fruit
+        # APPROACH as SEEK so the hub doesn't drop the frame - which would also
+        # drop the live drive values we want on the dashboard. Remove this line
+        # once server-core adds APPROACH to the telemetry state enum.
+        if state == "APPROACH":
+            state = "SEEK"
         return {
             "ts": int(time.time() * 1000),
             "battery_v": battery,

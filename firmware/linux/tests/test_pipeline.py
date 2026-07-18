@@ -76,7 +76,7 @@ def test_visits_all_states_in_order():
     sm.continuous = False
     sm.start("nearest")
     _run(sm, b)
-    for s in ("SEEK", "ALIGN", "PICK", "SORT", "DROP"):
+    for s in ("SEEK", "APPROACH", "ALIGN", "PICK", "SORT", "DROP"):
         assert s in seen, f"never entered {s}: {seen}"
 
 

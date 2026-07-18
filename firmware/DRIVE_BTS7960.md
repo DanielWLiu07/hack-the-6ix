@@ -97,6 +97,21 @@ Logic: `forward → analogWrite(RPWM, duty), analogWrite(LPWM, 0)`; `reverse` sw
 `stop → both 0`; enables tied to VCC in hardware. Confirmed on the C3 rig — both
 motors spin.
 
+### Signal wire colors (fixed per signal, so re-plugging is just colour-matching)
+Each PWM signal keeps ONE wire colour across every board — move the loom from the
+C3 to the Uno / Uno Q and you only look up the colour in that board's column.
+Mnemonic: 1st letter = motor (L/R), 2nd = which driver pin (R=RPWM, L=LPWM).
+
+| Signal | Colour | ESP32-C3 | Uno Q | Classic Uno |
+|---|---|---|---|---|
+| **LR** — Left  RPWM (fwd) | 🟣 purple | GPIO4 | D5 | D5 |
+| **LL** — Left  LPWM (rev) | 🔵 blue   | GPIO5 | D7 | D6 |
+| **RR** — Right RPWM (fwd) | 🟠 orange | GPIO6 | D6 | D9 |
+| **RL** — Right LPWM (rev) | 🟡 yellow | GPIO7 | D8 | D10 |
+
+(GND + the two `R_EN`/`L_EN` enable jumpers stay wired to VCC per driver as above;
+these four colours are just the PWM signal lines.)
+
 ## Testing on the Uno Q
 Bundle `firmware/mcu` (with the BTS7960 `drive.cpp`) into an App Lab app and run
 it — the Uno Q has no separate MCU USB serial, so the repo's `bench.py` won't

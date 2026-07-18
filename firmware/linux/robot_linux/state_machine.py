@@ -15,10 +15,11 @@ import time
 
 from . import config
 from .detector import Detection
+from .navigation import approach_step, in_reach
 from .servoing import is_centered, servo_step
 
-IDLE, SEEK, ALIGN, PICK, SORT, DROP, ESTOP = (
-    "IDLE", "SEEK", "ALIGN", "PICK", "SORT", "DROP", "ESTOP")
+IDLE, SEEK, APPROACH, ALIGN, PICK, SORT, DROP, ESTOP = (
+    "IDLE", "SEEK", "APPROACH", "ALIGN", "PICK", "SORT", "DROP", "ESTOP")
 
 # Base-yaw sweep waypoints for SEEK (degrees), visited round-robin.
 SEEK_SWEEP = [90, 60, 120, 40, 140]
@@ -76,6 +77,10 @@ class PickStateMachine:
 
     def _transition(self, state):
         if state != self.state:
+            # leaving APPROACH: always stop the wheels (estop already zeros them,
+            # but this covers every other exit - lost target, timeout, in-reach).
+            if self.state == APPROACH and state != APPROACH:
+                self.bridge.set_drive(0, 0)
             self.state = state
             self._ticks_in_state = 0
             self._settle = 0
@@ -136,9 +141,9 @@ class PickStateMachine:
         if self.state in (IDLE, ESTOP):
             return
         self._ticks_in_state += 1
-        handler = {SEEK: self._tick_seek, ALIGN: self._tick_align,
-                   PICK: self._tick_pick, SORT: self._tick_sort,
-                   DROP: self._tick_drop}[self.state]
+        handler = {SEEK: self._tick_seek, APPROACH: self._tick_approach,
+                   ALIGN: self._tick_align, PICK: self._tick_pick,
+                   SORT: self._tick_sort, DROP: self._tick_drop}[self.state]
         handler()
 
     def _tick_seek(self):
@@ -146,7 +151,8 @@ class PickStateMachine:
         if det is not None:
             self.current_det = det
             self.pick_started_ts = time.time()
-            self._transition(ALIGN)
+            # drive up to it first; ALIGN (arm) takes over once it's in reach.
+            self._transition(APPROACH)
             return
         # sweep base yaw through waypoints until something shows up
         if not self.bridge.is_moving():
@@ -156,6 +162,23 @@ class PickStateMachine:
             self.bridge.move_servos(joints, self._dur(SEEK_STEP_MS))
         if self._ticks_in_state > config.SEEK_MAX_TICKS:
             self._ticks_in_state = 0  # keep sweeping; nothing else to do
+
+    def _tick_approach(self):
+        det = self._detect()
+        if det is None:
+            # lost sight of it while driving: stop and re-scan
+            if self._ticks_in_state > config.ALIGN_MAX_TICKS:
+                self._transition(SEEK)
+            return
+        self.current_det = det
+        if in_reach(det.bbox):
+            self._transition(ALIGN)   # close enough; arm centers + picks
+            return
+        if self._ticks_in_state > config.APPROACH_MAX_TICKS:
+            self._transition(SEEK)    # gave up; nothing reachable, keep hunting
+            return
+        l, r = approach_step(det.bbox)
+        self.bridge.set_drive(l, r)
 
     def _tick_align(self):
         det = self._detect()

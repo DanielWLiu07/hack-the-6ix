@@ -43,6 +43,14 @@ ALIGN_SETTLE_TICKS = 4       # consecutive in-tolerance ticks before ALIGN compl
 ALIGN_MAX_TICKS = 200        # give up and go back to SEEK
 SEEK_MAX_TICKS = 400         # one full scan sweep budget before re-centering
 
+# APPROACH (drive-to-fruit): reactive base navigation between SEEK and ALIGN.
+# Creep toward a detected fruit, steering to keep it centered, until its bbox is
+# big enough to be in arm reach. Vision-only, no odometry. Tune here.
+APPROACH_FWD = 0.5           # constant forward creep speed, normalized drive
+APPROACH_TURN_GAIN = 0.6     # steer gain: bbox x-error [-1..1] -> tank differential
+APPROACH_AREA_FRAC = 0.10    # bbox area / frame area >= this => in reach, stop
+APPROACH_MAX_TICKS = 300     # ~15 s at TICK_HZ before giving up -> back to SEEK
+
 MIN_CONF = float(os.environ.get("MIN_CONF", "0.5"))
 
 BINS = ["apple_ripe", "apple_unripe", "banana_ripe", "banana_unripe"]
