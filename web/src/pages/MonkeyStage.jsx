@@ -403,6 +403,14 @@ const _aim = new THREE.Vector3()
 const _udir = new THREE.Vector3()
 const _elb = new THREE.Vector3()
 const _fdir = new THREE.Vector3()
+// casual-idle sway: additive small rotation on top of a bone's bind pose.
+const _e = new THREE.Euler()
+const _idq = new THREE.Quaternion()
+function sway(entry, ax, ay, az) {
+  _e.set(ax, ay, az)
+  _idq.setFromEuler(_e)
+  entry.bone.quaternion.copy(entry.bind).multiply(_idq)
+}
 function pointArm(a, S, target) {
   _aim.copy(target).sub(S).normalize()
   _udir.copy(a.restDir).lerp(_aim, 0.45).normalize()   // loose upper arm (half toward cursor)
@@ -460,14 +468,23 @@ function Monkey({ bind, poseRef, mimic, mirror }) {
         restDir: new THREE.Vector3(outSign * 0.25, -1, 0.35).normalize(),
       })
     })
+    // Spine/hips/neck for a procedural casual idle (gentle sway, no vertical bob).
+    const idleBones = []
+    ;['Hips', 'Spine', 'Spine1', 'Spine2', 'Neck'].forEach((bn) => {
+      let b = null
+      body.traverse((o) => {
+        if (o.isBone && o.name.replace(/[^a-z]/gi, '').replace(/^mixamorig/i, '').toLowerCase() === bn.toLowerCase()) b = o
+      })
+      if (b) idleBones.push({ key: bn.toLowerCase(), bone: b, bind: b.quaternion.clone() })
+    })
     return {
-      body, head, headBone, headUp: headWorldH * HEAD_UP_FRAC, armRest,
+      body, head, headBone, headUp: headWorldH * HEAD_UP_FRAC, armRest, idleBones,
       animated: (soldier.animations?.[0]?.duration ?? 0) > 0.5,
       fit: { s, pos: [-((mnx+mxx)/2)*s, -mny*s, -((mnz+mxz)/2)*s] },
     }
   }, [soldier.scene, headSrc.scene])
 
-  const { body, head, headBone, headUp, armRest, animated, fit } = built
+  const { body, head, headBone, headUp, armRest, idleBones, animated, fit } = built
   // Mixamo-skeleton retarget rig for webcam mimic (arms + legs look-at).
   const rig = useMemo(() => buildRig(body), [body])
   // Only auto-play a REAL clip (>0.5s). A T-pose-only download has a 2-frame clip
@@ -488,9 +505,21 @@ function Monkey({ bind, poseRef, mimic, mirror }) {
     if (mimic && rig.ok && poseRef.current) {
       applyPose(rig, poseRef.current, { mirror })
     } else if (!mimic && !animated) {
-      // Arms point at the cursor (upper body only - torso/legs never move). The
-      // target is the cursor cast onto a plane IN FRONT of the chest (toward the
-      // camera), so the forearms reach forward at the screen, never behind the body.
+      // Casual idle: gentle sway of hips/spine/neck (no vertical bob), slow and
+      // multi-frequency so it never looks like a loop. Applied first so the arm
+      // aim and head follow read the swayed skeleton.
+      const t = state.clock.elapsedTime
+      for (const e of idleBones) {
+        if (e.key === 'hips') sway(e, 0, Math.sin(t * 0.45) * 0.03, Math.sin(t * 0.6) * 0.025)
+        else if (e.key === 'spine') sway(e, Math.sin(t * 1.1) * 0.014, 0, Math.sin(t * 0.6 + 1) * 0.016)
+        else if (e.key === 'spine1') sway(e, Math.sin(t * 1.1 + 0.5) * 0.014, 0, Math.sin(t * 0.6 + 1.6) * 0.016)
+        else if (e.key === 'spine2') sway(e, 0, Math.sin(t * 0.5) * 0.02, Math.sin(t * 0.6 + 2.2) * 0.02)
+        else if (e.key === 'neck') sway(e, Math.sin(t * 0.9) * 0.02, Math.sin(t * 0.5) * 0.035, Math.sin(t * 0.7) * 0.02)
+      }
+      body.updateWorldMatrix(true, true)
+      // Arms point at the cursor (upper body only - legs never move). The target is
+      // the cursor cast onto a plane IN FRONT of the chest (toward the camera), so
+      // the forearms reach forward at the screen, never behind the body.
       const cam = state.camera
       _mv.set(state.pointer.x, state.pointer.y, 0.5).unproject(cam).sub(cam.position).normalize()
       if (armRest[0]) {
@@ -508,13 +537,21 @@ function Monkey({ bind, poseRef, mimic, mirror }) {
         }
       }
     }
-    // hang the head on the head bone (position only, kept upright + forward)
+    // hang the head on the head bone; add a gentle look-around so it feels alive
     if (headBone && head) {
       body.updateWorldMatrix(true, true)
       _hm.copy(body.matrixWorld).invert().multiply(headBone.matrixWorld)
       _hp.setFromMatrixPosition(_hm)
       head.position.set(_hp.x, _hp.y + headUp, _hp.z)
-      head.quaternion.identity()
+      if (!mimic && !animated) {
+        // No independent head pitch - the up-down comes only from the neck sway
+        // (so it stays in sync with the body). Add just a gentle yaw/roll for life.
+        const t = state.clock.elapsedTime
+        _e.set(0, Math.sin(t * 0.5) * 0.06, Math.sin(t * 0.6) * 0.03)
+        head.quaternion.setFromEuler(_e)
+      } else {
+        head.quaternion.identity()
+      }
     }
   })
 
@@ -808,7 +845,7 @@ const NAV_TVS = [
   {
     // POMME monitor - a text TV like the others, hand-placed.
     to: '/', label: 'Pomme', color: '#ffcf3f',
-    pos: [0.011, -0.49, 1.11], rot: [-0.547, 0, 0], scale: 0.68,
+    pos: [0.011, -0.49, 1.02], rot: [-0.547, 0, 0], scale: 0.68,
   },
 ]
 // The whole stage sits around y = -1.7 (see DEFAULT_PLACEMENT), so the arc lives

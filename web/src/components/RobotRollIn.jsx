@@ -34,13 +34,21 @@ const RIG_YAW = 0.654 // scene rig yaw: screen-right axis in world XZ
 const FLOOR_Y = -0.95 // scene ground plane
 const CART_LIFT = 0.55 // raise the cart centre so its base sits on the floor (tune)
 const WORLD_SCALE = 0.9 // shrink the 2.4u splat to scene scale (tune)
-const TARGET = [-2.9, 0.2, -0.15] // end location (tuned in ?tunesplat)
-const DRIVE_DIST = 9 // how far off-screen-left it starts, along the floor
-const DRIVE_DUR = 2.0 // seconds to drive in
+const TARGET = [-3.45, 0.2, 0.28] // end location (a bit more left of the apple)
+const DRIVE_DIST = 6 // how far in FRONT (toward the camera) it starts
+const DRIVE_DUR = 2.2 // seconds to drive in
 const DRIVE_DELAY = 1.3 // seconds to WAIT after the apple slam before driving in
-// Screen-right axis in world (from the rig yaw); the cart enters from -RIGHT.
-const RIGHT = [Math.cos(RIG_YAW), 0, -Math.sin(RIG_YAW)]
-const START = [TARGET[0] - RIGHT[0] * DRIVE_DIST, TARGET[1], TARGET[2] - RIGHT[2] * DRIVE_DIST]
+// Entry from the viewer's side driving INTO the screen: START sits in the
+// foreground (toward the camera along the floor), drives away to TARGET facing
+// its travel direction, then U-turn drifts to point back at the camera.
+const INTO = (() => {
+  const dx = TARGET[0] - CAM_POS[0]
+  const dz = TARGET[2] - CAM_POS[2]
+  const len = Math.hypot(dx, dz) || 1
+  return [dx / len, dz / len] // into-scene direction along the floor
+})()
+const START = [TARGET[0] - INTO[0] * DRIVE_DIST, TARGET[1], TARGET[2] - INTO[1] * DRIVE_DIST]
+const TRAVEL_YAW = Math.atan2(INTO[0], INTO[1]) // heading while driving in (facing away)
 
 const TUNE = typeof window !== 'undefined' && window.location.search.includes('tunesplat')
 const easeOutCubic = (x) => 1 - Math.pow(1 - x, 3)
@@ -89,11 +97,14 @@ function RollingRobot({ fixRef, startRef }) {
   const rig = useRef(null) // engine shake + drive bounce
   const fix = useRef(null) // splat orientation (SPLAT_FIX / tune)
   const t0 = useRef(null)
-  const place = (g, x, y, z, driveOffset, camPos) => {
+  // turnP 0 = facing the travel direction (driving away into the scene);
+  // turnP 1 = U-turned to point back at the live camera.
+  const place = (g, x, y, z, turnP, camPos) => {
     g.position.set(x, y, z)
-    // face the LIVE camera (yaw toward it in XZ), angled a touch while driving
     const faceYaw = Math.atan2(camPos.x - x, camPos.z - z)
-    g.rotation.set(0, faceYaw + driveOffset, 0)
+    let delta = faceYaw - TRAVEL_YAW
+    delta = Math.atan2(Math.sin(delta), Math.cos(delta)) // shortest arc (~180 = the U-turn)
+    g.rotation.set(0, TRAVEL_YAW + delta * turnP, 0)
     g.scale.setScalar(WORLD_SCALE)
   }
   useFrame((state) => {
@@ -105,16 +116,16 @@ function RollingRobot({ fixRef, startRef }) {
       f.scale.setScalar(r.scale)
     }
     if (TUNE) {
-      // Tune mode: park at the live end location so you can place it + orient it.
+      // Tune mode: park at the live end location, U-turned to face the camera.
       const tg = fixRef.current.target || TARGET
-      if (outer.current) place(outer.current, tg[0], tg[1], tg[2], 0, camPos)
+      if (outer.current) place(outer.current, tg[0], tg[1], tg[2], 1, camPos)
       return
     }
     const g = outer.current
     const b = rig.current
     const now = state.clock.elapsedTime
-    if (!startRef.current) { // idling off-screen, waiting for the apple slam
-      if (g) place(g, START[0], START[1], START[2], 0.6, camPos)
+    if (!startRef.current) { // idling in the foreground, waiting for the apple slam
+      if (g) place(g, START[0], START[1], START[2], 0, camPos)
       t0.current = null
       if (b) engineShake(b, now)
       return
@@ -122,15 +133,19 @@ function RollingRobot({ fixRef, startRef }) {
     if (t0.current == null) t0.current = now
     // Hold off-screen for DRIVE_DELAY after the slam, THEN drive in.
     const t = now - t0.current - DRIVE_DELAY
-    const e = easeOutCubic(Math.min(Math.max(t, 0) / DRIVE_DUR, 1))
+    const pRaw = Math.min(Math.max(t, 0) / DRIVE_DUR, 1)
+    const e = easeOutCubic(pRaw)
     const arriving = 1 - e
+    // Drive in facing away, then U-turn drift to point back at us over the last
+    // ~45% of the drive.
+    const turnP = easeOutCubic(Math.min(Math.max((pRaw - 0.55) / 0.45, 0), 1))
     if (g) {
       place(
         g,
         START[0] + (TARGET[0] - START[0]) * e,
         START[1] + (TARGET[1] - START[1]) * e,
         START[2] + (TARGET[2] - START[2]) * e,
-        arriving * 0.6, // angled while driving, squares up to face us on arrival
+        turnP,
         camPos,
       )
     }
