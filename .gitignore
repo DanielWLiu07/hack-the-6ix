@@ -20,3 +20,4 @@ venv/
 !ml/ripeness/export/*.onnx
 web/public/scene/
 robot/lidar/phone/ios/
+ml/**/ei_export/
