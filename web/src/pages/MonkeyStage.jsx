@@ -265,18 +265,10 @@ function Splash({ bind, fuzzRef }) {
         <planeGeometry args={[SPLASH.w, SPLASH.h]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
-      {/* static color screen - pinned z-index BELOW the fuzz */}
-      <Html
-        transform
-        distanceFactor={distanceFactor}
-        position={[0, 0, 0.01]}
-        pointerEvents="none"
-        zIndexRange={[100, 100]}
-        style={{ width: `${pixelWidth}px`, height: `${pixelHeight}px`, pointerEvents: 'none' }}
-      >
-        <PixelScreen src="/assets/pomme-screen.jpg" cols={120} />
-      </Html>
-      {/* screen fuzz - pinned ABOVE the screen so it is actually visible */}
+      {/* No background image: the screen shows ONLY the tune-in fuzz (no landing
+          representation on the stage). When the fuzz fades, this screen is
+          transparent and the stage behind it is revealed. */}
+      {/* screen fuzz */}
       {fuzzRef && (
         <Html
           transform
@@ -632,7 +624,10 @@ function CameraIntro({ active, fuzzRef }) {
     // Drive the on-screen fuzz: full while the painting fills the viewport (the
     // hold), then fade out over the first second of the pull-back.
     if (fuzzRef) {
-      const fop = t.current < DELAY ? 1 : Math.max(0, 1 - (t.current - DELAY) / 1.0)
+      // Fade the fuzz over the WHOLE zoom-out (DURATION), not faster, so the
+      // static only clears once the camera has settled - otherwise it clears
+      // early and you see the camera still panning up past the board (the feet).
+      const fop = t.current < DELAY ? 1 : Math.max(0, 1 - (t.current - DELAY) / DURATION)
       fuzzRef.current.opacity = fop
     }
     if (p >= 1) { done.current = true; if (fuzzRef) fuzzRef.current.opacity = 0 }
@@ -1499,8 +1494,8 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
         </>
         )}
       </Canvas>
-      {/* Tune-in static now lives on the painting screen (see Splash), not a
-          full-screen overlay. */}
+      {/* Fullscreen tune-in static for the stage arrival. */}
+      <StageFuzz fuzzRef={fuzzRef} />
       {/* Editor UI only in the TV-positioning route; the plain /stage is clean. */}
       {editTV && (
         <div className="stage-editor" role="toolbar" aria-label="Edit the stage">

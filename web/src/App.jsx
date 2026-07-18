@@ -516,6 +516,7 @@ function Landing() {
   if (mode === null) return <main className="hero-stage" />
   return (
     <main className={`hero-stage ${loginRevealed ? 'login-in' : ''}`}>
+      <StageArrivalFuzz active={stageActive} />
       {!stageCovered && <LandingLinks />}
       {/* The manga stage sits underneath the landing from first paint; the route,
           WebGL canvas, and mascot never remount. The apple ascent cross-fades to
