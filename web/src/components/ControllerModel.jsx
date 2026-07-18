@@ -74,15 +74,15 @@ const CONTROLS = [
 // A thumbstick proxy (dark base + concave cap) sat over the model's stick so it
 // visibly tilts with the real one.
 const LIVE_LABELS = [
-  { key: 'up', label: 'D-PAD', type: 'dpad', pos: [-1.85, 0.32, 0.12], target: [-0.62, 0.34, 0.28] },
-  { key: 'triangle', label: '△', pos: [1.7, 0.86, 0.12], target: [0.53, 0.45, 0.28] },
-  { key: 'circle', label: '○', pos: [1.95, 0.34, 0.12], target: [0.69, 0.34, 0.28] },
-  { key: 'cross', label: '✕', pos: [1.92, -0.24, 0.12], target: [0.53, 0.22, 0.28] },
-  { key: 'square', label: '□', pos: [1.92, -0.72, 0.12], target: [0.37, 0.34, 0.28] },
-  { key: 'l1', label: 'L1/L2', pos: [-1.7, 1.3, 0.12], target: [-0.52, 0.55, 0.22] },
-  { key: 'r1', label: 'R1/R2', pos: [1.7, 1.3, 0.12], target: [0.52, 0.55, 0.22] },
-  { key: 'leftStick', label: 'L STICK', type: 'stick', pos: [-1.9, -1.28, 0.12], target: [-0.27, 0.05, 0.28] },
-  { key: 'rightStick', label: 'R STICK', type: 'stick', pos: [1.9, -1.28, 0.12], target: [0.27, 0.05, 0.28] },
+  { key: 'up', label: 'D-PAD', type: 'dpad', pos: [-2.15, 0.3, 0.12], target: [-0.62, 0.34, 0.28] },
+  { key: 'l1', label: 'L1/L2', pos: [-1.95, 1.5, 0.12], target: [-0.52, 0.55, 0.22] },
+  { key: 'r1', label: 'R1/R2', pos: [1.95, 1.5, 0.12], target: [0.52, 0.55, 0.22] },
+  { key: 'triangle', label: '△', pos: [2.35, 0.92, 0.12], target: [0.53, 0.45, 0.28] },
+  { key: 'circle', label: '○', pos: [2.55, 0.28, 0.12], target: [0.69, 0.34, 0.28] },
+  { key: 'cross', label: '✕', pos: [2.5, -0.36, 0.12], target: [0.53, 0.22, 0.28] },
+  { key: 'square', label: '□', pos: [2.4, -0.92, 0.12], target: [0.37, 0.34, 0.28] },
+  { key: 'leftStick', label: 'L STICK', type: 'stick', pos: [-2.2, -1.6, 0.12], target: [-0.27, 0.05, 0.28] },
+  { key: 'rightStick', label: 'R STICK', type: 'stick', pos: [2.2, -1.6, 0.12], target: [0.27, 0.05, 0.28] },
 ]
 
 function LiveLabels({ stateRef }) {
