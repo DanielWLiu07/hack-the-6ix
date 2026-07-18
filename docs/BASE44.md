@@ -10,7 +10,7 @@ Why this wins the rubric: we're the only team whose Base44 "venture" is powered 
 
 ## Rubric mapping (100 pts)
 
-- **Problem & Market (20)**: labor shortage → 30–40% post-harvest loss; target = small/mid orchards (<50 ha) that can't afford industrial automation. Named user: "Maria, 20-ha apple orchard, can't hire pickers."
+- **Problem & Market (20)**: labor shortage -> 30–40% post-harvest loss; target = small/mid orchards (<50 ha) that can't afford industrial automation. Named user: "Maria, 20-ha apple orchard, can't hire pickers."
 - **Product & Innovation (20)**: robotics-as-a-service booking + live field telemetry - not another generic dashboard.
 - **UX & Workflow (20)**: 3-step booking flow; one glanceable operator dashboard.
 - **Execution in Base44 (20)**: full data model, auth, charts, and a REAL webhook ingesting pick data from our robot's server (see Integration below).
@@ -22,29 +22,29 @@ Why this wins the rubric: we're the only team whose Base44 "venture" is powered 
 Rules of engagement: **each message ≈ 1 credit, so consolidate hard** (few rich prompts, not many small ones). Spend credits ONLY on things that score their rubric: Base44-native features (in-app AI agent, integrations, auth, styling-by-reference), personality, and the live-robot moment. Anything the machine got 80% right, leave it - polish costs credits and their judges explicitly don't want perfect.
 
 **P1 - mega-skeleton (1 credit).** One consolidated prompt:
-"Build a SaaS app called **Orchard OS** - small orchard operators book autonomous robot harvest runs and watch the robot pay for itself. Personality: warm, farmer-first, tagline 'Battery, not Blood.' Entities: Farm (name, location, hectares, crops), Field (farm, crop, ripeness_window), HarvestJob (field, date, status requested/scheduled/in_progress/complete, est_yield_kg), Robot (name, status, battery, current_job), PickReport (job, fruit_type apple/banana, ripeness ripe/unripe, bin, timestamp, success). Users belong to a Farm; include login. Pages: (a) landing with the problem - 30–40% of food never makes it from harvest to shelf - and a Book Demo CTA; (b) a 3-step 'Book a Harvest' wizard (field → date window → confirm with est. cost at $0.12/kg and est. waste avoided) creating a requested HarvestJob; (c) operator dashboard: active job card, today's PickReports grouped by fruit+ripeness as a bar chart, success rate, season kg total, and an ROI widget - (kg × $2.10/kg apples, $1.40/kg bananas) minus subscription - phrased as 'your robot has paid for X% of itself'; (d) admin fleet page: robots w/ battery + assign requested jobs. Seed 2 farms, 4 fields, 1 complete job with 120 PickReports over 2 hours, 1 in_progress job."
+"Build a SaaS app called **Orchard OS** - small orchard operators book autonomous robot harvest runs and watch the robot pay for itself. Personality: warm, farmer-first, tagline 'Battery, not Blood.' Entities: Farm (name, location, hectares, crops), Field (farm, crop, ripeness_window), HarvestJob (field, date, status requested/scheduled/in_progress/complete, est_yield_kg), Robot (name, status, battery, current_job), PickReport (job, fruit_type apple/banana, ripeness ripe/unripe, bin, timestamp, success). Users belong to a Farm; include login. Pages: (a) landing with the problem - 30–40% of food never makes it from harvest to shelf - and a Book Demo CTA; (b) a 3-step 'Book a Harvest' wizard (field -> date window -> confirm with est. cost at $0.12/kg and est. waste avoided) creating a requested HarvestJob; (c) operator dashboard: active job card, today's PickReports grouped by fruit+ripeness as a bar chart, success rate, season kg total, and an ROI widget - (kg × $2.10/kg apples, $1.40/kg bananas) minus subscription - phrased as 'your robot has paid for X% of itself'; (d) admin fleet page: robots w/ battery + assign requested jobs. Seed 2 farms, 4 fields, 1 complete job with 120 PickReports over 2 hours, 1 in_progress job."
 
-**P2 - webhook ingest (1 credit).** "Add an API endpoint that accepts POST {job_id, fruit, ripeness, bin, success, ts} with a shared-secret header check and creates a PickReport live on the dashboard." → paste resulting URL+secret into `web/server/.env` (`BASE44_WEBHOOK_URL`, `BASE44_SECRET`) - our forwarder is already built and tested; this is the live-robot judging moment.
+**P2 - webhook ingest (1 credit).** "Add an API endpoint that accepts POST {job_id, fruit, ripeness, bin, success, ts} with a shared-secret header check and creates a PickReport live on the dashboard." -> paste resulting URL+secret into `web/server/.env` (`BASE44_WEBHOOK_URL`, `BASE44_SECRET`) - our forwarder is already built and tested; this is the live-robot judging moment.
 
 **P3 - native AI agent (1 credit, their signature feature).** "Make me an agent called **FarmHand Advisor** on the dashboard: it answers operator questions from the app's own data ('when should I harvest field 3?', 'why was Tuesday's success rate low?', 'is it worth adding a second robot?') in plain farmer-friendly language, always citing the numbers it used." (Elsa literally told hackers to use this - using it well = 'execution in Base44' points.)
 
 **P4 - integration flourish (1 credit + integration credits).** "When a HarvestJob completes, email the farm owner a harvest report: kg picked, ripe/unripe split, waste avoided, one warm sentence from FarmHand Advisor." (Their 100 integration credits exist to be used - an unused feature is a lost point.)
 
-**P5 - styling by reference (1 credit, their other signature trick).** "Make the app look and feel like <our Vercel URL> - painterly paper background (#dcd6c4), soft greens, red apple accents, hand-drawn warmth. Keep it readable." → one brand across robot dashboard + Orchard OS.
+**P5 - styling by reference (1 credit, their other signature trick).** "Make the app look and feel like <our Vercel URL> - painterly paper background (#dcd6c4), soft greens, red apple accents, hand-drawn warmth. Keep it readable." -> one brand across robot dashboard + Orchard OS.
 
-**P6+ - reserve (~19 credits/day).** Fix only what breaks the demo path: booking flow end-to-end, dashboard renders, webhook→dashboard latency, agent answers sensibly. Ignore cosmetic nits.
+**P6+ - reserve (~19 credits/day).** Fix only what breaks the demo path: booking flow end-to-end, dashboard renders, webhook->dashboard latency, agent answers sensibly. Ignore cosmetic nits.
 
 **Do NOT build in Base44** (zero rubric value, pure credit burn): teleop, lidar/3D views, robot internals, auth beyond the built-in, any duplicate of our React dashboard's engineering features. Orchard OS is the *business*; the robot app is the *product*. Keep the boundary crisp - judges reward focus.
 
 ## Integration with our robot (the killer demo)
 
-Our Express server (`web/server/`) forwards every real `pick_event` to Orchard OS's webhook (env: `BASE44_WEBHOOK_URL`, `BASE44_SECRET`). During judging: robot picks a fruit on stage → PickReport appears in Orchard OS seconds later → ROI ticks up. server-core has this as a queued task (see BROADCAST).
+Our Express server (`web/server/`) forwards every real `pick_event` to Orchard OS's webhook (env: `BASE44_WEBHOOK_URL`, `BASE44_SECRET`). During judging: robot picks a fruit on stage -> PickReport appears in Orchard OS seconds later -> ROI ticks up. server-core has this as a queued task (see BROADCAST).
 
 ## Demo script (2 min)
 
 1. "Maria has 20 hectares and no pickers." (10 s problem stats)
 2. Book a harvest in 3 clicks. (30 s)
-3. Cut to the REAL robot picking a fruit → the PickReport lands live in the dashboard. (40 s)
+3. Cut to the REAL robot picking a fruit -> the PickReport lands live in the dashboard. (40 s)
 4. ROI widget: "this robot paid for 34% of itself this season." (20 s)
 5. Vision: berries, vineyards, per-hectare pricing. (20 s)
 

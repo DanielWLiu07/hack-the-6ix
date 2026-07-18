@@ -24,5 +24,24 @@ mock mode; answers to these let us flip to the real model by setting one env var
 6. **Dataset**: do you want the synthetic SFT dataset llm-data is building in
    `data/` (1.5k+ pairs, JSONL)? What format does Freesolo's trainer expect?
 
-Answers → drop them in this file or tell master; we'll adapt `endpoint_model()`
+Answers -> drop them in this file or tell master; we'll adapt `endpoint_model()`
 / `parse_model_body()` in `client/farmhand.py` (single point of change).
+
+---
+
+## RESOLVED (llm-client trained the model directly on Freesolo)
+
+Freesolo = freesolo.co "Flash". Answers to the questions above, from their docs +
+an actual trained+deployed run:
+1/2/3. Endpoint is **OpenAI-compatible**: `POST <base>/v1/chat/completions`,
+   `Authorization: Bearer <FREESOLO_API_KEY>`, body `{"model":"<run-id>","messages":[...]}`.
+   Response is standard OpenAI (`choices[0].message.content`). client/farmhand.py
+   speaks this now.
+4. Clarifications: the model returns `{"clarify":"..."}` JSON (our validator accepts it).
+5. Schema: confirmed - we trained ON our schema (system prompt + dataset), so the
+   model emits exactly `task/fruit/filter/zone` or `{"clarify":...}`.
+6. Dataset format: Freesolo uses `{"input","output"}` rows via an environment.py;
+   converter in training/convert_dataset.py. Trainer = `flash train configs/*.toml`.
+
+Current best model: **SFT+GRPO, 96.7%** (run flash-1784358461-eb122d48), deployed
+and wired into client/.env. Full training setup in training/ (see IMPROVEMENT_PLAN.md).

@@ -1,0 +1,226 @@
+{"input": "collect the ripe fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "grab the fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "pick the fruit that is ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "get me the fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "sort the fruit", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "collect the ripe fruits", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "grab the fruits", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "pick the fruits that is ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "get me the fruits", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "sort the fruits", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "collect the ripe some fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "grab some fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "pick some fruit that is ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "get me some fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "sort some fruit", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "collect the ripe any fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "grab any fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "pick any fruit that is ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "get me any fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "sort any fruit", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "grab fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "pick fruit that is ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "get me fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "sort fruit", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "collect the ripe whatever fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "grab whatever fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "pick whatever fruit that is ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "get me whatever fruit", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "sort whatever fruit", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "pik a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pcik a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pcik the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pcik everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "grabb a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "grabb the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "grabb everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "gra b a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "gra b the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "gra b everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "colect a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "colect the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "colect everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "collct a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "collct the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "collct everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "harvst a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "harvst the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "harvst everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "snag a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "snag the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "snag everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "snatch a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "snatch the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "snatch everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "fetchh a ripe apple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "fetchh the unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "fetchh everything ripe", "output": "{\"task\": \"pick\", \"fruit\": \"any\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "stpo", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "stp", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "halt it", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "hault", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "kil it", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "freeze it", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "emergency stop", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "abrt", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "cancel it", "output": "{\"task\": \"stop\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "dirve", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "dirve then back", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "drivee", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "drivee then back", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "mov forward", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "mov forward then back", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "go fwd", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "go fwd then back", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "rev", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "rev then back", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "reverse it", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "reverse it then back", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "roll out", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "roll out then back", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "srot", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "srot the apples", "output": "{\"task\": \"sort\", \"fruit\": \"apple\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "sorrt", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "sorrt the apples", "output": "{\"task\": \"sort\", \"fruit\": \"apple\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "orgnize", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "orgnize the apples", "output": "{\"task\": \"sort\", \"fruit\": \"apple\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "organise them", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "organise them the apples", "output": "{\"task\": \"sort\", \"fruit\": \"apple\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "bin them", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "bin them the apples", "output": "{\"task\": \"sort\", \"fruit\": \"apple\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "seperate them", "output": "{\"task\": \"sort\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "seperate them the apples", "output": "{\"task\": \"sort\", \"fruit\": \"apple\", \"filter\": \"any\", \"zone\": \"any\"}"}
+{"input": "pik ripe aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw aple", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw appel", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw appl", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw red one", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw apples", "output": "{\"task\": \"pick\", \"fruit\": \"apple\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw banan", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw bannana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw nana", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw yellow one", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik ripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik rip bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik ready bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik read bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik red-ripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"ripe\", \"zone\": \"any\"}"}
+{"input": "pik unripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik unrpe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik not ripe bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik green bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "pik raw bananas", "output": "{\"task\": \"pick\", \"fruit\": \"banana\", \"filter\": \"unripe\", \"zone\": \"any\"}"}
+{"input": "go fowrard", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "drive fowrard", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "go foward", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "drive foward", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "go ahead", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "drive ahead", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "go straght", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "drive straght", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"forward\"}"}
+{"input": "go bakward", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "drive bakward", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "go backwrd", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "drive backwrd", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "go reverse", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "drive reverse", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "go back up", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "drive back up", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"backward\"}"}
+{"input": "go lft", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"left\"}"}
+{"input": "drive lft", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"left\"}"}
+{"input": "go to the lft", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"left\"}"}
+{"input": "drive to the lft", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"left\"}"}
+{"input": "go rght", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"right\"}"}
+{"input": "drive rght", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"right\"}"}
+{"input": "go to teh right", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"right\"}"}
+{"input": "drive to teh right", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"right\"}"}
+{"input": "go hom", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"home\"}"}
+{"input": "drive hom", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"home\"}"}
+{"input": "go base", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"home\"}"}
+{"input": "drive base", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"home\"}"}
+{"input": "go charging staton", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"home\"}"}
+{"input": "drive charging staton", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"home\"}"}
+{"input": "go dock", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"home\"}"}
+{"input": "drive dock", "output": "{\"task\": \"drive\", \"fruit\": \"any\", \"filter\": \"any\", \"zone\": \"home\"}"}

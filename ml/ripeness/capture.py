@@ -3,20 +3,20 @@
 
 TWO intake paths, same auto-label + review + merge + finetune loop:
 
-A) File drop (humans photograph props with a phone/camera → drop into raw/):
+A) File drop (humans photograph props with a phone/camera -> drop into raw/):
     put photos in raw/apple_ripe/, raw/apple_unripe/, ... (one fruit per photo),
     then read raw/README.md, then
     python3 capture.py --ingest         # HSV auto-boxes every raw/<class>/*.jpg
 
 B) Live burst (arm camera in front of one fruit at a time):
     python3 capture.py --label apple_ripe --n 80
-    → captures 80 frames (move the fruit/camera during the burst).
+    -> captures 80 frames (move the fruit/camera during the burst).
 
 Both write YOLO images+labels into data/real/ and an annotated preview per frame
 in data/real/preview/ - flip through previews, delete bad pairs, done.
 
 Then merge into the training set and finetune (~30 min total loop):
-    python3 capture.py --merge          # copies data/real → data/dataset (90/10 split)
+    python3 capture.py --merge          # copies data/real -> data/dataset (90/10 split)
     python3 train.py --epochs 15 --weights runs/detect/v0/weights/best.pt --name v1
     python3 export.py --weights runs/detect/v1/weights/best.pt
 
@@ -49,7 +49,7 @@ HSV_RANGES = {
 
 
 def auto_box(frame, label, min_area=800):
-    """Largest color blob for `label` → (x0, y0, x1, y1) or None."""
+    """Largest color blob for `label` -> (x0, y0, x1, y1) or None."""
     hsv = cv2.cvtColor(cv2.GaussianBlur(frame, (5, 5), 0), cv2.COLOR_BGR2HSV)
     mask = np.zeros(hsv.shape[:2], np.uint8)
     for lo, hi in HSV_RANGES[label]:
@@ -111,7 +111,7 @@ def burst(label, n, delay, debug_mask):
 
 
 def ingest():
-    """Auto-label every photo dropped in raw/<class>/ → data/real/ (YOLO format).
+    """Auto-label every photo dropped in raw/<class>/ -> data/real/ (YOLO format).
 
     Humans sort phone/camera photos into raw/apple_ripe/, raw/banana_unripe/, ...
     (one fruit per photo, see raw/README.md). This HSV-boxes each by its class
@@ -181,7 +181,7 @@ def merge(val_frac=0.1):
             dst = ROOT / "data" / "dataset" / kind / split / f"real_{src.name}"
             dst.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(src, dst)
-    print(f"merged {len(imgs)} real frames into data/dataset ({n_val} → val). "
+    print(f"merged {len(imgs)} real frames into data/dataset ({n_val} -> val). "
           f"Now: python3 train.py --epochs 15 --weights runs/detect/v0/weights/best.pt --name v1")
 
 

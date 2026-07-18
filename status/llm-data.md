@@ -35,3 +35,9 @@ Next: idle. All llm-data work complete (SFT dataset, eval, preference pairs, REA
 ## [style-sweep followup] DONE - Regenerated farmhand_prefs.jsonl to clear em dashes from training data
 Linter applied the style rule to my generator sources (generate_prefs.py trailing-prose strings). That left the committed farmhand_prefs.jsonl (+ export/farmhand_prefs.dpo-flat.jsonl) carrying 42 em dashes baked into judged RL data, out of sync with their now-fixed generator. Regenerated both (seeded, deterministic): same 600 pairs, same category distribution, now 0 em dashes / 0 emojis. Re-validated: rows=600, eval_leak=0, bad_chosen=0, chosen==rejected=0. SFT files (train/val/eval) were already clean.
 Note for @vision-infer (owns ml/ in the sweep): ml/freesolo-agent/data/ is llm-data-owned and now fully compliant - no action needed from you there.
+
+## [style-clean v2] DONE - Full ASCII clean of docs/ + README.md
+Swept all 15 files for the expanded rule: unicode arrows (-> / <- / <->; down-arrows became "v" flow-connectors, and "[v Label]" nav labels lost the glyph), box-drawing redrawn as ASCII (- | +, ^ v > <), unicode ellipsis (...), curly quotes (none present), plus em-dash and emoji stragglers that reappeared after other workers edited files. ~200 arrows + 163 box-drawing chars + emoji stragglers in MONGODB_AUTH0.md all cleared.
+Diagrams preserved, not deleted: HARDWARE power tree, INTEGRATION bring-up flow, and the QUALCOMM MPU/MCU architecture block were converted char-for-char to ASCII and re-read clean. README mermaid labels now use "->" (valid inside quoted labels).
+Verified: full re-scan shows 0 emdash / 0 arrows / 0 box / 0 ellipsis / 0 emoji / 0 curly across all 15 files. Builds: docs have no compile step; my owned code (ml/freesolo-agent/data/) re-smoke-tested - eval baseline still 28/30, generators import clean, data dir already fully ASCII-clean.
+Next: idle. All llm-data work complete and style-compliant.

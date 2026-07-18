@@ -8,7 +8,7 @@ VENV="$HERE/.venv"
 PY="$VENV/bin/python"
 
 if [ ! -x "$PY" ]; then
-  echo "[run_slam] creating venv…"
+  echo "[run_slam] creating venv..."
   python3 -m venv "$VENV"
   "$VENV/bin/pip" install -q --upgrade pip
   "$VENV/bin/pip" install -q -r "$HERE/requirements.txt"

@@ -7,6 +7,7 @@ import App from './App.jsx'
 import Layout from './components/Layout.jsx'
 import Teleop from './pages/Teleop.jsx'
 import Analytics from './pages/Analytics.jsx'
+import Harvest from './pages/Harvest.jsx'
 
 // three.js is ~1 MB - only load it when the lidar page is opened
 const LidarView = lazy(() => import('./pages/LidarView.jsx'))
@@ -91,8 +92,9 @@ createRoot(document.getElementById('root')).render(
             <Route
               path="/stage"
               element={
-                <Suspense fallback={<p className="empty">Loading…</p>}>
-                  <MonkeyStage />
+                <Suspense fallback={<p className="empty">Loading...</p>}>
+                  {/* Direct visit: play the fuzzy-screen -> zoom-out intro too. */}
+                  <MonkeyStage playIntro />
                 </Suspense>
               }
             />
@@ -101,7 +103,7 @@ createRoot(document.getElementById('root')).render(
             <Route
               path="/pov"
               element={
-                <Suspense fallback={<p className="empty">Loading POV…</p>}>
+                <Suspense fallback={<p className="empty">Loading POV...</p>}>
                   <RobotPOV />
                 </Suspense>
               }
@@ -113,12 +115,13 @@ createRoot(document.getElementById('root')).render(
               <Route
                 path="/lidar"
                 element={
-                  <Suspense fallback={<p className="empty">Loading 3D view…</p>}>
+                  <Suspense fallback={<p className="empty">Loading 3D view...</p>}>
                     <LidarView />
                   </Suspense>
                 }
               />
               <Route path="/analytics" element={<Analytics />} />
+              <Route path="/harvest" element={<Harvest />} />
             </Route>
           </Routes>
         </BrowserRouter>

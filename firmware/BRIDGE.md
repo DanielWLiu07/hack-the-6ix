@@ -1,4 +1,4 @@
-# BRIDGE.md - MCU ↔ Linux RPC protocol (UNO Q)
+# BRIDGE.md - MCU <-> Linux RPC protocol (UNO Q)
 
 **Owner: fw-tools. This document is the contract.** `fw-mcu` (STM32 sketch) and
 `fw-linux` (Python) both conform to it. If something here must change, post a
@@ -21,9 +21,9 @@ Semantics (names, args, units, timing, error behavior) are identical on both.
 
 | Quantity | Type | Range / unit |
 |---|---|---|
-| Drive command `l`, `r` | float | −1.0 … +1.0 normalized tank drive. +1 = full forward. MCU maps to PWM+direction. |
+| Drive command `l`, `r` | float | −1.0 ... +1.0 normalized tank drive. +1 = full forward. MCU maps to PWM+direction. |
 | Joint angles `joints[5]` | int | degrees, 0–180. Order: `[base, shoulder, elbow, wrist, gripper]` (PCA9685 ch 0–4). |
-| `duration_ms` | int | 100 … 5000. Time to interpolate from current pose to target. MCU clamps out-of-range values. |
+| `duration_ms` | int | 100 ... 5000. Time to interpolate from current pose to target. MCU clamps out-of-range values. |
 | Distance | int | cm (ultrasonic). |
 | Battery | int | millivolts. `0` = not sensed (battery ADC is optional, see PINOUT.md). |
 
@@ -36,7 +36,7 @@ Rules both sides rely on:
 - A new `move_servos` **preempts** an in-progress move: interpolation retargets
   from the current interpolated pose. Same for `set_drive` (last write wins).
 - Out-of-range args are **clamped**, not rejected (hackathon: keep the robot
-  moving). The one exception: wrong arg *count/type* → error return.
+  moving). The one exception: wrong arg *count/type* -> error return.
 
 ## 2. MCU safety state machine
 
@@ -47,13 +47,13 @@ The MCU is always in exactly one state. This is the value returned by
 |---|---|---|---|
 | 0 | `OK` | normal | everything works |
 | 1 | `OBSTACLE` | ultrasonic < **15 cm** (reflex, <10 ms, no Linux round-trip) | forward drive components are zeroed (reverse & turn-in-place still allowed); arm unaffected. Auto-clears when distance > **25 cm** (hysteresis). |
-| 2 | `WATCHDOG` | no `heartbeat()` for **500 ms** | drive PWM → 0; servos **hold last pose** (never go limp - a limp arm drops the fruit and itself). Auto-clears on next `heartbeat()`. |
-| 3 | `ESTOP` | `estop()` received (from Linux or serial) | drive → 0, servo interpolation frozen at current pose, all motion commands ignored. **Latched**: only `clear_estop()` exits it. |
+| 2 | `WATCHDOG` | no `heartbeat()` for **500 ms** | drive PWM -> 0; servos **hold last pose** (never go limp - a limp arm drops the fruit and itself). Auto-clears on next `heartbeat()`. |
+| 3 | `ESTOP` | `estop()` received (from Linux or serial) | drive -> 0, servo interpolation frozen at current pose, all motion commands ignored. **Latched**: only `clear_estop()` exits it. |
 
 Priority: `ESTOP` > `WATCHDOG` > `OBSTACLE` > `OK`. Flags for the lower states
 are still tracked and reported in `get_status()` while a higher state is active.
 
-## 3. RPC surface (Linux → MCU)
+## 3. RPC surface (Linux -> MCU)
 
 | Call | Args | Returns | Notes |
 |---|---|---|---|
@@ -69,15 +69,15 @@ are still tracked and reported in `get_status()` while a higher state is active.
 
 ```
 [ state, battery_mv, j0, j1, j2, j3, j4, drive_l_pct, drive_r_pct, ultra_cm ]
-   §2      mV (0=n/a)   current interpolated      −100…100 int      cm, 999 =
+   §2      mV (0=n/a)   current interpolated      −100...100 int      cm, 999 =
                         joint degrees (int)       (l/r × 100)       no echo
 ```
 
 fw-linux maps this straight into the root-schema `telemetry` event
-(`arm` = j0…j4, `drive.l/r` = pct/100, `state` string comes from fw-linux's own
-task state machine, except MCU state 3 → `"ESTOP"` always wins).
+(`arm` = j0...j4, `drive.l/r` = pct/100, `state` string comes from fw-linux's own
+task state machine, except MCU state 3 -> `"ESTOP"` always wins).
 
-**No MCU→Linux push calls in v1.** Linux learns everything by polling
+**No MCU->Linux push calls in v1.** Linux learns everything by polling
 `get_status()` at 5 Hz. (Reflex/watchdog protection is already local to the
 MCU, so push adds no safety; polling keeps both sides simpler. If we later
 want instant obstacle events, we'll add a Bridge notification `on_state(state)`
@@ -85,11 +85,11 @@ want instant obstacle events, we'll add a Bridge notification `on_state(state)`
 
 ### Timeout & error behavior (Linux side - fw-linux implements)
 
-- Per-call timeout **250 ms** → retry once → if the retry also fails, mark
+- Per-call timeout **250 ms** -> retry once -> if the retry also fails, mark
   bridge **DOWN**: stop issuing motion calls, set telemetry `state` to
   `"ESTOP"`, retry `heartbeat()` at 1 Hz until it answers, then mark UP and
   resume. (MCU watchdog has already frozen motion 500 ms in, so this is safe.)
-- Malformed return (wrong length/type) → treat as timeout.
+- Malformed return (wrong length/type) -> treat as timeout.
 - Never queue motion commands while DOWN - drop them. Stale motion is worse
   than no motion.
 
@@ -145,7 +145,7 @@ USB CDC serial, **115200 baud**, newline-terminated ASCII, single-letter
 commands, space-separated args. Implemented by fw-mcu's bench mode; identical
 handler functions behind it as §4. Human-typeable in any serial monitor.
 
-### Commands (host → MCU)
+### Commands (host -> MCU)
 
 ```
 D <l> <r>                      set_drive        e.g.  D 0.5 -0.5
@@ -165,12 +165,12 @@ W <0|1>                        watchdog disarm/arm (bench-only, see below)
 knob exists **only** in the serial bench transport - under App Lab Bridge the
 watchdog is always armed, there is no `W` RPC.
 
-### Responses (MCU → host)
+### Responses (MCU -> host)
 
 Every command gets exactly one response line:
 
-- Success: `OK <state>` - e.g. `H` → `OK 0`
-- `Q` → `ST <state> <battery_mv> <j0> <j1> <j2> <j3> <j4> <l_pct> <r_pct> <ultra_cm>`
+- Success: `OK <state>` - e.g. `H` -> `OK 0`
+- `Q` -> `ST <state> <battery_mv> <j0> <j1> <j2> <j3> <j4> <l_pct> <r_pct> <ultra_cm>`
   (space-separated, same order as §3 `get_status`)
 - Error: `ERR <code> <msg>` - codes: `1` bad arg count, `2` unparseable arg,
   `3` unknown command.

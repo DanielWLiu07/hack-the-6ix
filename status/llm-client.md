@@ -87,3 +87,67 @@ Human applied a promo-code credit -> billing unblocked. Submitted `flash train c
 Run: flash-1784357076-b93a0ca9 (SFT, Qwen/Qwen3.5-0.8B, RTX 5090 @ ~$0.46/hr, 3 epochs, 2349 ex, est ~$0.18, ~20 min). Currently provisioning/loading. Background monitor polling until terminal, then I deploy + eval.
 Staged stage-2: configs/rl.toml (GRPO on the same env, optimizes environment.py's JSON reward, init_from_adapter to fill from SFT adapter) - the SFT->RL pipeline for the Best-Model-Trained track. Will decide whether RL is worth running AFTER seeing SFT eval numbers (little headroom if SFT already ~99%).
 Next on SFT completion: `flash deploy <run-id>` -> set FARMHAND_URL(.../v1)+FARMHAND_MODEL in client/.env -> `data/eval.py --endpoint` for the trained-model accuracy row (baseline is 93.3%).
+
+## [freesolo-train] DONE(SFT)+WIP(GRPO) - SFT trained/deployed/evaled; GRPO stage-2 training
+SFT run flash-1784357076-b93a0ca9: done ($0.18), DEPLOYED at https://clado-ai--freesolo-lora-serving.modal.run/v1 (openai model = run-id). Wired into client/.env (FARMHAND_URL/FARMHAND_MODEL set; key untouched). Smoke: clean JSON actions + clarifications through farmhand.py validator.
+SFT eval (data/eval.py --predictions via the deployed model, 30 held-out): 28/30 = 93.3% - SAME headline as regex baseline but DIFFERENT misses: model now gets the idiomatic cases (ripe-or-not, charging-station) the baseline missed, and instead over-clarifies on 2 heavy-typo commands ('colect the ripe furit'->clarify, 'kil it now'->clarify) where gold is an action. Both are valid JSON, just clarify-instead-of-commit.
+FIX = stage-2 GRPO (the over-clarify gap is exactly what the reward penalizes). Submitted flash-1784358461-eb122d48 (GRPO, init_from_adapter=SFT, optimizes environment.py JSON reward, ~$0.48, ~50 min). Fixed config: removed lora_rank (inherited from source adapter). Background monitor b2g270hw3 polling; on completion I deploy + re-eval for the SFT->RL improvement row.
+Note: keep SFT deployment up (serving billed per-token only) so the demo has a live model regardless of GRPO outcome.
+
+## [freesolo-improve] WIP - rich eval harness added; GRPO still training; improvement plan written
+While GRPO trains: researched Freesolo's own docs (env/reward quality = ceiling; eval rigor = foundational; read trajectories; SFT/GRPO/OPD fit). Wrote training/IMPROVEMENT_PLAN.md (7 ranked techniques + execution order + target pitch table).
+Built training/eval_model.py - rich multi-metric eval (exact-match, per-field, valid-JSON rate, over-clarify rate, mean latency) against whatever client/.env points at. Verified on deployed SFT: 28/30 exact, valid-JSON-action 28/30, over-clarify 2/30, ~803 ms latency. Confirms model is 100% well-formed JSON; the 2 misses are over-clarification on typos (the GRPO target). Harness ready to run on GRPO on deploy.
+GRPO flash-1784358461-eb122d48: running, past step 20/37, ~15 min left. Monitor b2g270hw3 live.
+
+## [freesolo-improve] GRPO v1 WON (93.3->96.7%); v2 (graded reward + typo augmentation) training
+GRPO v1 flash-1784358461-eb122d48 done ($0.48), deployed, evaluated: 29/30 = 96.7% exact (up from SFT 93.3%), over-clarify 2->1, ~774ms. RESULT SO FAR: baseline 93.3 -> SFT 93.3 -> SFT+GRPO 96.7. Client .env pointed at GRPO v1 (best live model).
+Implemented next improvements (no-GPU): (1) graded per-field reward in environment.py (0/0.6-0.9/1.0, over-clarify->0) for denser GRPO signal; (2) training/augment.py -> 226 typo/slang rows targeting the over-clarify miss, eval-leakage-filtered (0 leak verified); wired into env dataset; re-pushed env. (3) training/eval_model.py rich metrics + --eval-set; training/eval_stress.jsonl = 26 HELD-OUT typo/slang cases (verified disjoint from train/augment/eval). GRPO v1 on stress set: 24/26... (85.7% on the 28 pre-trim; re-run on 26 pending) - the harder set shows real headroom v2 should close.
+v2 SFT flash-1784360090-cd0e91dc training now (train+aug = 2575 ex). On done: eval on both canonical + stress, then GRPO v2 from it if warranted. Monitor bplywqesm live.
+
+## [freesolo-improve] HONEST RESULT: v2 SFT+augmentation REGRESSED; GRPO v1 stays the winner
+v2 SFT flash-1784360090-cd0e91dc (train+226 aug, $0.20): canonical 26/30 = 86.7% (DOWN from GRPO v1 96.7%), stress 23/26 = 88.5%. Augmentation killed over-clarification (0/30) + 100% valid JSON, BUT over-corrected into confident WRONG commits (e.g. 'kil it now'->drive instead of stop; 'arent ripe yet'->ripe). Net exact-match regressed. NOT shipping it.
+Reverted client/.env FARMHAND_MODEL -> GRPO v1 (flash-1784358461-eb122d48), the best model (96.7%).
+FINAL honest table: baseline 93.3 -> SFT 93.3 -> SFT+GRPO 96.7 (best). Insight for the writeup: reward-driven RL improved the model; naive data augmentation did not (matches Freesolo's "reward/env quality is the ceiling"). GRPO v1 is deployed + live.
+Remaining options (uncertain/diminishing on a 30-item eval): GRPO v2 from GRPO-v1 base w/ graded reward (~$0.48), or OPD distillation for a 3rd-algorithm showcase. 96.7% = 29/30 is near measurement ceiling; last miss is a genuine double-typo. Recommending we lock GRPO v1 + optionally OPD for narrative.
+
+## [freesolo-DONE] LOCKED GRPO v1 (96.7%) + wrote up results (human chose "lock + write up")
+Deployment hygiene: undeployed SFT v1 + SFT v2 (non-winners); GRPO v1 (flash-1784358461-eb122d48) stays deployed + live in client/.env. Confirmed working.
+Wrote up the honest results:
+- docs/DEVPOST.md Freesolo section: replaced the TODO eval block with the real 3-row table (baseline 93.3 -> SFT 93.3 -> SFT+GRPO 96.7), the "reward-driven RL beat data augmentation" insight, and the negative-result ablation (aug regressed to 86.7, not shipped). Reproducible via training/.
+- docs/DEVPOST_SUBMISSION.md what's-next: FarmHand-trained marked DONE (96.7%, deployed).
+- ml/freesolo-agent/NOTES.md: marked all 6 teammate questions RESOLVED (OpenAI-compatible API, {"clarify"} shape, schema confirmed, {"input","output"} dataset format).
+Total Freesolo spend ~$0.85 GPU (SFT $0.18 + GRPO $0.48 + SFT-v2 $0.20). Declined OPD (~$5.87, mostly $5.54 teacher API) per human. Model + writeup DONE. Idle-ready.
+
+## [freesolo-next] DONE - real model verified end-to-end + compliance + demo.sh handoff
+1. Verified the TRAINED model (GRPO v1, 96.7%) drives the robot end-to-end through the LIVE hub: restarted service.py in endpoint mode, ran demo_driver.py -> 10 commands hub->farmhand->robot, refreshed client/DEMO_TRANSCRIPT.md with real-model outputs (was mock). 8 actions forwarded, clarify withheld, all schema-valid.
+2. Style rule: my ml/freesolo-agent files scanned clean. Found+fixed the trained model emitting an em dash in clarifications -> added _clean_text() in farmhand.py (normalizes em/en dash, smart quotes, ellipsis, arrows -> ASCII) so dashboard clarifications comply. 23/23 tests still pass. demo_driver.py middots/label also cleaned.
+3. OPS RULE compliance: killed my worker-shell service (agents:0). The persistent FarmHand service must be launched by scripts/demo.sh.
+   @fw-tools: please add the FarmHand NL service to demo.sh (detached + pidfile like the others). Exact command: `ml/freesolo-agent/client/run_service.sh` (I added it; cds + runs .venv/bin/python service.py, reads client/.env, auto-reconnects). It needs the hub up first. Without it, nl_command has no responder in the demo.
+Model workstream complete: trained (SFT->GRPO 96.7%), deployed, wired, verified end-to-end, written up (DEVPOST + SUBMISSION + NOTES resolved). Idle-ready.
+
+## [freesolo-integration] end-to-end chain verified; 2 gaps flagged (both 1-line, other-owned)
+Assessed full nl_command chain: web Teleop NL box (emit nl_command, consume nl_action) -> server-core index.js relay -> my farmhand service -> robot_node.py. Shapes are compatible with my nl_action {ok, action{task,fruit,filter,zone}, clarification, error}.
+
+TWO integration gaps (I do not own these files; flagging with exact fixes):
+1. @web-frontend / @web-extra-1 - DEMO-BREAKING: web/src/pages/Teleop.jsx describeAction() shows a clarification only under `!a.ok`, but FarmHand clarifications are `{ok:true, clarification:"..."}` (a clarification is a successful response, not an error). Result: "Which fruit?" renders as "ok". FIX (1 line, add before the action branch):
+     if (a.clarification) return a.clarification
+   Confirmed my shape is stable + correct; the display is the only thing to change. This is the clarification demo moment - please patch.
+2. @fw-tools - add the FarmHand service to demo.sh (detached/pidfile like others): `ml/freesolo-agent/client/run_service.sh` (provided). Needs hub up first. Without it nl_command has no responder.
+
+Also (low pri, offline-only): web/src/lib/sim.js has its own nl_command->nl_action mock for pure-frontend mode; ensure its reply matches the same shape so the describeAction fix covers both paths.
+Everything on MY side (service, model, validation, clean punctuation, run script) is done + verified. Idle-ready; will confirm once web + demo.sh land.
+
+## [freesolo-robustness] DONE - endpoint failure fallback (demo-proofing) + punct normalization
+Implemented in MY code (no ownership conflicts; web-extra-1 is live in Teleop.jsx so I left it to them):
+- farmhand.py: on endpoint error/timeout/invalid output, fall back to built-in mock rules (FARMHAND_FALLBACK=1 default) so the NL box NEVER dies from a Freesolo cold-start / venue-wifi drop / endpoint hiccup. Reply carries "fallback": <reason> so it's honest, never silent. FARMHAND_FALLBACK=0 restores strict error mode.
+- _clean_text(): normalizes the trained model's em dashes / smart quotes / ellipsis / arrows to ASCII in clarifications (UI-facing, style-rule compliant).
+- Tests: 26/26 pass (added fallback on/off + punct-normalization tests). Documented FARMHAND_FALLBACK in .env.example + docstring.
+Net: the NL pipeline degrades gracefully instead of breaking during judging. Model workstream + robustness complete. Remaining integration = 2 one-line fixes owned by web-extra-1 (clarification display) + fw-tools (service in demo.sh), both flagged with exact patches.
+
+## [freesolo-integration] DONE - full NL chain integrated + verified end-to-end
+Both integration gaps closed:
+1. Web clarification display: web-extra-1 already applied the fix in Teleop.jsx (describeAction line 14: `if (a.clarification) return a.clarification`). Confirmed present. No action needed from me.
+2. demo.sh: ADDED the farmhand service (I own the run, master authorized). New `farmhand` service in cmd_up (after wait_hub, venv-guarded, proc: idempotency check), plus cmd_down loop + cmd_logs. `bash -n` clean. Launch verified exactly as demo.sh invokes it -> service connects to hub.
+End-to-end verified with the REAL trained model (GRPO v1) through the live hub: 4 commands -> exactly 4 nl_action events (no dupes), correct actions, working clarification, clean-ASCII clarification text (punct normalization held).
+Found+fixed a duplicate-responder (2 agent services were connected -> would double nl_action); cleaned to 1. NOTE for demo: run the stack ONLY via `scripts/demo.sh up` (now starts farmhand) - do not also start it from a worker pane, or you get duplicate replies. Torn down my shell-spawned verification service (ops rule); demo.sh owns it now.
+INTEGRATION COMPLETE. Full chain: web NL box -> hub -> farmhand (trained model + validate + fallback) -> hub -> UI confirmation + robot. Idle-ready.

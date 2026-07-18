@@ -23,8 +23,7 @@ const socket = io(SERVER_URL, { auth: { role: 'robot', sim: IS_PANIC_SIM } });
 const FRUITS = ['apple', 'apple', 'banana']; // apples slightly more common
 const RIPENESS = ['ripe', 'ripe', 'unripe'];
 
-// --- state ------------------------------------------------------------------
-
+// state
 const sim = {
   state: 'IDLE',
   stateSince: Date.now(),
@@ -52,8 +51,7 @@ function randomFruit() {
   return { fruit, ripeness };
 }
 
-// --- inbound commands -------------------------------------------------------
-
+// inbound commands
 socket.on('connect', () => console.log(`[sim] connected to ${SERVER_URL} as robot`));
 socket.on('connect_error', (e) => console.log('[sim] connect error:', e.message));
 
@@ -85,8 +83,7 @@ socket.on('estop', () => {
   }, 5000);
 });
 
-// --- main loop: telemetry 5 Hz + state machine ------------------------------
-
+// main loop: telemetry 5 Hz + state machine
 setInterval(() => {
   const now = Date.now();
   sim.battery = Math.max(9.5, sim.battery - 0.0004);
@@ -180,7 +177,7 @@ async function writePickImage(ts, { fruit, ripeness, success }) {
 ${shape}
 <circle cx="248" cy="48" r="16" fill="${badge}"/>
 <text x="248" y="55" font-family="sans-serif" font-size="18" font-weight="bold" fill="#14171c" text-anchor="middle">${success ? 'OK' : 'X'}</text>
-<text x="20" y="210" font-family="sans-serif" font-size="20" fill="#e6e6e6">${fruit} · ${ripeness}</text>
+<text x="20" y="210" font-family="sans-serif" font-size="20" fill="#e6e6e6">${fruit} / ${ripeness}</text>
 <text x="20" y="230" font-family="sans-serif" font-size="12" fill="#8a929c">pick ${ts}</text>
 </svg>`;
     fs.writeFileSync(path.join(MEDIA_DIR, file), svg); // local copy = offline fallback
@@ -194,8 +191,7 @@ ${shape}
   }
 }
 
-// --- detections while seeking (~every 1.5 s) --------------------------------
-
+// detections while seeking (~every 1.5 s)
 setInterval(() => {
   if (sim.state !== 'SEEK') return;
   const { fruit, ripeness } = randomFruit();
@@ -216,8 +212,7 @@ setInterval(() => {
   });
 }, 1500);
 
-// --- lidar: 6x4 m room walls from current pose, 2 Hz, 180 pts ---------------
-
+// lidar: 6x4 m room walls from current pose, 2 Hz, 180 pts
 function wallDistance(px, py, angle) {
   // distance from (px,py) along `angle` to the 6x4 room boundary
   const dx = Math.cos(angle);

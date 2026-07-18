@@ -11,7 +11,7 @@ server-stamped `ts` (epoch **milliseconds**) when the robot sends none/zero.
 
 ## The model at a glance
 
-**Write path** (robot/hub → db): 4 collections. **Read path** (db → REST → web):
+**Write path** (robot/hub -> db): 4 collections. **Read path** (db -> REST -> web):
 9 query shapes derived from them. Everything additive; the root schemas never
 drift.
 
@@ -28,7 +28,7 @@ drift.
 | `getPicks()` | `/api/picks` | pick log |
 | `getDetections()` | `/api/detections` | detection feed |
 | `getTimeSeries()` | `/api/timeseries` | Analytics charts over time |
-| `getSessions()` | `/api/sessions` | harvest-run cards (→ Base44 HarvestJob) |
+| `getSessions()` | `/api/sessions` | harvest-run cards (-> Base44 HarvestJob) |
 | `getActivity()` | `/api/activity` | time-in-state, e-stops, battery curve |
 | `getLatestTelemetry()` | `/api/telemetry/latest` | status header / hydration |
 | `getCommands()` | `/api/commands` | FarmHand NL-command history |
@@ -54,7 +54,7 @@ Indexes: `{ts:-1}`, `{fruit:1, ripeness:1}`, `{bin:1}`, `{operator:1}` (sparse).
 
 **Operator attribution (`operator`).** Optional Auth0 identity (`sub` or email)
 of the authenticated operator who triggered the pick - server-core stamps it from
-the verified JWT. Filter via `getPicks({operator})`. This is the MongoDB↔Auth0
+the verified JWT. Filter via `getPicks({operator})`. This is the MongoDB<->Auth0
 synergy (see `docs/MONGODB_AUTH0.md`): every action on a physical robot is
 attributed to a logged-in operator and queryable as an audit trail. Additive +
 nullable - absent on autonomous/unauthenticated picks.
@@ -68,7 +68,7 @@ needs **zero db-layer changes** - it round-trips through `recordPickEvent` /
 
 | Piece | Owner | What |
 |---|---|---|
-| capture + write file `web/server/media/pick_<ts>.jpg` | fw-linux (robot) → server-core (save) | hub writes the frame to disk on pick |
+| capture + write file `web/server/media/pick_<ts>.jpg` | fw-linux (robot) -> server-core (save) | hub writes the frame to disk on pick |
 | set `image_url: "/media/pick_<ts>.jpg"` on the emitted `pick_event` | fw-linux / server-core | reference only, never bytes |
 | serve `GET /media/*` (Express static) | server-core | so the browser can load it |
 | render the thumbnail next to each pick | web-frontend | pick log + `/api/picks` already returns `image_url` |
@@ -251,14 +251,14 @@ name `ht6`; selftests use a throwaway `ht6_selftest` db and clean up after via
 Atlas is remote, so venue WiFi loss = no DB. `scripts/db-snapshot.sh` makes the
 demo resilient to that (snapshots go to `db-snapshots/`, gitignored):
 
-- `dump` - snapshot Atlas `ht6` → a portable gzip archive. Run periodically, or
+- `dump` - snapshot Atlas `ht6` -> a portable gzip archive. Run periodically, or
   `auto [SECONDS]` loops it unattended during the event (keeps newest 10).
 - `restore-local` - **the failover**: brings up a local `mongod` (:27777),
   restores the latest snapshot into it, and prints the `MONGODB_URI` to export.
-  Point the hub at it + restart → the dashboard keeps serving real historical
+  Point the hub at it + restart -> the dashboard keeps serving real historical
   data with Atlas/WiFi down.
 - `restore [ARCHIVE]` - push a snapshot back to Atlas once it's reachable again.
 
 At the venue: run `scripts/db-snapshot.sh auto 300` in a spare pane; if Atlas
-drops → `restore-local`, export the printed URI, restart the hub. **@deploy:**
+drops -> `restore-local`, export the printed URI, restart the hub. **@deploy:**
 worth referencing in `docs/DEPLOY.md`'s venue-networking / hotspot plan.

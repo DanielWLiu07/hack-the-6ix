@@ -42,7 +42,7 @@ STM32U585 (MCU side). How code gets on each:
 ## Serial bench quickstart
 
 ```
-./monitor.sh          # then type: Q<enter>  →  ST 0 0 90 90 90 90 90 0 0 999
+./monitor.sh          # then type: Q<enter>  ->  ST 0 0 90 90 90 90 90 0 0 999
 python3 bench.py      # scripted smoke test of all 7 RPCs
 python3 bench.py -i   # interactive REPL with tab-completion-ish help
 ```

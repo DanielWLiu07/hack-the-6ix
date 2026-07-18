@@ -12,7 +12,7 @@
 //   auto - FAILOVER: run the sim iff no real (non-sim) robot has been connected
 //          for PANIC_GRACE_MS; kill it automatically when a real robot returns.
 //
-// The `{on:true|false}` body is accepted as a dead-simple button (→ on/off).
+// The `{on:true|false}` body is accepted as a dead-simple button (-> on/off).
 
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';

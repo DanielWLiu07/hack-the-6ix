@@ -1,4 +1,4 @@
-// painterly.js — anisotropic Kuwahara, faithful port of the reference
+// painterly.js - anisotropic Kuwahara, faithful port of the reference
 // implementation by Garrett Gunnell (Acerola), the shader behind the
 // well-known painterly post-process demos:
 //   https://github.com/GarrettGunnell/Post-Processing (Kuwahara Filter)
@@ -19,7 +19,7 @@ const FSQ_VERT = /* glsl */`
     gl_Position = vec4(position.xy, 0.0, 1.0);
   }`;
 
-// Pass 1 — structure tensor from Sobel derivatives (reference: /4.0)
+// Pass 1 - structure tensor from Sobel derivatives (reference: /4.0)
 const TENSOR_FRAG = /* glsl */`
   precision highp float;
   in vec2 vUv;
@@ -40,7 +40,7 @@ const TENSOR_FRAG = /* glsl */`
     outColor = vec4(dot(Sx, Sx), dot(Sy, Sy), dot(Sx, Sy), 1.0);
   }`;
 
-// Pass 2 — separable gaussian blur, horizontal (radius 5, sigma 2)
+// Pass 2 - separable gaussian blur, horizontal (radius 5, sigma 2)
 const BLURX_FRAG = /* glsl */`
   precision highp float;
   in vec2 vUv;
@@ -58,7 +58,7 @@ const BLURX_FRAG = /* glsl */`
     outColor = col / sum;
   }`;
 
-// Pass 3 — vertical blur + eigen analysis -> TFM (t.xy, phi, anisotropy)
+// Pass 3 - vertical blur + eigen analysis -> TFM (t.xy, phi, anisotropy)
 const TFM_FRAG = /* glsl */`
   precision highp float;
   in vec2 vUv;
@@ -87,7 +87,7 @@ const TFM_FRAG = /* glsl */`
     outColor = vec4(t, phi, A);
   }`;
 
-// Pass 4 — anisotropic Kuwahara with POLYNOMIAL sector weights (the part
+// Pass 4 - anisotropic Kuwahara with POLYNOMIAL sector weights (the part
 // that makes clean paint daubs: every sample feeds all 8 sectors softly)
 const KUWAHARA_FRAG = /* glsl */`
   precision highp float;
@@ -176,8 +176,8 @@ const KUWAHARA_FRAG = /* glsl */`
     outColor = vec4(clamp(acc.rgb / max(acc.w, 1e-6), 0.0, 1.0), 1.0);
   }`;
 
-// Pass 5 — composite: canvas grain, pigment edge darkening, painter
-// palette, vignette, effect mix. Kept SUBTLE — the reference filter is
+// Pass 5 - composite: canvas grain, pigment edge darkening, painter
+// palette, vignette, effect mix. Kept SUBTLE - the reference filter is
 // the star; this is varnish.
 const COMPOSITE_FRAG = /* glsl */`
   precision highp float;
@@ -187,6 +187,7 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform sampler2D tTensor;
   uniform vec2 uRes;
   uniform float uMix;
+  uniform float uCutout;   // 1 = transparent-background cutout (alpha from coverage)
   out vec4 outColor;
 
   float hash(vec2 p){
@@ -215,10 +216,34 @@ const COMPOSITE_FRAG = /* glsl */`
     float lum = dot(paint, vec3(0.299, 0.587, 0.114));
     paint += (lum - 0.5) * vec3(0.06, 0.025, -0.045);
 
-    float d = distance(vUv, vec2(0.5));
-    paint *= 1.0 - smoothstep(0.5, 0.9, d) * 0.28;
+    // Center vignette only makes sense for a full-frame effect. In cutout mode
+    // the painted content sits at the edges, so skip it.
+    if (uCutout < 0.5) {
+      float d = distance(vUv, vec2(0.5));
+      paint *= 1.0 - smoothstep(0.5, 0.9, d) * 0.28;
+    }
 
-    outColor = vec4(mix(scene, paint, uMix), 1.0);
+    vec3 col = mix(scene, paint, uMix);
+
+    if (uCutout > 0.5) {
+      // Alpha from the captured scene coverage, dilated a couple of texels so a
+      // sliver of the painted edge survives, then premultiplied so it composites
+      // cleanly over the layer behind.
+      vec2 texel = 1.0 / uRes;
+      float cov = texture(tScene, vUv).a;
+      cov = max(cov, texture(tScene, vUv + texel * vec2( 2.0,  0.0)).a);
+      cov = max(cov, texture(tScene, vUv + texel * vec2(-2.0,  0.0)).a);
+      cov = max(cov, texture(tScene, vUv + texel * vec2( 0.0,  2.0)).a);
+      cov = max(cov, texture(tScene, vUv + texel * vec2( 0.0, -2.0)).a);
+      cov = max(cov, texture(tScene, vUv + texel * vec2( 2.0,  2.0)).a);
+      cov = max(cov, texture(tScene, vUv + texel * vec2(-2.0, -2.0)).a);
+      cov = max(cov, texture(tScene, vUv + texel * vec2( 2.0, -2.0)).a);
+      cov = max(cov, texture(tScene, vUv + texel * vec2(-2.0,  2.0)).a);
+      float alpha = smoothstep(0.15, 0.6, cov);
+      outColor = vec4(col * alpha, alpha);
+    } else {
+      outColor = vec4(col, 1.0);
+    }
   }`;
 
 export class PainterlyPipeline {
@@ -226,10 +251,13 @@ export class PainterlyPipeline {
     this.renderer = renderer;
     this.renderScale = renderScale;
     // reference defaults (Acerola demo ballpark)
-    this.kernelSize = 12;     // "stroke size" — full kernel in px
+    this.kernelSize = 12;     // "stroke size", full kernel in px
     this.hardness = 8.0;
     this.q = 9.0;
     this.alpha = 1.0;
+    // When true, composite outputs a premultiplied cutout (alpha from scene
+    // coverage) so the paint can layer over another canvas. Default full-frame.
+    this.cutout = false;
     this.zeroCrossing = 0.58;
     this.mix = 1.0;
 
@@ -282,7 +310,12 @@ export class PainterlyPipeline {
       tPaint: { value: null }, tScene: { value: null },
       tTensor: { value: null },
       uRes: { value: new THREE.Vector2() }, uMix: { value: 1 },
+      uCutout: { value: 0 },
     });
+    // Cutout mode composites premultiplied over the existing frame; allow blend.
+    this.matComposite.transparent = true;
+    this.matComposite.blending = THREE.NormalBlending;
+    this._prevColor = new THREE.Color();
   }
 
   setSize(w, h) {
@@ -303,7 +336,13 @@ export class PainterlyPipeline {
 
   render(scene, camera) {
     const r = this.renderer;
+    const prevAutoClear = r.autoClear;
+    const prevClearAlpha = r.getClearAlpha();
+    r.getClearColor(this._prevColor);
 
+    // In cutout mode the scene must clear transparent so coverage (alpha) is
+    // meaningful. Caller is expected to null scene.background for this pass.
+    if (this.cutout) r.setClearColor(0x000000, 0);
     r.setRenderTarget(this.rtScene);
     r.render(scene, camera);
 
@@ -334,8 +373,14 @@ export class PainterlyPipeline {
     this.matComposite.uniforms.tTensor.value = this.rtBlurX.texture;
     this.matComposite.uniforms.uRes.value = this.res;
     this.matComposite.uniforms.uMix.value = this.mix;
+    this.matComposite.uniforms.uCutout.value = this.cutout ? 1 : 0;
+    // Cutout composites over whatever is already on screen (the ink pass), so
+    // do not let the final pass clear it.
+    if (this.cutout) r.autoClear = false;
     this._pass(this.matComposite, null);
 
     r.setRenderTarget(null);
+    r.autoClear = prevAutoClear;
+    r.setClearColor(this._prevColor, prevClearAlpha);
   }
 }

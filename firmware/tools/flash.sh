@@ -20,7 +20,7 @@ die() { printf '\033[1;31m[flash]\033[0m %s\n' "$*" >&2; exit 1; }
 command -v arduino-cli >/dev/null 2>&1 || die "arduino-cli not found - run ./setup.sh first"
 ls "$SKETCH"/*.ino >/dev/null 2>&1 || die "no .ino in $SKETCH (fw-mcu not started yet?)"
 
-# --- resolve FQBN -----------------------------------------------------------
+# resolve FQBN
 if [ -z "${ARDUINO_FQBN:-}" ]; then
   # 1) an attached board that identifies itself
   ARDUINO_FQBN="$(arduino-cli board list --format json 2>/dev/null \
@@ -43,12 +43,12 @@ if [ -z "${ARDUINO_FQBN:-}" ]; then
 fi
 say "FQBN: $ARDUINO_FQBN"
 
-# --- compile ----------------------------------------------------------------
+# compile
 arduino-cli compile --fqbn "$ARDUINO_FQBN" ${EXTRA_FLAGS:-} "$SKETCH" || die "compile failed"
 say "compile OK"
 [ "$CHECK_ONLY" = 1 ] && { say "check-only mode - not uploading"; exit 0; }
 
-# --- upload -----------------------------------------------------------------
+# upload
 if [ -z "${PORT:-}" ]; then
   PORT="$(arduino-cli board list 2>/dev/null | awk '/usb/ {print $1; exit}' || true)"
 fi

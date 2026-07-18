@@ -43,7 +43,7 @@ class MockMcu:
         self.last_heartbeat = time.monotonic()
         self.watchdog_armed = False   # bench boots disarmed (§5)
 
-    # ---- state machine (§2) ----
+    # state machine (§2)
     def state(self):
         if self.estopped:
             return ESTOP
@@ -73,7 +73,7 @@ class MockMcu:
             else:
                 self.joints[i] += self.step_per_tick[i]
 
-    # ---- RPC handlers (§3) ----
+    # RPC handlers (§3)
     def set_drive(self, l, r):
         s = self.state()
         if s in (WATCHDOG, ESTOP):

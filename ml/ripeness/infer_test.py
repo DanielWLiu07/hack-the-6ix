@@ -32,7 +32,7 @@ def preprocess(img, size):
 
 
 def detect(sess, img, classes, size, conf_thres=0.35, iou_thres=0.45):
-    """Run one frame → list of root-schema detection dicts (bbox in pixels)."""
+    """Run one frame -> list of root-schema detection dicts (bbox in pixels)."""
     x, r, top, left = preprocess(img, size)
     (out,) = sess.run(None, {sess.get_inputs()[0].name: x})
     pred = out[0].T  # (N, 4+nc): cx, cy, w, h, cls scores
@@ -42,7 +42,7 @@ def detect(sess, img, classes, size, conf_thres=0.35, iou_thres=0.45):
     keep = confs > conf_thres
     pred, cls_ids, confs = pred[keep], cls_ids[keep], confs[keep]
 
-    # undo letterbox → original pixel coords, xywh with top-left origin
+    # undo letterbox -> original pixel coords, xywh with top-left origin
     boxes = []
     for cx, cy, w, h in pred[:, :4]:
         bx = (cx - w / 2 - left) / r
@@ -97,7 +97,7 @@ def main():
                     (x, max(12, y - 4)), 0, 0.5, (255, 255, 255), 1)
     out_path = ROOT / "infer_test_out.jpg"
     cv2.imwrite(str(out_path), img)
-    print(f"# annotated → {out_path}")
+    print(f"# annotated -> {out_path}")
 
 
 if __name__ == "__main__":

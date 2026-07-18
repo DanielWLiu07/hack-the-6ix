@@ -96,15 +96,15 @@ def main():
 def render(rows):
     out = []
     out.append("# FarmHand NL-command end-to-end demo transcript\n")
-    out.append("_llm-client phase-2 · 10 commands driven through the LIVE hub (:3001)_\n")
-    out.append("Chain per command: **web UI** `nl_command` → hub → **farmhand service** "
-               "(mock rules + strict schema validation) → hub → **UI echo** + **robot forward**.\n")
+    out.append("_llm-client - 10 commands driven through the LIVE hub (:3001)_\n")
+    out.append("Chain per command: **web UI** `nl_command` -> hub -> **farmhand service** "
+               "(trained model + strict schema validation) -> hub -> **UI echo** + **robot forward**.\n")
     ok = sum(1 for _, _, a, _, _ in rows if a and a.get("ok"))
     clar = sum(1 for _, _, a, _, _ in rows if a and a.get("ok") and a.get("clarification"))
     rej = sum(1 for _, _, a, _, _ in rows if a and not a.get("ok"))
     acts = ok - clar
-    out.append(f"**Summary:** {len(rows)} commands · {acts} valid actions forwarded to robot · "
-               f"{clar} clarification(s) · {rej} rejected (never reached robot).\n")
+    out.append(f"**Summary:** {len(rows)} commands, {acts} valid actions forwarded to robot, "
+               f"{clar} clarification(s), {rej} rejected (never reached robot).\n")
     for i, text, action, fwd, got in rows:
         out.append(f"\n## {i}. `{text}`\n")
         if not got or action is None:
@@ -112,16 +112,16 @@ def render(rows):
             continue
         if action.get("ok") and action.get("action"):
             a = action["action"]
-            out.append(f"- **farmhand → action**: `{a}`")
+            out.append(f"- **farmhand -> action**: `{a}`")
             robot_got = [ (n,d) for (n,d) in fwd if n in ("pick","estop","drive","arm_pose") ]
             nlf = [d for (n,d) in fwd if n == "nl_action"]
             out.append(f"- **hub forwarded to robot**: full `nl_action` {'yes' if nlf else '-'}"
                        + (f", mapped control `{robot_got}`" if robot_got else ""))
         elif action.get("ok") and action.get("clarification"):
-            out.append(f"- **farmhand → clarification**: \"{action['clarification']}\"")
+            out.append(f"- **farmhand -> clarification**: \"{action['clarification']}\"")
             out.append("- **robot**: nothing forwarded (awaiting user reply)")
         else:
-            out.append(f"- **farmhand → REJECTED**: `{action.get('error')}` - "
+            out.append(f"- **farmhand -> REJECTED**: `{action.get('error')}` - "
                        f"invalid/unparseable, **never forwarded to robot**")
     text = "\n".join(out) + "\n"
     dest = sys.argv[1] if len(sys.argv) > 1 else "transcript.md"

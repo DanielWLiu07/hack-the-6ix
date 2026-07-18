@@ -1,0 +1,16 @@
+# FarmHand OPD (on-policy distillation) - 3rd algorithm.
+# Warm-start from SFT v1 adapter (docs: cold OPD underperforms SFT); distill the
+# managed teacher (GLM-5.2) on our command prompts incl. the typo augmentation,
+# so the teacher supplies correct answers on the exact cases our own labels missed.
+model = "Qwen/Qwen3.5-0.8B"
+algorithm = "opd"
+seed = 42
+
+[environment]
+id = "hackthe6ixbanana/farmhand"
+
+[train]
+epochs = 1
+max_examples = 2575
+init_from_adapter = "flash-1784357076-b93a0ca9"
+teacher_model = "glm-5.2"

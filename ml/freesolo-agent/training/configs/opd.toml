@@ -3,7 +3,7 @@ algorithm = "opd"   # on-policy distillation from a managed Fireworks teacher (d
 
 # Environment: upload this project folder with
 # `flash env push --name my-env .`, then paste the returned id below.
-# The teacher and its Fireworks key are platform-managed — nothing to set up or export.
+# The teacher and its Fireworks key are platform-managed - nothing to set up or export.
 [environment]
 id = ""
 

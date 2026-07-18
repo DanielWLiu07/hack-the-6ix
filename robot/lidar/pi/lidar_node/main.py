@@ -1,4 +1,4 @@
-"""Entry point: lidar → processing → Socket.IO, throttled to EMIT_HZ.
+"""Entry point: lidar -> processing -> Socket.IO, throttled to EMIT_HZ.
 
 Run:  python -m lidar_node.main
 Env:  SERVER_URL, LIDAR_PORT, LIDAR_BAUD, EMIT_HZ, MAX_POINTS,

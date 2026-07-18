@@ -1,4 +1,4 @@
-"""Pure math: polar→cartesian conversion and angular downsampling.
+"""Pure math: polar->cartesian conversion and angular downsampling.
 
 No hardware or network imports - this module is fully unit-testable.
 
@@ -22,7 +22,7 @@ def polar_to_cartesian(
     angle_offset_deg: float = 0.0,
     ccw: bool = False,
 ) -> "tuple[float, float]":
-    """One lidar return → (x, y) meters in the robot frame.
+    """One lidar return -> (x, y) meters in the robot frame.
 
     ccw=False (normal RPLIDAR mount): angle increases clockwise, so the
     robot-frame angle is the negation of the lidar angle.
@@ -80,7 +80,7 @@ def scan_to_points(
     angle_offset_deg: float = 0.0,
     ccw: bool = False,
 ) -> "list[list[float]]":
-    """Full pipeline: (angle_deg, distance_m) list → [[x, y], ...] payload.
+    """Full pipeline: (angle_deg, distance_m) list -> [[x, y], ...] payload.
 
     Filters bad ranges, downsamples to ≤max_points, converts to robot-frame
     cartesian meters rounded to mm precision (keeps JSON payloads small).

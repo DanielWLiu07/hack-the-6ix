@@ -36,7 +36,7 @@ class OccupancyGrid:
         self.origin = np.asarray(origin, float)   # world coord of cell (0,0) corner
         self.log = np.zeros((self.h, self.w), np.float32)
 
-    # -- world <-> cell -------------------------------------------------
+    # world <-> cell
 
     def to_cell(self, xy):
         """(N,2) world meters -> (N,2) int cell indices (ix, iy)."""
@@ -46,7 +46,7 @@ class OccupancyGrid:
     def _in_bounds(self, ix, iy):
         return (ix >= 0) & (ix < self.w) & (iy >= 0) & (iy < self.h)
 
-    # -- integration ----------------------------------------------------
+    # integration
 
     def _maybe_recenter(self, pose_xy):
         """Rolling grid: if the robot nears an edge, shift the grid to re-center
@@ -95,7 +95,7 @@ class OccupancyGrid:
         np.add.at(self.log, (ey[m], ex[m]), L_OCC)
         np.clip(self.log, -L_CLAMP, L_CLAMP, out=self.log)
 
-    # -- serialization --------------------------------------------------
+    # serialization
 
     def to_uint8(self):
         g = np.full((self.h, self.w), UNKNOWN, np.uint8)

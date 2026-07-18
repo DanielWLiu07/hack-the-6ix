@@ -8,9 +8,9 @@ behind one interface; everything runs with zero hardware (synthetic scenes).
 | file | what |
 |---|---|
 | `detector.py` | `load_detector()` - the import surface for fw-linux. ONNX if `ml/ripeness/export/model.onnx` exists, else HSV fallback. |
-| `hsv_detector.py` | Works-today OpenCV HSV blob detector (red→apple ripe, yellow→banana ripe, green split by elongation). |
+| `hsv_detector.py` | Works-today OpenCV HSV blob detector (red->apple ripe, yellow->banana ripe, green split by elongation). |
 | `onnx_detector.py` | YOLOv8 ONNX wrapper (onnxruntime CPU) for vision-train's export. |
-| `pipeline.py` | capture → detect → annotated MJPEG `:8080/stream` + `/detections` + `/health`. |
+| `pipeline.py` | capture -> detect -> annotated MJPEG `:8080/stream` + `/detections` + `/health`. |
 | `bench.py` | FPS/latency benchmark (Qualcomm-track on-device numbers). |
 | `synthetic.py` | Synthetic scene generator + `SyntheticCamera`. |
 | `test_detector.py` | Precision/recall eval vs synthetic ground truth + schema checks. |
@@ -19,7 +19,7 @@ behind one interface; everything runs with zero hardware (synthetic scenes).
 
 ```bash
 cd robot/vision
-python3 test_detector.py --frames 200        # detector eval → PASS
+python3 test_detector.py --frames 200        # detector eval -> PASS
 python3 pipeline.py --source synthetic       # MJPEG on http://localhost:8080/stream
 python3 bench.py --detector auto             # FPS numbers (prints BENCH json line)
 ```

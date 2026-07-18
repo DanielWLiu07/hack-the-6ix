@@ -38,19 +38,19 @@ you start talking. If anything is red, OP flips the sim panic switch
 > Right now it's looking for fruit on its own. Watch."
 >
 > _(OP does nothing - the robot is autonomous. The arm centers on the apple:
-> SEEK → ALIGN.)_
+> SEEK -> ALIGN.)_
 >
 > "It found the apple, it's centering the bounding box by jogging its own
-> joints - and it already knows this one is **ripe**, not green. Now it picks…"
+> joints - and it already knows this one is **ripe**, not green. Now it picks..."
 >
 > _(Arm picks, lifts.)_
 >
-> "…and here's the part that matters: it doesn't just pick, it **sorts**. Ripe
+> "...and here's the part that matters: it doesn't just pick, it **sorts**. Ripe
 > apple goes in the ripe-apple bin."
 >
 > _(Arm drops fruit into `apple_ripe` bin. Wait for the clunk.)_
 
-**[40s → 1:05]** - _If the arm stalls, B keeps talking and OP triggers the
+**[40s -> 1:05]** - _If the arm stalls, B keeps talking and OP triggers the
 scripted replay; never wait in silence._
 
 ### 1:05 – 1:35 · The dashboard  - **B**, **OP** brings up the screen
@@ -63,7 +63,7 @@ scripted replay; never wait in silence._
 > works. One arm grades **~400 fruit an hour**, about **60 kilograms** kept out
 > of the loss pile - every hour."
 
-**[30s → 1:35]** - _OP leaves the dashboard up; advances to the architecture
+**[30s -> 1:35]** - _OP leaves the dashboard up; advances to the architecture
 slide on B's next line._
 
 ### 1:35 – 2:10 · The dual-brain - MPU/MCU  - **B**, slide up
@@ -78,7 +78,7 @@ slide on B's next line._
 > and it still sees, picks, and stops.** No cloud - the camera frames never leave
 > the board."
 
-**[35s → 2:10]** - _OP switches to the dashboard's NL command box for the finale._
+**[35s -> 2:10]** - _OP switches to the dashboard's NL command box for the finale._
 
 ### 2:10 – 2:45 · FarmHand - natural language  - **B**, **OP** types
 > "Last thing. You shouldn't need to be an engineer to run this. So we trained a
@@ -88,14 +88,14 @@ slide on B's next line._
 > "It turns that into a validated command the robot can execute - and here's the
 > safety catch: **anything the model outputs that isn't a valid, in-schema
 > command is rejected and never reaches the robot.**" _(OP types garbage, e.g.
-> **"asdf qwerty"** → rejected badge; then **"pick the fruit"** → clarification
+> **"asdf qwerty"** -> rejected badge; then **"pick the fruit"** -> clarification
 > bubble.)_
 >
 > "Ambiguous? It asks which fruit instead of guessing. On our held-out test set
 > it's **93% accurate** - and 100% safe, because bad output physically can't
 > drive the arm."
 
-**[35s → 2:45]**
+**[35s -> 2:45]**
 
 ### 2:45 – 3:00 · Close  - **A**
 > "Picks, sorts, and grades fruit at the point of harvest - in plain English, on
@@ -104,7 +104,7 @@ slide on B's next line._
 >
 > **Battery, not Blood.** Thank you."
 
-**[15s → 3:00]**
+**[15s -> 3:00]**
 
 ---
 
@@ -121,16 +121,16 @@ slide on B's next line._
 
 ## Track callouts (which line scores which prize)
 
-- **Freesolo LLM** → the FarmHand beat (2:10) - NL → validated action, 93% eval.
-- **Qualcomm UNO Q** → the dual-brain beat (1:35) - MPU/MCU split, on-device, 5 W.
-- **Deloitte AI-for-Green / Environmental** → hook (0:00) + live impact widget (1:05).
-- **Overall / Hardware** → the autonomous pick+sort (0:25) carries the difficulty.
+- **Freesolo LLM** -> the FarmHand beat (2:10) - NL -> validated action, 93% eval.
+- **Qualcomm UNO Q** -> the dual-brain beat (1:35) - MPU/MCU split, on-device, 5 W.
+- **Deloitte AI-for-Green / Environmental** -> hook (0:00) + live impact widget (1:05).
+- **Overall / Hardware** -> the autonomous pick+sort (0:25) carries the difficulty.
 
 ## Cut-downs (if you're over)
 
-- **→ 2:30:** trim the dashboard beat to 15s (just the impact widget), drop the
+- **-> 2:30:** trim the dashboard beat to 15s (just the impact widget), drop the
   lidar mention.
-- **→ 90s (expo table):** hook (15s) → live pick+sort (35s) → FarmHand NL (25s) →
+- **-> 90s (expo table):** hook (15s) -> live pick+sort (35s) -> FarmHand NL (25s) ->
   "5 watts, no cloud, Battery not Blood" close (15s). Skip the architecture slide.
 
 ## Pre-flight checklist (OP, before you're called up)

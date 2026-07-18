@@ -4,6 +4,7 @@ import { Grid, Html, OrbitControls } from '@react-three/drei'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
 import { useRobotEvent } from '../lib/robot.jsx'
+import { CanvasGuard, SAFE_DPR } from '../lib/canvasGuard.jsx'
 
 const DECAY_MS = 4000
 const MAX_SCANS = 16
@@ -195,11 +196,15 @@ function WorldModel({
   fitView = false,
   autoFitEnabled = true,
 }) {
-  const { scene, camera } = useThree()
+  const { scene, camera, invalidate } = useThree()
   const worldRef = useRef(null)
   const okRef = useRef(false)
   const worldSigRef = useRef(null)
   const acceptedRef = useRef({ maxDim: 0, faceCount: 0 })
+  // Auto-fit the camera ONCE. A live scan rewrites world.glb every ~2s; re-fitting
+  // on every reload yanks the camera around (and a stray far voxel blows up the
+  // bounds so the model shrinks to nothing, then snaps back = the flashing).
+  const fittedRef = useRef(false)
 
   useEffect(() => {
     const loader = new GLTFLoader()
@@ -219,6 +224,9 @@ function WorldModel({
           let faceCount = 0
           gltf.scene.traverse((obj) => {
             if (!obj.isMesh || !obj.geometry) return
+            // A live scan mesh grows every 2s; never let a transient bad bounding
+            // sphere frustum-cull the whole world (loads-then-vanishes bug).
+            obj.frustumCulled = false
             const pos = obj.geometry.attributes?.position
             if (obj.geometry.index) faceCount += Math.floor(obj.geometry.index.count / 3)
             else if (pos) faceCount += Math.floor(pos.count / 3)
@@ -244,17 +252,25 @@ function WorldModel({
           gltf.scene.position.z -= center.z
           tintWorldMaterials(gltf.scene)
 
-          if (fitView && autoFitEnabled) {
-            const maxDim = Math.max(size.x, size.y, size.z, 0.6)
-            camera.position.set(maxDim * 0.55, Math.max(1.1, size.y * 1.6 + 0.9), maxDim * 2.4)
-            camera.lookAt(0, Math.max(0.2, size.y * 0.35), 0)
+          if (fitView && autoFitEnabled && !fittedRef.current) {
+            // Frame the room from ~1 diagonal away (matches the known-good
+            // viewer.html). The old maxDim*2.4 sat ~14 m back, shrinking the
+            // model to an invisible speck.
+            const d = Math.max(size.x, size.y, size.z, 0.6)
+            camera.position.set(d * 0.62, Math.max(1.1, size.y * 0.7 + d * 0.35), d * 0.62)
+            camera.lookAt(0, Math.max(0.2, size.y * 0.4), 0)
             camera.updateProjectionMatrix()
+            fittedRef.current = true // fit once, then let the live mesh grow in place
           }
           root.add(gltf.scene)
           worldRef.current = root
           scene.add(root)
           okRef.current = true
           acceptedRef.current = { maxDim, faceCount }
+          // The scene was mutated imperatively (outside R3F's reconciler). Under a
+          // non-continuous frameloop that change isn't drawn until something asks
+          // for a frame, so the freshly added world can sit invisible. Request one.
+          invalidate()
         },
         undefined,
         (err) => {
@@ -290,9 +306,10 @@ function WorldModel({
         scene.remove(worldRef.current)
         disposeObject(worldRef.current)
         worldRef.current = null
+        invalidate()
       }
     }
-  }, [autoFitEnabled, camera, fitView, onFail, reloadMs, scene])
+  }, [autoFitEnabled, camera, fitView, onFail, reloadMs, scene, invalidate])
 
   return null
 }
@@ -539,7 +556,8 @@ export default function LidarViewport({
     onWorldFail?.()
   }
   return (
-    <Canvas camera={camera} dpr={dpr}>
+    <Canvas camera={camera} dpr={SAFE_DPR}>
+      <CanvasGuard />
       <Scene
         showWorld={showWorld && !worldFailed}
         onWorldFail={handleWorldFail}

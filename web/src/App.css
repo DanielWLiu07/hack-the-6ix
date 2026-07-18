@@ -195,13 +195,30 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
     repeating-linear-gradient(4deg, rgba(95, 78, 48, .045) 0 1px, transparent 1px 4px);
   box-shadow: 2px 3px 0 rgba(75, 60, 37, .22), 0 8px 20px rgba(35, 44, 29, .2);
   text-align: center;
-  transform: rotate(-.6deg);
-  transition: transform .18s ease, background .18s ease;
+  /* No hover transform: a moving button slides out from under the cursor and
+     makes :hover flicker on and off. Stays put; hover is a highlight + glow.
+     opacity/transform here drive the drop-in reveal (see .hero-stage rules),
+     kept as a transition (not an animation) so the hover glow never disturbs it
+     and it never re-plays. */
+  transition: background .18s ease, box-shadow .18s ease,
+    opacity .55s ease, transform .55s cubic-bezier(.2, .9, .3, 1.2);
 }
-.landing-login-wrap:hover { background: #f5e8c7; transform: translateY(-2px) rotate(.6deg); }
+.landing-login-wrap:hover {
+  background:
+    linear-gradient(120deg, #fff7de, #f1e0b0),
+    repeating-linear-gradient(4deg, rgba(95, 78, 48, .05) 0 1px, transparent 1px 4px);
+  border-color: rgba(120, 92, 52, .75);
+  animation: login-glow 2.4s ease-in-out infinite;
+}
+/* Highlight is a warm gold glow that PULSES via box-shadow only. No transform
+   and no filter, so the button never moves, dims, or flashes transparent. */
+@keyframes login-glow {
+  0%, 100% { box-shadow: 2px 3px 0 rgba(75, 60, 37, .3), 0 8px 20px rgba(35, 44, 29, .22); }
+  50%      { box-shadow: 2px 3px 0 rgba(75, 60, 37, .3), 0 10px 28px rgba(214, 152, 58, .45); }
+}
 .landing-login-wrap > span {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: block;
   color: #713f32;
   pointer-events: none;
@@ -227,54 +244,112 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
   transform: none;
 }
 .landing-login-wrap .landing-login::after { display: none; }
+/* The transparent click layer must NOT move on hover either, or it slides off
+   the cursor and flickers. The wrap handles the hover highlight. */
+.landing-login-wrap .landing-login:hover { transform: none; background: transparent; }
 .landing-login-wrap .landing-login:focus-visible { outline: 3px solid #f0c76d; outline-offset: 3px; }
 .landing-logout { display: flex; align-items: center; gap: .65rem; max-width: min(360px, calc(100vw - 2.5rem)); font-family: system-ui, sans-serif; font-size: .75rem; }
 .landing-logout span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .landing-logout button { padding: .3rem .5rem; border: 1px solid #8b4a3a; border-radius: 4px; background: #b95042; color: #fff8e7; cursor: pointer; font: inherit; }
 
+/* Login drop-in: the sign is hidden until the hero apple lands (scene posts
+   'landed'; orchard/safety fallback reveals it on a timer), then it drops down
+   into place. Scoped to the painterly stage so the static ClassicHero login is
+   unaffected. Uses opacity/transform transitions so the hover glow can't hide
+   or re-trigger it. */
+.hero-stage .landing-login-wrap,
+.hero-stage .landing-logout {
+  opacity: 0;
+  transform: translateY(-18px);
+  pointer-events: none;
+}
+.hero-stage.login-in .landing-login-wrap,
+.hero-stage.login-in .landing-logout {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.hero-stage .landing-logout {
+  transition: opacity .55s ease, transform .55s cubic-bezier(.2, .9, .3, 1.2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-stage .landing-login-wrap,
+  .hero-stage .landing-logout { transform: none; transition: opacity .3s ease; }
+}
+
 .auth-signboard-panel {
   position: relative;
-  width: 300px;
-  padding: 1.15rem 1.1rem 1rem;
+  width: 400px;
+  max-width: calc(100vw - 2rem);
+  padding: 1.5rem 1.6rem 1.3rem;
   color: #314133;
   text-align: center;
-  background: rgba(255, 250, 229, .97);
+  background: rgba(255, 250, 229, .96);
   border: 2px solid #5d3924;
-  border-radius: 5px 8px 6px 9px;
-  box-shadow: 4px 5px 0 rgba(69, 42, 27, .35), 0 14px 34px rgba(24, 29, 18, .35);
+  border-radius: 6px 9px 7px 10px;
+  box-shadow: 4px 5px 0 rgba(69, 42, 27, .3), 0 12px 30px rgba(24, 29, 18, .28);
   font-family: system-ui, sans-serif;
   transform: translateY(6px);
 }
-.auth-signboard-panel::before { content: ''; position: absolute; inset: 6px; border: 1px dashed rgba(111, 75, 42, .35); pointer-events: none; }
+.auth-signboard-panel::before { content: ''; position: absolute; inset: 8px; border: 1px dashed rgba(111, 75, 42, .35); pointer-events: none; }
 .auth-signboard-panel > * { position: relative; }
-.signboard-kicker { color: #a04437; font-size: .58rem; font-weight: 800; letter-spacing: .16em; }
-.auth-signboard-panel h2 { margin: .25rem 0 .35rem; color: #365238; font-family: 'Katie Roze', 'Brush Script MT', cursive; font-size: 2rem; }
-.auth-signboard-panel p { color: #5f634f; font-size: .71rem; line-height: 1.45; }
-.signboard-action { width: 100%; margin-top: .75rem; padding: .58rem; border: 1px solid #743a30; border-radius: 5px; background: #b95042; box-shadow: 1px 2px 0 #793d32; color: #fff8e7; cursor: pointer; font-family: 'Katie Roze', 'Brush Script MT', cursive; font-size: 1.35rem; }
-.signboard-demo { display: inline-block; margin-top: .6rem; color: #526e43; font-size: .68rem; }
+.signboard-kicker { color: #a04437; font-size: .72rem; font-weight: 800; letter-spacing: .18em; }
+.auth-signboard-panel h2 { margin: .25rem 0 .8rem; color: #365238; font-family: 'Katie Roze', 'Brush Script MT', cursive; font-size: 2.4rem; line-height: 1; }
+.auth-signboard-panel p { color: #5f634f; font-size: .8rem; line-height: 1.5; }
+
+/* Operator sign-in form, styled to read like fields burned into the sign. */
+.signboard-form { display: flex; flex-direction: column; gap: .7rem; text-align: left; }
+.signboard-field { display: flex; flex-direction: column; gap: .3rem; }
+.signboard-field > span {
+  color: #7a5233;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.signboard-field input {
+  width: 100%;
+  padding: .58rem .7rem;
+  border: 1px solid #9a7b4f;
+  border-radius: 5px;
+  background: rgba(255, 253, 244, .95);
+  box-shadow: inset 1px 1px 2px rgba(90, 66, 38, .18);
+  color: #3a3020;
+  font-family: system-ui, sans-serif;
+  font-size: .98rem;
+}
+.signboard-field input::placeholder { color: #a99873; }
+.signboard-field input:focus-visible {
+  outline: 2px solid #f0c76d;
+  outline-offset: 1px;
+  border-color: #743a30;
+}
+.signboard-error { margin: .15rem 0 0; color: #b23b2f; font-size: .78rem; font-weight: 600; }
+.signboard-action { width: 100%; margin-top: .7rem; padding: .62rem; border: 1px solid #743a30; border-radius: 6px; background: #b95042; box-shadow: 1px 2px 0 #793d32; color: #fff8e7; cursor: pointer; font-family: 'Katie Roze', 'Brush Script MT', cursive; font-size: 1.7rem; line-height: 1; transition: background .15s ease; }
+.signboard-action:hover { background: #a94436; }
+.signboard-action:disabled { opacity: .7; cursor: wait; }
+.signboard-field input:disabled { opacity: .65; }
+.signboard-demo-btn { border: 0; background: transparent; cursor: pointer; text-decoration: underline; }
+.signboard-demo { display: inline-block; margin-top: .9rem; color: #526e43; font-size: .82rem; }
 .signboard-close { position: absolute; z-index: 2; top: .25rem; right: .35rem; width: 1.45rem; height: 1.45rem; padding: 0; border: 0; background: transparent; color: #79513a; cursor: pointer; font-size: 1.4rem; line-height: 1; }
 
-/* Scene-mode login: the painterly board pans in on the right, this real Auth0
-   panel rides over it. (Orchard-mode anchors the same panel in 3D via drei.) */
+/* Scene-mode login: on click the camera pans to sit square in front of the
+   board, framing it at screen centre, and this real Auth0 panel rides on the
+   sign face. (Orchard-mode anchors the same panel in 3D via drei.) */
 .scene-auth-overlay {
   position: absolute;
   z-index: 7;
-  top: 50%;
-  right: clamp(1.25rem, 7vw, 7rem);
-  transform: translateY(-50%);
-  animation: scene-auth-in .45s cubic-bezier(.2, .8, .25, 1) both;
+  top: 47%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: scene-auth-in .5s cubic-bezier(.2, .8, .25, 1) both;
 }
 @keyframes scene-auth-in {
-  from { opacity: 0; transform: translate(14px, calc(-50% + 8px)); }
-  to   { opacity: 1; transform: translateY(-50%); }
+  from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); }
+  to   { opacity: 1; transform: translate(-50%, -50%); }
 }
-@media (max-width: 720px) {
-  .scene-auth-overlay { right: 50%; transform: translate(50%, -50%); }
-  @keyframes scene-auth-in {
-    from { opacity: 0; transform: translate(50%, calc(-50% + 8px)); }
-    to   { opacity: 1; transform: translate(50%, -50%); }
-  }
-}
+/* No board to ride in the static ClassicHero fallback: center it as a modal. */
+.scene-auth-overlay.is-modal { position: fixed; z-index: 50; top: 50%; left: 50%; }
 
 .hero > .orchard-account { position: fixed; }
 
@@ -291,10 +366,10 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
   z-index: 2;
 }
 
-/* Prepared as soon as the landing mounts. The apple ascent only reveals this
-   live stage layer — the route, WebGL canvas, and mascot never remount. The
-   zoom-out is driven by the stage's own r3f camera (CameraIntro), so this layer
-   only fades in; no CSS scale, or the two would compound into a double zoom. */
+/* In scene mode this layer IS the landing: one MonkeyStage hosting the single
+   painterly iframe, camera zoomed in. The zoom-out is driven entirely by the
+   stage's r3f camera (CameraRig), so this layer carries no CSS transform, or
+   the two would compound into a double zoom. */
 .landing-stage-layer {
   position: absolute;
   inset: 0;
@@ -311,12 +386,26 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
 
 /* The outgoing fullscreen orchard fades under the stage's now-fullscreen splash
    (the camera starts framing it head-on), so the same painterly image carries
-   through the handoff and the stage camera pulls back from there — one
+   through the handoff and the stage camera pulls back from there - one
    continuous zoom-out instead of a cut. */
 .landing-stage-layer.is-active ~ .hero-embed,
 .landing-stage-layer.is-active ~ .orchard-canvas {
   opacity: 0;
   transition: opacity 0.55s ease-out;
+}
+
+/* Static/glitch that masks the landing -> stage cut. Above everything, chunky
+   pixels (the canvas buffer is 1/5 res), never interactive. */
+.scramble-overlay,
+.landing-fuzz {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  image-rendering: pixelated;
+  background: #05060a;
 }
 
 .stage-editor {
@@ -354,6 +443,165 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
 .stage-editor button.is-active {
   color: #101114;
   background: #f3ecdd;
+}
+
+/* Live transform sliders for the selected stage object. */
+.stage-sliders {
+  position: fixed;
+  left: 24px;
+  bottom: 70px;
+  z-index: 8;
+  width: 250px;
+  padding: 10px 12px;
+  color: rgba(255, 255, 255, .82);
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: rgba(9, 10, 13, .55);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.stage-sliders-head {
+  color: #f3ecdd;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+.stage-sliders .slider-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+}
+.stage-sliders .slider-label { color: rgba(255, 255, 255, .6); }
+.stage-sliders .slider-out { text-align: right; color: #f3ecdd; }
+.stage-sliders input[type="range"] {
+  width: 100%;
+  height: 4px;
+  accent-color: #46a758;
+  cursor: pointer;
+}
+.stage-sliders-copy {
+  margin-top: 6px;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 7px;
+  padding: 6px 8px;
+  color: #101114;
+  font: inherit;
+  text-transform: uppercase;
+  background: #f3ecdd;
+  cursor: pointer;
+}
+.stage-sliders-copy:hover { background: #fff; }
+.stage-sliders-copyrow { display: flex; gap: 6px; margin-top: 6px; }
+.stage-sliders-copyrow .stage-sliders-copy { flex: 1; margin-top: 0; }
+.stage-sliders-copy-alt {
+  flex: 0 0 auto;
+  color: #f3ecdd;
+  background: transparent;
+  border-color: rgba(255, 255, 255, .18);
+}
+.stage-sliders-copy-alt:hover { color: #101114; background: #f3ecdd; }
+
+.stage-editor button:disabled {
+  opacity: .35;
+  cursor: not-allowed;
+}
+.stage-editor button:disabled:hover {
+  color: inherit;
+  background: transparent;
+}
+
+/* Prop palette: pick a model to drop into the manga room. */
+.stage-palette {
+  position: fixed;
+  right: 24px;
+  bottom: 22px;
+  z-index: 9;
+  width: 232px;
+  padding: 11px 12px;
+  color: rgba(255, 255, 255, .82);
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: rgba(9, 10, 13, .6);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+}
+.stage-palette-head {
+  color: #f3ecdd;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, .12);
+}
+.stage-palette-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.stage-palette-grid button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 7px;
+  padding: 7px 6px;
+  color: rgba(255, 255, 255, .85);
+  font: inherit;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, .04);
+  cursor: pointer;
+}
+.stage-palette-grid button:hover {
+  color: #101114;
+  background: #f3ecdd;
+  border-color: #f3ecdd;
+}
+.stage-palette-note {
+  margin-top: 9px;
+  color: rgba(255, 255, 255, .5);
+  text-transform: none;
+  letter-spacing: .02em;
+}
+
+/* Colour-coded page label billboarded on each 3D manga TV in the stage nav. */
+.tv3d-label {
+  font-family: var(--ui-display, 'Brush Script MT', cursive);
+  font-size: 30px;
+  line-height: 1;
+  white-space: nowrap;
+  user-select: none;
+  transform: rotate(-1.5deg);
+}
+
+/* Mimic mode: live webcam preview pinned bottom-right of the stage. */
+.mimic-cam {
+  position: absolute;
+  right: 16px;
+  bottom: 74px;
+  width: 220px;
+  z-index: 2147483001;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #101114;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(243, 236, 221, 0.25);
+}
+.mimic-video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.mimic-status {
+  display: block;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: #f3ecdd;
+  background: rgba(16, 17, 20, 0.9);
 }
 
 /* Static gradient shown if WebGL is unavailable or the r3f chunk is loading. */

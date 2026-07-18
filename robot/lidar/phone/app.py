@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""app.py - phone capture app: upload an iPhone lidar scan → world.glb.
+"""app.py - phone capture app: upload an iPhone lidar scan -> world.glb.
 
 A mobile-first web server you open ON YOUR PHONE at the venue. Scan the scene
 with Polycam / Scaniverse (they own the ARKit lidar capture), export GLB/PLY/OBJ,
-upload it here → the server runs process.py → drops web/public/world.glb → it's
+upload it here -> the server runs process.py -> drops web/public/world.glb -> it's
 live in the dashboard's 3D lidar view. Closes the capture loop with no laptop
 fiddling. Pure Python stdlib (no Flask) so it runs anywhere.
 
@@ -62,13 +62,13 @@ PAGE = """<!doctype html><html><head><meta charset=utf-8>
   #status{{white-space:pre-wrap;font:13px ui-monospace,monospace}}
 </style></head><body>
 <h1>FarmHand - phone lidar</h1>
-<p class=sub>Scan the scene → upload → it appears in the 3D dashboard.</p>
+<p class=sub>Scan the scene -> upload -> it appears in the 3D dashboard.</p>
 <div class=card>
   <b>How to capture</b>
   <ol>
     <li>Open <b>Polycam</b> or <b>Scaniverse</b> (LiDAR mode) on this iPhone.</li>
     <li>Scan the demo table / room. Stop when the mesh looks complete.</li>
-    <li>Export as <code>GLB</code> (or PLY/OBJ) - "Share → Export model".</li>
+    <li>Export as <code>GLB</code> (or PLY/OBJ) - "Share -> Export model".</li>
     <li>Come back here, pick the file, tap <b>Generate world</b>.</li>
   </ol>
 </div>
@@ -87,12 +87,12 @@ PAGE = """<!doctype html><html><head><meta charset=utf-8>
 <script>
 const f=document.getElementById('f'), go=document.getElementById('go'), st=document.getElementById('status');
 f.addEventListener('submit',async e=>{{
-  e.preventDefault(); go.disabled=true; go.textContent='Uploading + optimizing…'; st.textContent='';
+  e.preventDefault(); go.disabled=true; go.textContent='Uploading + optimizing...'; st.textContent='';
   try{{
     const r=await fetch('/upload',{{method:'POST',body:new FormData(f)}});
     const t=await r.text();
-    st.innerHTML=r.ok?('<span class=ok>✓ '+t+'</span>'):('<span class=err>✗ '+t+'</span>');
-  }}catch(err){{ st.innerHTML='<span class=err>✗ '+err+'</span>'; }}
+    st.innerHTML=r.ok?('<span class=ok>OK '+t+'</span>'):('<span class=err>ERR '+t+'</span>');
+  }}catch(err){{ st.innerHTML='<span class=err>ERR '+err+'</span>'; }}
   go.disabled=false; go.textContent='Generate world';
 }});
 </script>

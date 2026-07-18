@@ -50,7 +50,7 @@ class Mcu:
                     print(f"   {resp}")
                 continue
             if self.verbose:
-                print(f"→ {line:<28} ← {resp or '<timeout>'}")
+                print(f"-> {line:<28} <- {resp or '<timeout>'}")
             return resp
 
     # helpers mirroring the RPC surface
@@ -73,7 +73,7 @@ class Mcu:
         }
 
 
-# ---------------------------------------------------------------- smoke test
+# smoke test
 def expect(name: str, cond: bool, results: list):
     print(f"  [{'PASS' if cond else 'FAIL'}] {name}")
     results.append((name, cond))
@@ -130,7 +130,7 @@ def smoke(mcu: Mcu, only: str | None):
     return passed == len(r)
 
 
-# ----------------------------------------------------------------------- repl
+# repl
 def repl(mcu: Mcu):
     print("raw protocol REPL - BRIDGE.md §5. helpers: st, hb-loop. ctrl-d exits.")
     while True:

@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import '../ui.css'
 
 const LINKS = [
-  { to: '/', label: 'Orchard', end: true },
   { to: '/stage', label: 'Stage' },
   { to: '/pov', label: 'Robot POV' },
   { to: '/teleop', label: 'Teleop' },
@@ -19,7 +18,6 @@ export default function SiteNav({ variant = 'control', children }) {
         position: 'fixed',
         inset: '0 0 auto 0',
         zIndex: 2147483647,
-        fontFamily: "'Katie Roze', 'Brush Script MT', cursive",
       }
     : undefined
   const navigation = (
@@ -27,7 +25,14 @@ export default function SiteNav({ variant = 'control', children }) {
       <nav className="site-nav-links" aria-label="Main navigation">
         {LINKS.map(({ to, label, end }) => (
           <NavLink key={to} to={to} end={end}>
-            {label}
+            {variant === 'stage' ? (
+              <>
+                <span className="tv-screen" aria-hidden="true" />
+                <span className="tv-label">{label}</span>
+              </>
+            ) : (
+              label
+            )}
           </NavLink>
         ))}
       </nav>

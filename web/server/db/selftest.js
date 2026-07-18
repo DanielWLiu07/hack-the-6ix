@@ -6,7 +6,7 @@ import { createDb } from './index.js';
 async function exercise(db, label) {
   const t0 = Date.now();
 
-  // 5 Hz telemetry for 3 "seconds" → downsample should keep ~3, not 15.
+  // 5 Hz telemetry for 3 "seconds" -> downsample should keep ~3, not 15.
   let stored = 0;
   for (let i = 0; i < 15; i++) {
     const ok = await db.recordTelemetry({
@@ -59,7 +59,7 @@ async function exercise(db, label) {
   const apples = await db.getPicks({ fruit: 'apple' });
   assert.equal(apples.length, 2);
 
-  // operator attribution (Auth0 ↔ Mongo): filter picks by the authenticated operator
+  // operator attribution (Auth0 <-> Mongo): filter picks by the authenticated operator
   const byOp = await db.getPicks({ operator: 'auth0|op1' });
   assert.equal(byOp.length, 2, 'getPicks filters by operator');
   assert.equal((await db.getPicks({ operator: 'auth0|nobody' })).length, 0);
@@ -68,13 +68,13 @@ async function exercise(db, label) {
   assert.equal(dets.length, 2);
   assert.equal(dets[0].fruit, 'banana', 'getDetections newest first');
 
-  // --- window + throughput (additive getStats fields) ---
+  // window + throughput (additive getStats fields)
   assert.equal(stats.window.first_ts, t0);
   assert.equal(stats.window.last_ts, t0 + 3);
   assert.equal(stats.window.span_ms, 3);
   assert.ok(stats.throughput.picks_per_hour > 0, 'throughput computed over span');
 
-  // --- getTimeSeries: 4 picks land in one 60s bucket ---
+  // getTimeSeries: 4 picks land in one 60s bucket
   const ts1 = await db.getTimeSeries({ bucketMs: 60000 });
   assert.equal(ts1.bucket_ms, 60000);
   assert.equal(ts1.series.length, 1, 'all 4 picks in one bucket');
@@ -84,7 +84,7 @@ async function exercise(db, label) {
   assert.equal(ts1.series[0].apple, 2);
   assert.equal(ts1.series[0].banana, 2);
 
-  // --- getSessions: all 4 picks are one run (gaps << 2 min) ---
+  // getSessions: all 4 picks are one run (gaps << 2 min)
   const s1 = await db.getSessions({ gapMs: 120000 });
   assert.equal(s1.length, 1, 'single harvest run');
   assert.equal(s1[0].picks, 4);
@@ -93,7 +93,7 @@ async function exercise(db, label) {
   assert.equal(s1[0].waste_avoided_kg, 0.48);
   assert.equal(s1[0].duration_ms, 3);
 
-  // Add 2 picks 5 min later → forces a 2nd time-bucket AND a 2nd session.
+  // Add 2 picks 5 min later -> forces a 2nd time-bucket AND a 2nd session.
   const later = t0 + 5 * 60000;
   await db.recordPickEvent({ ts: later, fruit: 'apple', ripeness: 'ripe', bin: 'apple_ripe', success: true, duration_ms: 6000 });
   await db.recordPickEvent({ ts: later + 1, fruit: 'apple', ripeness: 'ripe', bin: 'apple_ripe', success: true, duration_ms: 6000 });
@@ -109,7 +109,7 @@ async function exercise(db, label) {
   assert.equal(s2[0].successes, 2);
   assert.equal(s2[1].picks, 4);
 
-  // --- getActivity: 3 SEEK samples 1 s apart → 2 s of SEEK, no e-stops ---
+  // getActivity: 3 SEEK samples 1 s apart -> 2 s of SEEK, no e-stops
   // Scope to this run's telemetry (capped collection may hold prior-run docs).
   const act = await db.getActivity({ since: t0 });
   assert.equal(act.state_durations.SEEK, 2000, 'time attributed to SEEK');
@@ -119,16 +119,16 @@ async function exercise(db, label) {
   assert.equal(act.battery.now, 11.1);
   assert.equal(act.battery.series.length, 3);
 
-  // --- getLatestTelemetry: newest kept telemetry sample. This run's t0 is
+  // getLatestTelemetry: newest kept telemetry sample. This run's t0 is
   // later than any prior run's, so its max sample (t0+2000) is the global
-  // newest even if the capped collection still holds prior-run docs. ---
+  // newest even if the capped collection still holds prior-run docs.
   const latest = await db.getLatestTelemetry();
   assert.equal(latest.ts, t0 + 2000, 'latest telemetry is the newest kept sample');
   assert.equal(latest.state, 'SEEK');
   assert.equal(latest.battery_v, 11.1);
   assert.ok(!('_id' in latest), 'no _id leakage');
 
-  // --- commands: NL-command audit log (Freesolo LLM track) ---
+  // commands: NL-command audit log (Freesolo LLM track)
   await db.recordCommand({ ts: t0, text: 'pick all ripe apples', action: { task: 'pick', fruit: 'apple', filter: 'ripe' }, accepted: true, operator: 'auth0|op1' });
   await db.recordCommand({ ts: t0 + 1, text: 'stop', action: { task: 'stop' }, accepted: true, operator: 'auth0|op2' });
   const cmds = await db.getCommands({ limit: 10 });

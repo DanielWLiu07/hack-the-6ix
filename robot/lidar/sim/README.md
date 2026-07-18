@@ -47,7 +47,7 @@ alone** and builds a global occupancy map - no wheel odometry, no IMU. It's a
 scan-to-map ICP front-end (point-to-point, numpy-only):
 
 - `icp(src, dst)` - SE(2) alignment of two scans (constant-velocity seedable).
-- `ScanMapper` - streaming: `add(points)` per scan → `.pose` (x,y,θ) and
+- `ScanMapper` - streaming: `add(points)` per scan -> `.pose` (x,y,θ) and
   `.world_points()` (accumulated map). Aligns each scan to the growing map (not
   just the previous scan), with a constant-velocity prior + adaptive residual /
   motion gate to reject wild matches.

@@ -25,7 +25,7 @@ Then open **http://localhost:5173** (dashboard) - you'll see live telemetry, det
 **Verify the stack is healthy** (works standalone; CI-friendly, exit 0 = all green):
 
 ```bash
-./scripts/check-stack.sh   # hub up → socket handshake → sim emitting → REST endpoints → /stream
+./scripts/check-stack.sh   # hub up -> socket handshake -> sim emitting -> REST endpoints -> /stream
 ```
 
 <details>
@@ -38,7 +38,7 @@ cd web/server && npm install && npm start
 # 2. Web dashboard  (Vite, port 5173)
 cd web && npm install && npm run dev
 
-# 3. Lidar simulator → hub
+# 3. Lidar simulator -> hub
 python3 robot/lidar/sim/sim.py
 
 # 4. FarmHand NL command demo (mock model, no endpoint needed)
@@ -60,14 +60,14 @@ flowchart LR
             MCU["<b>STM32 MCU</b> (real-time)<br/>• drive motor PWM<br/>• servo sequencing (interp.)<br/>• ultrasonic e-stop<br/>• 500 ms watchdog"]
             LNX <-->|"Bridge RPC<br/>(firmware/BRIDGE.md)"| MCU
         end
-        PI["<b>Raspberry Pi</b><br/>• RPLIDAR C1 360° scan<br/>• polar→cartesian, ≤360 pts"]
+        PI["<b>Raspberry Pi</b><br/>• RPLIDAR C1 360° scan<br/>• polar->cartesian, ≤360 pts"]
     end
 
-    FARM["<b>FarmHand LLM</b> (Freesolo-trained)<br/>NL command → validated action JSON<br/>'pick all ripe apples' → {task:pick,fruit:apple,filter:ripe}"]
+    FARM["<b>FarmHand LLM</b> (Freesolo-trained)<br/>NL command -> validated action JSON<br/>'pick all ripe apples' -> {task:pick,fruit:apple,filter:ripe}"]
 
     LNX -->|"telemetry / detection / pick_event"| SRV["<b>Express + Socket.IO hub</b><br/>(laptop, :3001)"]
     PI -->|"lidar_scan"| SRV
-    FARM -->|"nl_command → action"| SRV
+    FARM -->|"nl_command -> action"| SRV
     SRV -->|drive / arm_pose / pick / estop| LNX
     SRV --> DB[("MongoDB Atlas<br/>pick_events · detections · telemetry")]
     SRV --> WEB["<b>React + Three.js app</b><br/>landing · live dashboard · teleop<br/>Auth0 · Vercel"]
@@ -90,7 +90,7 @@ Each row is a claim a judge can check by opening the linked file. Everything bel
 | Track | What we claim | Evidence you can open |
 |---|---|---|
 | **Overall 1st–3rd** | Full-custom robotics + polished web app + completeness (a working demo at every checkpoint, not just the finale) | Staged milestone ladder in [`docs/PLAN.md`](docs/PLAN.md); one-command boot above; live dashboard link |
-| **Best Environmental** | Food-waste / famine framing backed by **live** numbers, not slideware - dashboard computes waste-avoided from real pick events | [`docs/DEVPOST.md` § quantified impact](docs/DEVPOST.md) · `/api/stats` → `waste_avoided_kg` in [`web/server/store.js`](web/server/store.js) |
+| **Best Environmental** | Food-waste / famine framing backed by **live** numbers, not slideware - dashboard computes waste-avoided from real pick events | [`docs/DEVPOST.md` § quantified impact](docs/DEVPOST.md) · `/api/stats` -> `waste_avoided_kg` in [`web/server/store.js`](web/server/store.js) |
 | **Qualcomm - Arduino UNO Q** | Intentional **MPU/MCU split** + **genuine on-device AI** (no cloud inference, ever) | [`docs/QUALCOMM.md`](docs/QUALCOMM.md) - split rationale + bench harness [`robot/vision/bench.py`](robot/vision/bench.py); exported model [`ml/ripeness/export/`](ml/ripeness/export/) (`model.int8.onnx`) |
 | **Deloitte - AI for Green** | Both dimensions: AI _for_ sustainability (food waste) **and** sustainable AI (~5 W quantized edge model vs. 70–300 W cloud GPU) | [`docs/DEVPOST.md` § Deloitte](docs/DEVPOST.md): ~60 kg/hr graded, ~150 kg CO₂e/hr avoided (one arm), frames-per-joule at 5 W |
 
@@ -98,7 +98,7 @@ Each row is a claim a judge can check by opening the linked file. Everything bel
 
 | Track | What we claim | Evidence you can open |
 |---|---|---|
-| **Freesolo - Best Model Trained** | **"FarmHand"**: NL command → structured action JSON, with multi-turn clarification. Real SFT dataset + eval + working end-to-end integration | Dataset **2,349 train / 123 val / 30 held-out / 600 preference-pairs** in [`ml/freesolo-agent/data/`](ml/freesolo-agent/data/); eval harness [`data/eval.py`](ml/freesolo-agent/data/eval.py) (**regex baseline 28/30 = 93.3%** - the floor the model beats); live transcript [`client/DEMO_TRANSCRIPT.md`](ml/freesolo-agent/client/DEMO_TRANSCRIPT.md) |
+| **Freesolo - Best Model Trained** | **"FarmHand"**: NL command -> structured action JSON, with multi-turn clarification. Real SFT dataset + eval + working end-to-end integration | Dataset **2,349 train / 123 val / 30 held-out / 600 preference-pairs** in [`ml/freesolo-agent/data/`](ml/freesolo-agent/data/); eval harness [`data/eval.py`](ml/freesolo-agent/data/eval.py) (**regex baseline 28/30 = 93.3%** - the floor the model beats); live transcript [`client/DEMO_TRANSCRIPT.md`](ml/freesolo-agent/client/DEMO_TRANSCRIPT.md) |
 | **Base44 - Venture Builder** | "Orchard OS" companion SaaS fed by a **real webhook** from the robot server (not a mock) | Build brief + integration [`docs/BASE44.md`](docs/BASE44.md); env-gated forwarder in [`web/server/`](web/server/) |
 
 ### Tier 3 - already in the stack, claim them
@@ -119,7 +119,7 @@ Full strategy, the one-track rule, and the Devpost checklist: [`docs/TRACKS.md`]
 |---|---|
 | [`firmware/mcu/`](firmware/mcu/) | Arduino UNO Q **STM32 side** - drive motors, servo sequencing, ultrasonic e-stop, watchdog |
 | [`firmware/linux/`](firmware/linux/) | UNO Q **Linux side** - camera, on-device inference, IK, pick/sort state machine, telemetry |
-| [`firmware/BRIDGE.md`](firmware/BRIDGE.md) | The exact MCU↔Linux RPC contract both sides conform to |
+| [`firmware/BRIDGE.md`](firmware/BRIDGE.md) | The exact MCU<->Linux RPC contract both sides conform to |
 | [`robot/vision/`](robot/vision/) | Camera pipeline + HSV fallback detector + on-device FPS bench |
 | [`robot/lidar/`](robot/lidar/) | RPLIDAR C1 reader (Pi), iPhone-lidar world reconstruction, and a scan simulator |
 | [`ml/ripeness/`](ml/ripeness/) | YOLOv8n fruit-type + ripeness model - training, export (ONNX + int8) |

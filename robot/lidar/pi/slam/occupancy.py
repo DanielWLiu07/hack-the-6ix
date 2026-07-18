@@ -31,7 +31,7 @@ class OccupancyGrid:
                                dtype=np.float64)
         self.log = np.zeros((n, n), dtype=np.float32)
 
-    # -- world<->grid ------------------------------------------------------
+    # world<->grid
     def w2g(self, pts):
         """World (N,2) meters -> integer grid (col=x, row=y)."""
         g = np.floor((np.asarray(pts, dtype=np.float64) - self.origin) / self.res).astype(np.int64)
@@ -61,7 +61,7 @@ class OccupancyGrid:
         self.n = new_n
         self.origin = self.origin - np.array([ox, oy]) * self.res
 
-    # -- integration -------------------------------------------------------
+    # integration
     def integrate(self, sensor_xy, world_points):
         """Fuse one scan. sensor_xy: robot position in world (2,).
         world_points: (N,2) beam endpoints already in world frame."""
@@ -107,7 +107,7 @@ class OccupancyGrid:
                 err += dx
                 y += sy
 
-    # -- readouts ----------------------------------------------------------
+    # readouts
     def prob(self):
         """P(occupied) grid in [0,1]."""
         return 1.0 - 1.0 / (1.0 + np.exp(self.log))

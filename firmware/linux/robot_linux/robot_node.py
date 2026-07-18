@@ -54,7 +54,7 @@ class RobotNode:
             bridge, camera, detector, poses, on_emit=self._on_emit)
         self._register_handlers()
 
-    # ----------------------------------------------------------- emit path
+    # emit path
 
     def _on_emit(self, kind, payload):
         """State-machine callback. Forwards detections/picks to the hub."""
@@ -86,7 +86,7 @@ class RobotNode:
             "drive": {"l": round(drive["l"], 3), "r": round(drive["r"], 3)},
         }
 
-    # -------------------------------------------------------- bridge health
+    # bridge health
 
     def _heartbeat(self):
         """Beat the MCU watchdog; track DOWN/UP per BRIDGE.md §3."""
@@ -103,7 +103,7 @@ class RobotNode:
                 print(f"[node] bridge DOWN ({e}); pinning telemetry ESTOP, "
                       "dropping motion until it answers")
 
-    # --------------------------------------------------------- control loop
+    # control loop
 
     def _loop(self):
         tick_dt = 1.0 / config.TICK_HZ
@@ -139,7 +139,7 @@ class RobotNode:
             else:
                 next_t = time.monotonic()  # fell behind; resync
 
-    # ------------------------------------------------------------- handlers
+    # handlers
 
     def _register_handlers(self):
         sio = self.sio
@@ -222,7 +222,7 @@ class RobotNode:
     def _recent_nl(self, window=0.75):
         return (time.monotonic() - self._last_nl) < window
 
-    # ---------------------------------------------------------------- run
+    # run
 
     def run(self):
         loop = threading.Thread(target=self._loop, name="control", daemon=True)

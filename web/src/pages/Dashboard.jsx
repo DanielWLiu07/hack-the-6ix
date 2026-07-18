@@ -108,7 +108,7 @@ export default function Dashboard() {
               className="lidar-canvas"
               style={{ minHeight: '18rem', borderRadius: '0.9rem', overflow: 'hidden' }}
             >
-              <Suspense fallback={<p className="empty">Loading 3D view…</p>}>
+              <Suspense fallback={<p className="empty">Loading 3D view...</p>}>
                 <LidarViewport
                   showWorld
                   camera={{ position: [0, 4.3, 4.3], fov: 55 }}

@@ -189,4 +189,4 @@ if __name__ == "__main__":
     args = ap.parse_args()
     write_split("train", args.train, 1000)
     write_split("val", args.val, 900000)
-    print(f"done → {OUT}")
+    print(f"done -> {OUT}")

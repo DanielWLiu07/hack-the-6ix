@@ -355,6 +355,106 @@ Verified best practice from judges and hackathon guides:
 - **Structure for a 2 to 3 minute slot:** ~20-30s problem, ~60-90s live demo,
   ~30s quantified impact and close. `PITCH.md` already times this out.
 
+## Pitch craft: make it stick (research-backed, cited)
+
+Judges see 30 to 50 demos and score presentation and storytelling as a real,
+weighted component, not fluff. These are the levers that make FarmHand stick.
+
+**Do this:**
+- **Lead with the human problem, let the stats reinforce it.** Open on the
+  stoop-labor / rotting-harvest pain so a judge feels it, THEN drop a number as
+  validation. Data reinforces a story, it does not replace it (Harvard i-lab).
+- **Pass the Grandma Test: one airtight sentence, no jargon.** Lock this line
+  and have everyone say it the same way: "A robot that picks fruit AND sorts it by
+  ripeness right at the point of harvest, so less of it rots before it reaches
+  you." If you cannot explain it in a sentence, judges read it as too complex
+  (Devpost).
+- **Translate specs into felt benefits (beat the Curse of Knowledge).** Experts
+  wildly overestimate how well others follow specs (the tapper/listener study:
+  tappers expected 50% understood, only 2% did). Say it in human terms:
+  - "5 watts" becomes "the whole AI runs on about the power of a phone charger."
+  - "on-device, no cloud" becomes "the camera never sends a picture anywhere, it
+    all happens on the robot, so it works with the network cable pulled."
+  - "MPU/MCU split" becomes "two brains: one sees, one keeps it safe, so it stops
+    in less than a blink even if everything else freezes."
+  - "quantized int8 model" becomes "we shrank the AI to run on a tiny chip."
+- **Name the hard thing to signal difficulty.** For technical and sponsor
+  judges, say plainly: "the genuinely hard part is running real AI vision fully
+  on-device on the UNO Q, with a separate real-time safety brain." That is the
+  difficulty and sponsor-fit score, stated out loud. (Lead simple for the story,
+  then layer this named depth. Do not dumb the whole pitch down, and do not bury
+  the story in specs.)
+- **Show cause and effect: close the loop on screen.** State the problem up
+  front, then let the judge SEE the fruit land in the correct bin as the
+  resolution. Set-the-scene, working demo, one-line impact (Devpost 4-part).
+- **Visible passion + a novel angle + concise delivery.** The novel angle is
+  "picks AND grades at the point of harvest, eye-in-hand edge AI." Rehearse until
+  enthusiasm reads as genuine.
+
+**Do NOT (these were explicitly voted down in the research):**
+- Do not open cold with a personal "why I built this" monologue.
+- Do not force impressive metrics into the first 40 seconds; earn them.
+- Do not assume a rigid problem to solution to tech-stack to demo order in the
+  video; open with the elevator pitch and a hero shot instead.
+- Do not assume a pretty UI is what gets scored first; completeness across all
+  three criteria (creativity, implementation, impact) is what wins, and judges
+  penalize over-indexing on one leg. A slick dashboard will not rescue a thin
+  impact story.
+
+## Tough Q&A: anticipate and disarm
+
+Rehearse these. A confident, honest answer to the skeptical question often scores
+more than the demo. Keep answers short, lead with the direct answer, then one
+supporting line. (Authored from the project + sponsor findings; the research pass
+flagged Q&A scripts as a gap.)
+
+- **"Why not just run the AI in the cloud?"** Because a picking robot cannot wait
+  on a round trip and a field has no reliable connectivity. The safety reflex
+  fires in under 10 milliseconds locally, and no camera frame ever leaves the
+  device. Edge is the requirement, not a shortcut.
+- **"How does this generalize beyond 3D-printed fruit?"** The props are the
+  hackathon stand-in. The vision model trains on real apple and banana datasets,
+  and our capture-and-retrain loop re-tunes it on real fruit in about 30 minutes.
+  The arm, the sort logic, and the on-device inference are identical either way.
+  (Say this honestly, do not claim we tested on a real orchard.)
+- **"Does the language model also run on-device?"** Be straight: the perception
+  model (ripeness and type) runs on-device on the Qualcomm chip. FarmHand, the
+  language model, runs [state exactly where it runs]. Do not imply on-device if it
+  is not.
+- **"Isn't automated fruit picking already a thing?"** Existing ag robots are
+  six-figure, single-crop, and do not grade. Ours is low-cost, picks AND sorts by
+  type and ripeness at the point of harvest, and takes plain-English commands.
+  That combination at this price is the novelty.
+- **"How do you know it actually works / what is the accuracy?"** The command
+  model is 93% on a held-out set, invalid commands are rejected, and you just
+  watched a live pick. We report success rate honestly on the dashboard.
+- **"Is the impact number real or invented?"** It is computed live from actual
+  successful picks times a conservative USDA per-fruit mass, converted with a
+  conservative FAO CO2e factor. Methodology is written down in IMPACT.md and we
+  deliberately under-claim.
+- **"What if it grabs the wrong fruit or drops it?"** A mis-sort just goes to the
+  wrong bin and is recoverable. On a fault the arm holds position with torque, it
+  does not go limp and drop, and an e-stop plus a 500 ms watchdog kill motion.
+- **"What does it cost?"** That is the point: a low-cost robot (aim for the
+  low hundreds of dollars) versus six-figure ag equipment is exactly what makes
+  picking-plus-grading deployable where the labor gap actually is.
+
+## If the live pick fails: recovery choreography
+
+Live robotics fails; a smooth recovery is not penalized, silence and panic are.
+
+- **Never stand in silence.** The story speaker keeps talking about the why while
+  the operator recovers. The narration does not change.
+- **Pre-decide the cutover trigger.** If the arm stalls for more than ~5 seconds,
+  the operator triggers the scripted canned-pick replay. If the robot is dead,
+  flip the sim panic-switch (`DEPLOY.md`) and the demo runs on simulated
+  telemetry with the SAME script. Backup demo video is one click away.
+- **Frame it as normal.** "That is live robotics for you, here is the same run we
+  filmed this morning" is an accepted, judgment-free move. Judges expect a cued
+  backup.
+- This matches `PITCH.md`'s roles (A story, B tech, OP silent operator) and its
+  pre-flight checklist. Rehearse the failure path at least once.
+
 ## Stat Bank (verified, cite-ready, do not drift)
 
 Every number below survived 3-vote adversarial verification. Sources in the next
@@ -399,6 +499,20 @@ harvest-labor fragility, not an apple/banana number.
   landing page value prop, mandatory feedback form).
 - JetBrains "Notes from the Judging Table," AngelHack, Taikai (pitch mechanics:
   lead with pain, working demo in ~90s, backup video, one narrative).
+- Harvard Innovation Labs, "The Power of Storytelling in Pitching" (data
+  reinforces, does not replace, the story).
+- CSULB "Typical Judge Questions" + Devpost "Understanding Judging Criteria"
+  (Grandma Test, explain in one or two sentences, signal technical sophistication
+  and correct sponsor-tech use).
+- "Made to Stick" (Heath) via summary (Curse of Knowledge, tapper/listener study,
+  "1,000 songs in your pocket"; translate specs into felt benefits).
+- Devpost "Hackathon Judging Tips" (Richard Moot, Square): completeness beats
+  over-indexing on one criterion; presentation and storytelling are scored.
+- Devpost "How to Present a Successful Hackathon Demo" + "6 Tips for a Demo
+  Video" (set-scene / demo / impact structure; video under 3 min, open with the
+  elevator pitch; video is a judge's first proxy for effort).
+- Robotics Knowledge Base, "Demo Day" (keep it under ~5 min, bring a curated
+  controlled sandbox, pre-stage assets, skip mundane setup).
 
 ## Caveats and open questions (know these before the floor)
 

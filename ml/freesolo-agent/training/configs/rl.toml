@@ -17,9 +17,9 @@ id = "hackthe6ixbanana/farmhand"
 [train]
 epochs = 1
 max_examples = 2349
-lora_rank = 32
-# Start from the SFT adapter (fill with the SFT run's adapter_ref / hf_repo after it finishes):
-init_from_adapter = ""
+# lora_rank is inherited from the source adapter (cannot be set with init_from_adapter)
+# Start from the SFT adapter (run flash-1784357076-b93a0ca9, scored 93.3% / 2 over-clarify misses):
+init_from_adapter = "flash-1784357076-b93a0ca9"
 # Optional guided decoding to force the two valid shapes (enable only if the schema
 # engine accepts anyOf; the reward already penalizes invalid JSON, so this is a bonus):
 # structured_outputs = '{"type":"object","anyOf":[{"required":["task"]},{"required":["clarify"]}]}'

@@ -30,7 +30,7 @@ function makeBus() {
     push(event, payload) {
       listeners.get(event)?.forEach((cb) => cb(payload))
     },
-    onCommand: null, // sim hook: web → robot commands loop back here
+    onCommand: null, // sim hook: web -> robot commands loop back here
   }
 }
 
@@ -76,6 +76,7 @@ export function RobotProvider({ children, authToken = null, authReady = true }) 
       'lidar_scan',
       'slam_map',
       'slam_pose',
+      'nl_action',
     ]) {
       socket.on(ev, (payload) => bus.push(ev, payload))
     }

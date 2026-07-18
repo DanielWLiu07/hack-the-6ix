@@ -11,7 +11,7 @@ The teammate trains on Freesolo; this directory is the dataset + eval deliverabl
 | `farmhand_val.jsonl` | 123 validation examples (5% split, same distribution) |
 | `eval_set.jsonl` | 30 hand-written held-out commands with expected actions - **never train on these** |
 | `farmhand_prefs.jsonl` | 600 preference pairs (chosen/rejected) for RL/DPO - **bonus** deliverable |
-| `generate_dataset.py` | Seeded generator (re-run → identical output; excludes eval texts) |
+| `generate_dataset.py` | Seeded generator (re-run -> identical output; excludes eval texts) |
 | `generate_prefs.py` | Seeded preference-pair generator (reuses the SFT vocabulary) |
 | `eval.py` | Accuracy scorer: `--baseline` / `--endpoint URL` / `--predictions file` |
 | `export.py` | Convert to `prompt-completion` / `alpaca` / `dpo-flat` if Freesolo's trainer needs it |
@@ -35,8 +35,8 @@ Notes:
 - `zone` extends the root-CLAUDE.md example (which omits it). Consumers should
   treat a missing `zone` as `"any"`. For `drive`, `zone` is the direction/target;
   for `pick` it can scope location ("the apples on the left").
-- Color language maps to ripeness: red apples / yellow bananas → `ripe`,
-  green anything → `unripe`.
+- Color language maps to ripeness: red apples / yellow bananas -> `ripe`,
+  green anything -> `unripe`.
 - This matches llm-client's strict validator (see `../NOTES.md` Q4/Q5): actions
   validate against the enums above; `{"clarify": ...}` is surfaced to the user.
 
@@ -44,7 +44,7 @@ Notes:
 
 - 1,468 pick / 550 drive / 224 sort / 190 stop actions
 - 280 multi-turn clarification dialogs (vague fruit / vague sort / vague drive)
-- 40 off-topic → clarify-redirect examples (teaches the model to never emit an
+- 40 off-topic -> clarify-redirect examples (teaches the model to never emit an
   action for "tell me a joke")
 - Surface noise throughout: typos (~12%), slang ("nanners", "snag"), casing,
   politeness wrappers, color phrasings
@@ -61,17 +61,17 @@ schema-valid; `rejected` is a realistic worse answer. Categories:
 
 | `reason` | chosen vs. rejected | why it matters |
 |---|---|---|
-| `prose_not_json` | JSON action **vs.** friendly prose ("Sure, I'll pick the apples!") | prose is rejected by the client → command lost |
+| `prose_not_json` | JSON action **vs.** friendly prose ("Sure, I'll pick the apples!") | prose is rejected by the client -> command lost |
 | `schema_violation` | valid JSON **vs.** extra key / dropped key / bad enum / wrapped / trailing text | strict validator rejects it |
 | `wrong_fruit` / `wrong_filter` / `wrong_zone` | correct field **vs.** one subtly wrong field | wrong bin / wrong fruit picked |
 | `wrong_task_pick_vs_sort` | `pick` **vs.** `sort` (and back) | robot does the wrong operation |
-| `guessed_instead_of_clarifying` | `{"clarify":…}` **vs.** a confident guess on an ambiguous command | picks the wrong thing instead of asking |
+| `guessed_instead_of_clarifying` | `{"clarify":...}` **vs.** a confident guess on an ambiguous command | picks the wrong thing instead of asking |
 | `over_clarified_clear_command` | action **vs.** a needless clarify question on a clear command | annoying, stalls the demo |
 | `offtopic_should_redirect` | redirect clarify **vs.** trying to comply | never emit an action for "tell me a joke" |
 
 Regenerate: `python3 generate_prefs.py` (seeded, deterministic; 0 overlap with
 `eval_set.jsonl`). Flatten to plain-string DPO fields:
-`python3 export.py --format dpo-flat` → `export/farmhand_prefs.dpo-flat.jsonl`.
+`python3 export.py --format dpo-flat` -> `export/farmhand_prefs.dpo-flat.jsonl`.
 
 ## Training on Freesolo
 
@@ -80,7 +80,7 @@ which most fine-tuning platforms accept as-is. If Freesolo's uploader wants
 prompt/completion or instruction format instead:
 
 ```bash
-python3 export.py --format prompt-completion   # → export/farmhand_{train,val}.prompt-completion.jsonl
+python3 export.py --format prompt-completion   # -> export/farmhand_{train,val}.prompt-completion.jsonl
 python3 export.py --format alpaca
 ```
 
@@ -96,6 +96,6 @@ python3 eval.py --baseline                               # regex baseline for co
 
 Prints a markdown table (exact-match + per-field accuracy) for the Devpost
 writeup. The regex baseline scores **28/30 (93.3%)**; its misses are the
-idiomatic cases only the LLM handles ("bring me some bananas ripe or not" →
-`filter:any`, "come back to the charging station" → `zone:home`) - and the
+idiomatic cases only the LLM handles ("bring me some bananas ripe or not" ->
+`filter:any`, "come back to the charging station" -> `zone:home`) - and the
 baseline can't do multi-turn clarification at all, which is the demo story.

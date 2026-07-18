@@ -55,7 +55,7 @@ const MANGA_FRAG = /* glsl */ `
     float gx = (l20 + 2.0*l21 + l22) - (l00 + 2.0*l01 + l02);
     float gy = (l02 + 2.0*l12 + l22) - (l00 + 2.0*l10 + l20);
     float edge = clamp(sqrt(gx*gx + gy*gy) * (1.6 + uGrit), 0.0, 1.0);
-    // alpha silhouette edge → outline the whole cutout too
+    // alpha silhouette edge -> outline the whole cutout too
     float aE = 0.0;
     aE = max(aE, abs(alpha - texture(tScene, vUv + texel * vec2(1,0)).a));
     aE = max(aE, abs(alpha - texture(tScene, vUv + texel * vec2(0,1)).a));
@@ -75,7 +75,7 @@ const MANGA_FRAG = /* glsl */ `
     else if (L > 0.20) tone = mix(0.5, 0.12, shade);     // shadow = hatch
     else               tone = mix(0.12, 0.03, uGrit);    // core shadow = black
 
-    // FULLY black & white: pure ink → pure paper, no colour.
+    // FULLY black & white: pure ink -> pure paper, no colour.
     vec3 ink = vec3(uInk);
     vec3 paper = vec3(0.96);
     vec3 col = mix(ink, paper, tone);

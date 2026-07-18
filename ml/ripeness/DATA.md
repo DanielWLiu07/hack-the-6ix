@@ -31,14 +31,14 @@ data/dataset/
 ## Training / export
 
 ```
-python3 train.py                 # YOLOv8n, 320px, 40 epochs → runs/detect/v0
-python3 export.py                # → export/model.onnx + model.int8.onnx + classes.json
+python3 train.py                 # YOLOv8n, 320px, 40 epochs -> runs/detect/v0
+python3 export.py                # -> export/model.onnx + model.int8.onnx + classes.json
 python3 infer_test.py            # smoke-test the ONNX on a val image
 ```
 
-Venue finetune (~30 min): 4 capture bursts → review previews → `capture.py
---merge` → `train.py --epochs 15 --weights runs/detect/v0/weights/best.pt
---name v1` → `export.py --weights runs/detect/v1/weights/best.pt`.
+Venue finetune (~30 min): 4 capture bursts -> review previews -> `capture.py
+--merge` -> `train.py --epochs 15 --weights runs/detect/v0/weights/best.pt
+--name v1` -> `export.py --weights runs/detect/v1/weights/best.pt`.
 
 ## Augmentation note
 

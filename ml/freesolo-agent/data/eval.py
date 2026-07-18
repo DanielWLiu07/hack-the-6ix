@@ -76,7 +76,7 @@ def normalize(a):
     return out
 
 
-# ------------------------------------------------------------------ baseline
+# baseline
 
 def baseline_predict(text):
     """Keyword-rules baseline - the number the trained model has to beat."""
@@ -123,7 +123,7 @@ def baseline_predict(text):
     return {"task": task, "fruit": fruit, "filter": filt, "zone": zone}
 
 
-# ------------------------------------------------------------------ sources
+# sources
 
 def predict_endpoint(url, rows, timeout):
     preds = []
@@ -160,7 +160,7 @@ def predict_file(path, rows):
     return preds
 
 
-# ------------------------------------------------------------------ scoring
+# scoring
 
 def score(rows, preds, label):
     n = len(rows)

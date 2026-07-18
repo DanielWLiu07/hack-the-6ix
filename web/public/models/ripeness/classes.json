@@ -1,0 +1,10 @@
+{
+  "classes": ["apple_ripe", "apple_unripe", "banana_ripe", "banana_unripe"],
+  "imgsz": 320,
+  "class_map": {
+    "apple_ripe":   {"fruit": "apple",  "ripeness": "ripe"},
+    "apple_unripe": {"fruit": "apple",  "ripeness": "unripe"},
+    "banana_ripe":  {"fruit": "banana", "ripeness": "ripe"},
+    "banana_unripe": {"fruit": "banana", "ripeness": "unripe"}
+  }
+}

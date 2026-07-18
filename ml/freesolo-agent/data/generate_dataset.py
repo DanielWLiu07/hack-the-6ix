@@ -49,7 +49,7 @@ def action_str(a):
     return json.dumps(a, separators=(",", ":"))
 
 
-# ---------------------------------------------------------------- vocabulary
+# vocabulary
 
 PREFIXES = [
     "", "", "", "", "", "", "",  # weight toward no prefix
@@ -232,7 +232,7 @@ OFFTOPIC_REPLIES = [
 TYPO_PROB = 0.12
 
 
-# ---------------------------------------------------------------- surface fx
+# surface fx
 
 def inject_typo(rng, text):
     """One small realistic typo: swap, drop, or double a letter."""
@@ -271,7 +271,7 @@ def norm(text):
     return re.sub(r"[^a-z0-9 ]", "", text.lower()).strip()
 
 
-# ---------------------------------------------------------------- generators
+# generators
 
 def gen_pick_core(rng, fruit, filt):
     verb = rng.choice(PICK_VERBS)
@@ -370,7 +370,7 @@ def main():
                 added += 1
         return added
 
-    # ---- single-turn: pick (9 fruit x filter buckets)
+    # single-turn: pick (9 fruit x filter buckets)
     for fruit in ("apple", "banana", "any"):
         for filt in ("ripe", "unripe", "any"):
             target = 140 if fruit != "any" else 110
@@ -379,7 +379,7 @@ def main():
                 return single(t, action("pick", fruit, filt)), t
             fill(target, mk)
 
-    # ---- single-turn: sort
+    # single-turn: sort
     for fruit in ("any", "apple", "banana"):
         for filt in ("any", "ripe", "unripe"):
             target = 40 if fruit == "any" and filt == "any" else 18
@@ -388,21 +388,21 @@ def main():
                 return single(t, action("sort", fruit, filt)), t
             fill(target, mk)
 
-    # ---- single-turn: stop
+    # single-turn: stop
     def mk_stop():
         core = rng.choice(STOP_PHRASES)
         t = surface(rng, core, prefix=rng.random() < 0.3, suffix=rng.random() < 0.2)
         return single(t, action("stop")), t
     fill(190, mk_stop)
 
-    # ---- single-turn: drive
+    # single-turn: drive
     for zone in ZONE_WORDS:
         def mk(zone=zone):
             t = surface(rng, gen_drive_core(rng, zone))
             return single(t, action("drive", zone=zone)), t
         fill(100, mk)
 
-    # ---- single-turn: pick with a zone
+    # single-turn: pick with a zone
     for zone in ZONE_PICK_SUFFIX:
         for fruit in ("apple", "banana", "any"):
             def mk(zone=zone, fruit=fruit):
@@ -410,7 +410,7 @@ def main():
                 return single(t, action("pick", fruit, "any", zone)), t
             fill(12, mk)
 
-    # ---- multi-turn clarification: vague pick (fruit unknown)
+    # multi-turn clarification: vague pick (fruit unknown)
     def mk_clar_pick(pool, filt):
         def mk():
             t = surface(rng, rng.choice(pool), suffix=False)
@@ -428,7 +428,7 @@ def main():
     fill(60, mk_clar_pick(VAGUE_PICK_RIPE, "ripe"))
     fill(40, mk_clar_pick(VAGUE_PICK_UNRIPE, "unripe"))
 
-    # ---- multi-turn clarification: vague sort
+    # multi-turn clarification: vague sort
     def mk_clar_sort():
         t = surface(rng, rng.choice(VAGUE_SORT), suffix=False)
         fruit = rng.choice(["apple", "banana", "any"])
@@ -444,7 +444,7 @@ def main():
         return ex, t + " || " + ans
     fill(40, mk_clar_sort)
 
-    # ---- multi-turn clarification: vague drive
+    # multi-turn clarification: vague drive
     def mk_clar_drive():
         t = surface(rng, rng.choice(VAGUE_DRIVE), suffix=False)
         zone = rng.choice(list(ZONE_ANSWERS))
@@ -458,7 +458,7 @@ def main():
         return ex, t + " || " + ans
     fill(50, mk_clar_drive)
 
-    # ---- off-topic redirects (teach when NOT to emit JSON)
+    # off-topic redirects (teach when NOT to emit JSON)
     def mk_offtopic():
         t = surface(rng, rng.choice(OFFTOPIC), prefix=rng.random() < 0.3)
         ex = chat([{"role": "user", "content": t},
@@ -466,7 +466,7 @@ def main():
         return ex, t
     fill(40, mk_offtopic)
 
-    # ---- shuffle + split
+    # shuffle + split
     rng.shuffle(examples)
     n_val = max(1, int(len(examples) * VAL_FRACTION))
     val, train = examples[:n_val], examples[n_val:]

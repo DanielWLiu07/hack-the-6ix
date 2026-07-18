@@ -25,7 +25,7 @@ source of truth for the math; this doc is the source of truth for the *why*.
 | Claim | Figure | Source |
 |---|---|---|
 | Food produced that is lost or wasted globally | **~1/3, ≈1.3 billion tonnes/yr** | FAO 2011, *Global Food Losses and Food Waste* |
-| Lost **post-harvest → before retail** (the harvest-to-shelf gap we target) | **~13%** globally; **>40% of all losses** occur at post-harvest/processing in developing regions | FAO SOFA 2019; UNEP/FAO |
+| Lost **post-harvest -> before retail** (the harvest-to-shelf gap we target) | **~13%** globally; **>40% of all losses** occur at post-harvest/processing in developing regions | FAO SOFA 2019; UNEP/FAO |
 | Fruits & vegetables loss/waste rate (highest of any category - perishable) | **~45%** | FAO 2011 |
 | Carbon footprint of global food wastage | **3.3 Gt CO₂e/yr** (~8% of anthropogenic emissions; "3rd-largest emitter" after China & USA) | FAO 2013, *Food Wastage Footprint* |
 
@@ -50,7 +50,7 @@ picks count zero. Detections (camera saw it) count zero - only a completed,
 binned pick counts.
 
 ```
-waste_avoided_kg = Σ  (successful pick) → KG_PER_FRUIT[fruit]
+waste_avoided_kg = Σ  (successful pick) -> KG_PER_FRUIT[fruit]
 ```
 
 ### Per-fruit mass constants
@@ -60,7 +60,7 @@ waste_avoided_kg = Σ  (successful pick) → KG_PER_FRUIT[fruit]
 | apple  | **0.18** | USDA FoodData Central - medium apple ≈ 182 g, rounded down |
 | banana | **0.12** | USDA FoodData Central - medium banana ≈ 118 g, rounded down |
 
-(Constants live in `web/server/db/impact.js` → `KG_PER_FRUIT`; unknown fruit
+(Constants live in `web/server/db/impact.js` -> `KG_PER_FRUIT`; unknown fruit
 falls back to 0.15 kg.)
 
 **Why this is defensible:** it's a *direct measurement* of what the robot did -
@@ -89,7 +89,7 @@ claim fruit-specific precision.
 
 ---
 
-## 4. Throughput → live & extrapolated impact
+## 4. Throughput -> live & extrapolated impact
 
 The dashboard computes, from real pick timestamps (`getStats().throughput`, over
 the `window` span of recorded picks):
@@ -126,7 +126,7 @@ seasonal_CO2e    = seasonal_kg × 2.5
 
 ```
 value_created $ = harvested_value + labour_saved
-harvested_value = Σ (successful pick) → mass_kg × price_per_kg
+harvested_value = Σ (successful pick) -> mass_kg × price_per_kg
 labour_saved    = harvested_kg × manual_pick_cost_per_kg
 roi_pct         = value_created / robot_cost_or_subscription × 100
 ```
@@ -157,7 +157,7 @@ genuine **Green AI** story ([Schwartz et al., "Green AI", CACM 2020]):
 | Point | Detail |
 |---|---|
 | Inference runs **on the Arduino UNO Q (Qualcomm)** at the edge | ~**5 W** class device; see `docs/QUALCOMM.md` for measured on-device FPS |
-| No cloud inference → **no data-centre GPU draw, no network egress** per frame | The recurring energy + carbon of serving the model is ~eliminated at run time |
+| No cloud inference -> **no data-centre GPU draw, no network egress** per frame | The recurring energy + carbon of serving the model is ~eliminated at run time |
 | Low power = **battery-operable, off-grid in the field** | This is the literal "Battery, not Blood" - it deploys where the labour gap is |
 
 > Honesty guardrail: the *absolute* energy saved **per inference** vs. a cloud
@@ -188,7 +188,7 @@ genuine **Green AI** story ([Schwartz et al., "Green AI", CACM 2020]):
   Prevention.* - one-third / 1.3 Gt; fruit & veg ~45%.
   https://www.fao.org/4/mb060e/mb060e00.htm
 - FAO (2013). *Food Wastage Footprint: Impacts on Natural Resources.* - 3.3 Gt
-  CO₂e/yr → ~2.5 kg CO₂e per kg wasted. https://www.fao.org/4/ar429e/ar429e.pdf
+  CO₂e/yr -> ~2.5 kg CO₂e per kg wasted. https://www.fao.org/4/ar429e/ar429e.pdf
 - FAO (2019). *The State of Food and Agriculture 2019.* - ~13% post-harvest,
   pre-retail loss. https://www.fao.org/state-of-food-agriculture/2019/en/
 - USDA FoodData Central - medium apple ~182 g, medium banana ~118 g.

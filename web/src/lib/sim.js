@@ -8,6 +8,22 @@ const STATES = ['IDLE', 'SEEK', 'PICK', 'SORT']
 const FRUITS = ['apple', 'banana']
 const RIPENESS = ['ripe', 'unripe']
 
+// Lightweight FarmHand stand-in: turn a spoken/typed command into the same
+// structured action the real LLM agent returns (task + optional fruit/filter).
+export function parseNlCommand(text) {
+  const t = String(text || '').toLowerCase()
+  if (!t.trim()) return { ok: false, clarification: 'Say a command like "pick the ripe apples".' }
+  if (/\b(stop|halt|e-?stop|emergency|freeze)\b/.test(t)) return { ok: true, action: { task: 'stop' } }
+  const fruit = /\bbanana/.test(t) ? 'banana' : /\bapple/.test(t) ? 'apple' : null
+  const filter = /\b(unripe|green)\b/.test(t) ? 'unripe' : /\bripe\b/.test(t) ? 'ripe' : null
+  const task = /\bsort\b/.test(t) ? 'sort' : /\b(pick|grab|collect|harvest|get)\b/.test(t) ? 'pick' : null
+  if (!task) return { ok: false, clarification: 'Try a command with "pick", "sort", or "stop".' }
+  const action = { task }
+  if (fruit) action.fruit = fruit
+  if (filter) action.filter = filter
+  return { ok: true, action }
+}
+
 export function startSim(bus) {
   let state = 'SEEK'
   let stateAge = 0
@@ -33,6 +49,22 @@ export function startSim(bus) {
       if (!estopped) {
         state = 'PICK'
         stateAge = 0
+      }
+    } else if (event === 'nl_command') {
+      // FarmHand stand-in: parse the natural-language text into a structured
+      // nl_action and echo it back the way the real agent would, then act on it.
+      const action = parseNlCommand(String(payload.text ?? ''))
+      const reply = { ts: Date.now(), text: String(payload.text ?? ''), ...action }
+      bus.push('nl_action', reply)
+      if (reply.ok && reply.action) {
+        if (reply.action.task === 'stop') {
+          estopped = true
+          state = 'ESTOP'
+          drive = { l: 0, r: 0 }
+        } else if (!estopped) {
+          state = 'PICK'
+          stateAge = 0
+        }
       }
     }
   }

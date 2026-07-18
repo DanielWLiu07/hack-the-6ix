@@ -30,7 +30,7 @@ RANGE_NOISE_SIGMA = 0.012  # ~1.2 cm gaussian range noise
 DROPOUT_PROB = 0.02      # fraction of beams randomly lost (dark/spec surfaces)
 
 
-# ---------------------------------------------------------------- world model
+# world model
 
 def _box(cx, cy, w, h):
     """Axis-aligned box -> 4 wall segments [(x1,y1,x2,y2), ...]."""
@@ -97,7 +97,7 @@ class Robot:
         self.y += speed * dt * math.sin(self.theta)
 
 
-# ----------------------------------------------------------------- raycasting
+# raycasting
 
 def cast_scan(pose, segments, beams, rng):
     """Raycast `beams` evenly-spaced rays from pose=(x,y,theta) against
@@ -143,7 +143,7 @@ def make_payload(robot, t_sim, beams, rng, ts_ms=None):
     }
 
 
-# ------------------------------------------------------------------- runners
+# runners
 
 def run_stdout(rate, beams, once=False):
     robot, rng, t_sim, dt = Robot(), np.random.default_rng(42), 0.0, 1.0 / rate

@@ -1,0 +1,12 @@
+# FarmHand SFT v2 - adds 226 typo/slang augmentation rows (targets over-clarify miss).
+model = "Qwen/Qwen3.5-0.8B"
+algorithm = "sft"
+seed = 42
+
+[environment]
+id = "hackthe6ixbanana/farmhand"
+
+[train]
+epochs = 3
+max_examples = 2575  # 2349 train + 226 augmentation
+lora_rank = 32

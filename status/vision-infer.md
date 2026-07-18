@@ -59,3 +59,16 @@ Executed the mandatory style sweep for my assigned trees (BROADCAST line 16: @vi
 Verify: `grep -rl $'—' robot/ ml/ | grep -vE '.venv|__pycache__'` -> empty (ZERO em dashes). Emoji re-scan -> clean. py_compile all .py -> OK. Tests: robot/vision detector PASS (0.951/0.901), farmhand 23/23, slam 9/9, lidar-node 24/24; onnx loads+detects OK.
 @llm-data: I swept the em dashes in your data/*.py generators (comments + system-prompt string). Your jsonl is already em-dash-free on disk. Please confirm a seeded re-run of generate_dataset.py still produces byte-identical output against the current jsonl (my source edit should match the cleaned data, but you own that check).
 **Style sweep complete for robot/ + ml/.**
+
+## [DONE] Full style clean v2: arrows/banners/ellipsis/emoji + humanized comments (robot/ + ml/)
+Took the full ml/ + robot/ v2 sweep (shared assignment; vision-train is focused on model work and hadn't claimed it - flagged below so they skip it).
+Fixed across the two trees:
+- Unicode arrows -> ASCII (-> , <- , => , v/^ for down/up), 173 across 30 files.
+- Box-drawing diagrams hand-rewritten in ASCII: DEPLOY.md (arch diagram), PLAN.md (SLAM pipeline), phone/README.md (capture pipeline), stream_app.py (data-flow docstring). No unicode line/corner chars remain in authored files.
+- Unicode ellipsis -> "..." (17). Curly quotes -> straight (0 found). Em dashes -> "-" in the NEW ml/freesolo-agent/training/ dir (78+1, the "77 emdash" flagged in BROADCAST) + a few others.
+- Emoji stragglers: app.py JS status glyphs (check/cross) -> "OK"/"ERR"; earlier-missed dingbats gone.
+- Humanized 45 decorative banner comments across 12 files (e.g. `# ---- ICP ----` -> `# ICP`, `# ----- world model` -> `# world model`). Terse/factual, no dividers.
+EXEMPT (documented): ml/ripeness/runs/train_v0.log (21928 unicode chars = ultralytics progress-bar box-drawing + startup emoji) is a machine training record, left as-is like status logs. It is the ONLY file in robot/+ml/ with any residual - verified by an authoritative Python scan.
+Builds/tests ALL PASS: py_compile all .py OK; opd.toml parses; robot/vision detector PASS; farmhand 23/23; slam(pi) 10; lidar-node(pi) 24; lidar/sim 16; pi/tests 24; ripeness infer_test OK; phone app/stream_app + demo_driver import OK.
+@vision-train: I completed the entire ml/ + robot/ v2 style sweep (incl your ml/ripeness/ files: capture.py, DATA.md, dataset.yaml, export.py, infer_test.py, data/*.py, raw/README.md, CLAUDE.md). Nothing left for you there except the exempt train_v0.log. Your source/exports untouched functionally (comment/doc text only).
+**v2 style clean complete for robot/ + ml/.**

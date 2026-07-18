@@ -1,13 +1,13 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth0 } from '@auth0/auth0-react'
 import { useRobot } from './lib/robot.jsx'
+import { passwordLogin } from './lib/ropg.js'
 import './App.css'
 
 // Landing ladder:
-//   no WebGL2                     → static ClassicHero
-//   /scene/ present (real scene)  → fullscreen self-hosted 1:1 painterly scene
-//   /scene/ absent (fresh clones) → self-contained r3f OrchardHero
+//   no WebGL2                     -> static ClassicHero
+//   /scene/ present (real scene)  -> fullscreen self-hosted 1:1 painterly scene
+//   /scene/ absent (fresh clones) -> self-contained r3f OrchardHero
 // public/scene/ is gitignored, so fresh clones / Vercel may lack it. We must
 // also guard against the SPA fallback: a missing /scene/index.html can still
 // return the app shell (200), so we verify the body is the real scene (its
@@ -48,106 +48,135 @@ function useHeroStats() {
   ]
 }
 
-function OrchardAccountControl({ onFocusBoard, onMoveBoard, onLeaveBoard, onOpenBoard }) {
-  const { isLoading, isAuthenticated, loginWithRedirect, logout, user } = useAuth0()
-  const name = user?.name || user?.email || 'Orchard operator'
-
-  if (isLoading) {
+function OrchardAccountControl({ operator, onFocusBoard, onMoveBoard, onLeaveBoard, onOpenBoard, onLogout }) {
+  if (operator) {
     return (
-      <div className="landing-login-wrap">
-        <button className="landing-login" disabled aria-label="Login" />
-        <span aria-hidden="true">LOGIN</span>
+      <div className="landing-logout" title={operator.user.name}>
+        <span>{operator.user.name}</span>
+        <button onClick={onLogout}>Sign out</button>
       </div>
     )
   }
-
-  if (!isAuthenticated) {
-    return (
-      <div className="landing-login-wrap">
-        <button
-          className="landing-login"
-          aria-label="Login"
-          onPointerEnter={onFocusBoard}
-          onPointerMove={onMoveBoard}
-          onPointerLeave={onLeaveBoard}
-          onFocus={onFocusBoard}
-          onBlur={onLeaveBoard}
-          onClick={onOpenBoard || (() => loginWithRedirect())}
-        />
-        <span aria-hidden="true">LOGIN</span>
-      </div>
-    )
-  }
-
   return (
-    <div className="landing-logout" title={name}>
-      <span>{name}</span>
-      <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
-        Sign out
-      </button>
+    <div className="landing-login-wrap">
+      <button
+        className="landing-login"
+        aria-label="Login"
+        onPointerEnter={onFocusBoard}
+        onPointerMove={onMoveBoard}
+        onPointerLeave={onLeaveBoard}
+        onFocus={onFocusBoard}
+        onBlur={onLeaveBoard}
+        onClick={onOpenBoard}
+      />
+      <span aria-hidden="true">LOGIN</span>
     </div>
   )
 }
 
-function AuthBoardPanel({ onClose }) {
-  const { isAuthenticated, loginWithRedirect, logout, user } = useAuth0()
-  const name = user?.name || user?.email || 'Orchard operator'
+// The sign-in form that rides on the orchard board. It authenticates via Auth0
+// Resource Owner Password Grant (no hosted-page redirect): see lib/ropg.js.
+function AuthBoardPanel({ operator, onLogin, onLogout, onClose, onDemo }) {
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState('')
+
+  const onSubmit = async (event) => {
+    event.preventDefault()
+    if (pending) return
+    setPending(true)
+    setError('')
+    const result = await passwordLogin(username.trim(), password)
+    setPending(false)
+    if (result.ok) {
+      setPassword('')
+      onLogin(result)
+    } else {
+      setError(result.error)
+    }
+  }
+
   return (
     <section className="auth-signboard-panel">
       <button className="signboard-close" onClick={onClose} aria-label="Return to orchard">×</button>
       <span className="signboard-kicker">FARMHAND ORCHARD PASS</span>
-      <h2>{isAuthenticated ? 'Welcome back.' : 'Ready to pick?'}</h2>
-      <p>
-        {isAuthenticated
-          ? `Signed in as ${name}. Your commands can be attributed to your orchard crew account.`
-          : 'Sign in to attribute robot commands and harvest picks to your operator profile.'}
-      </p>
-      {isAuthenticated ? (
-        <button className="signboard-action" onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
-          Sign out
+      <h2>{operator ? 'Welcome back.' : 'Operator sign in'}</h2>
+      {operator ? (
+        <>
+          <p>Signed in as {operator.user.name}. Your commands are attributed to your orchard crew account.</p>
+          <button className="signboard-action" onClick={onLogout}>Sign out</button>
+        </>
+      ) : (
+        <form className="signboard-form" onSubmit={onSubmit}>
+          <label className="signboard-field">
+            <span>Username</span>
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              placeholder="orchard.hand"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={pending}
+            />
+          </label>
+          <label className="signboard-field">
+            <span>Password</span>
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              placeholder="********"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={pending}
+            />
+          </label>
+          {error ? <p className="signboard-error" role="alert">{error}</p> : null}
+          <button type="submit" className="signboard-action" disabled={pending}>
+            {pending ? 'Signing in...' : 'Sign in'}
+          </button>
+        </form>
+      )}
+      {onDemo ? (
+        <button type="button" className="signboard-demo signboard-demo-btn" onClick={onDemo}>
+          Or continue in demo mode -&gt;
         </button>
       ) : (
-        <button className="signboard-action" onClick={() => loginWithRedirect()}>
-          Sign in with Auth0
-        </button>
+        <Link className="signboard-demo" to="/teleop">Or continue in demo mode -&gt;</Link>
       )}
-      <Link className="signboard-demo" to="/teleop">Or continue in demo mode →</Link>
     </section>
   )
 }
 
-function SceneAuthBridge({ onClose }) {
-  const { loginWithRedirect } = useAuth0()
-  useEffect(() => {
-    const onMessage = (event) => {
-      if (event.origin !== window.location.origin) return
-      if (event.data?.type === 'ht6-auth-login') loginWithRedirect()
-      if (event.data?.type === 'ht6-auth-close') onClose()
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [loginWithRedirect, onClose])
-  return null
-}
-
-function LandingAccountControl({ onFocusBoard, onMoveBoard, onLeaveBoard, onOpenBoard }) {
-  // Keep local visual work usable when Auth0 is intentionally unconfigured.
-  return AUTH0_CONFIGURED
-    ? <OrchardAccountControl
-        onFocusBoard={onFocusBoard}
-        onMoveBoard={onMoveBoard}
-        onLeaveBoard={onLeaveBoard}
-        onOpenBoard={onOpenBoard}
-      />
-    : null
+function LandingAccountControl(props) {
+  // Hidden when Auth is intentionally unconfigured (keeps local visual work usable).
+  return AUTH0_CONFIGURED ? <OrchardAccountControl {...props} /> : null
 }
 
 // Static fallback hero for browsers/GPUs without WebGL2.
 function ClassicHero() {
   const stats = useHeroStats()
+  const [operator, setOperator] = useState(null)
+  const [boardOpen, setBoardOpen] = useState(false)
   return (
     <main className="hero">
-      <LandingAccountControl />
+      <LandingAccountControl
+        operator={operator}
+        onOpenBoard={() => setBoardOpen(true)}
+        onLogout={() => setOperator(null)}
+      />
+      {AUTH0_CONFIGURED && boardOpen && !operator && (
+        <div className="scene-auth-overlay is-modal">
+          <AuthBoardPanel
+            operator={operator}
+            onLogin={(result) => { setOperator(result); setBoardOpen(false) }}
+            onLogout={() => setOperator(null)}
+            onClose={() => setBoardOpen(false)}
+          />
+        </div>
+      )}
       <p className="kicker">HACK THE 6IX 2026</p>
       <h1>
         Battery, <span className="accent">not Blood.</span>
@@ -187,6 +216,52 @@ function ClassicHero() {
   )
 }
 
+// Full-screen TV static over the whole landing as the apple is carried up. It
+// holds, then fades - by then the /stage POMME screen is full-screen and fuzzing
+// too, so the two static fields connect and the handoff is invisible.
+function LandingFuzz({ active, onDone }) {
+  const ref = useRef(null)
+  const doneRef = useRef(onDone)
+  doneRef.current = onDone
+  useEffect(() => {
+    if (!active) return undefined
+    const canvas = ref.current
+    const ctx = canvas.getContext('2d')
+    const resize = () => {
+      canvas.width = Math.max(2, Math.floor(window.innerWidth / 6))
+      canvas.height = Math.max(2, Math.floor(window.innerHeight / 6))
+    }
+    resize()
+    window.addEventListener('resize', resize)
+    const HOLD = 900, FADE = 550, TOTAL = HOLD + FADE
+    let raf = 0
+    let start = 0
+    const step = (now) => {
+      if (!start) start = now
+      const t = now - start
+      const op = t < HOLD ? 1 : Math.max(0, 1 - (t - HOLD) / FADE)
+      const w = canvas.width, h = canvas.height
+      const img = ctx.createImageData(w, h)
+      const d = img.data
+      for (let i = 0; i < d.length; i += 4) {
+        const v = (Math.random() * 255) | 0
+        d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
+      }
+      ctx.putImageData(img, 0, 0)
+      canvas.style.opacity = String(op)
+      if (t >= TOTAL) { doneRef.current?.(); return }
+      raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', resize)
+    }
+  }, [active])
+  if (!active) return null
+  return <canvas ref={ref} className="landing-fuzz" aria-hidden="true" />
+}
+
 // Probe the self-hosted scene, verifying it's the real scene and not the SPA
 // shell fallback. While probing, show paper (no dead-iframe flash).
 function Landing() {
@@ -194,7 +269,35 @@ function Landing() {
   const [authBoardOpen, setAuthBoardOpen] = useState(false)
   const [authBoardPinned, setAuthBoardPinned] = useState(false)
   const [stageActive, setStageActive] = useState(false)
+  const [landingFuzz, setLandingFuzz] = useState(false)
+  const [loginRevealed, setLoginRevealed] = useState(false)
+  const [operator, setOperator] = useState(null)
+  // Keep the board in the DOM through its exit animation instead of yanking it
+  // the instant it closes: boardShown = mounted, boardClosing = playing exit.
+  const [boardShown, setBoardShown] = useState(false)
+  const [boardClosing, setBoardClosing] = useState(false)
   const sceneRef = useRef(null)
+  const authOverlayRef = useRef(null)
+
+  const closeBoard = () => {
+    setAuthBoardPinned(false)
+    setAuthBoardOpen(false)
+    relaySceneFocus(null, false, false)
+  }
+  const handleLogin = (result) => {
+    setOperator(result)
+    closeBoard()
+  }
+  const handleLogout = () => setOperator(null)
+  // Demo mode: drop the login, return to the orchard, and kick off the apple
+  // grab (which plays through to the stage handoff).
+  const handleDemo = () => {
+    closeBoard()
+    sceneRef.current?.contentWindow?.postMessage(
+      { type: 'ht6-demo-start' },
+      window.location.origin,
+    )
+  }
 
   const relaySceneFocus = (event, active, open = undefined) => {
     const x = event?.clientX == null ? 0 : (event.clientX / window.innerWidth) * 2 - 1
@@ -267,7 +370,14 @@ function Landing() {
         // Redundant cache warm-up for a cold browser cache.
         fetch('/assets/tv.glb').catch(() => {})
         fetch('/assets/suzanne-fullbody-rigged.glb').catch(() => {})
+      } else if (d.phase === 'landed') {
+        // The hero apple just hit the floor: bring the login sign in on that beat.
+        setLoginRevealed(true)
       } else if (d.phase === 'ascent') {
+        // Claw carries the apple up: fuzz the WHOLE landing screen, then hand off
+        // to /stage. The stage's POMME screen is full-screen and fuzzing at the
+        // start of its zoom-out, so the two static fields connect seamlessly.
+        setLandingFuzz(true)
         setStageActive(true)
         window.history.replaceState(window.history.state, '', '/stage')
       }
@@ -278,35 +388,70 @@ function Landing() {
     }
   }, [])
 
+  // Reveal fallback: orchard mode never sends 'landed', and a scene message can
+  // be missed on a slow first paint. Orchard shows the login shortly after load;
+  // scene keeps a longer safety net in case the landing beat was dropped.
+  useEffect(() => {
+    if (mode === null || loginRevealed) return
+    const delay = mode === 'orchard' ? 1200 : 3500
+    const id = setTimeout(() => setLoginRevealed(true), delay)
+    return () => clearTimeout(id)
+  }, [mode, loginRevealed])
+
+  // Lock the sign-in card onto the board: the scene posts the board face's
+  // projected screen position every frame, and we move the overlay to match it
+  // via direct DOM writes (no React state, so a frame-rate feed is cheap). This
+  // is what makes the form read as part of the scene, riding the sign as the
+  // camera sways, instead of a card pinned to screen space.
+  useEffect(() => {
+    const onAnchor = (e) => {
+      if (e.data?.type !== 'ht6-auth-anchor') return
+      const el = authOverlayRef.current
+      if (!el) return
+      el.style.left = `${(e.data.x * 100).toFixed(2)}%`
+      el.style.top = `${(e.data.y * 100).toFixed(2)}%`
+    }
+    window.addEventListener('message', onAnchor)
+    return () => window.removeEventListener('message', onAnchor)
+  }, [])
+
   if (mode === null) return <main className="hero-stage" />
   return (
-    <main className="hero-stage">
-      {AUTH0_CONFIGURED && <SceneAuthBridge onClose={() => {
-        setAuthBoardPinned(false)
-        setAuthBoardOpen(false)
-        relaySceneFocus(null, false, false)
-      }} />}
+    <main className={`hero-stage ${loginRevealed ? 'login-in' : ''}`}>
+      <LandingFuzz active={landingFuzz} onDone={() => setLandingFuzz(false)} />
+      {/* The manga stage sits underneath the landing from first paint; the route,
+          WebGL canvas, and mascot never remount. The apple ascent cross-fades to
+          it (a plain opacity fade, see .landing-stage-layer) at its settled pose. */}
       <div className={`landing-stage-layer ${stageActive ? 'is-active' : ''}`}>
         <Suspense fallback={null}>
-          <MonkeyStage showNav={stageActive} playIntro={stageActive} />
+          {/* During the landing the stage painting stays a light poster; its live
+              scene loads only once the stage takes over, so two heavy scenes
+              never run together (that combo crashes Chrome's GPU process). */}
+          <MonkeyStage showNav={stageActive} playIntro={stageActive} liveScene={stageActive} />
         </Suspense>
       </div>
       {mode === 'scene' ? (
         <>
-          <iframe
-            ref={sceneRef}
-            className="hero-embed"
-            src="/scene/index.html"
-            title="Painterly orchard scene"
-            onLoad={wireSceneStart}
-          />
+          {/* Unmount once the stage takes over so this scene's WebGL context is
+              freed - the stage painting's live scene is the only one left. */}
+          {!stageActive && (
+            <iframe
+              ref={sceneRef}
+              className="hero-embed"
+              src="/scene/index.html"
+              title="Painterly orchard scene"
+              onLoad={wireSceneStart}
+            />
+          )}
           {AUTH0_CONFIGURED && authBoardPinned && (
-            <div className="scene-auth-overlay">
-              <AuthBoardPanel onClose={() => {
-                setAuthBoardPinned(false)
-                setAuthBoardOpen(false)
-                relaySceneFocus(null, false, false)
-              }} />
+            <div className="scene-auth-overlay" ref={authOverlayRef}>
+              <AuthBoardPanel
+                operator={operator}
+                onLogin={handleLogin}
+                onLogout={handleLogout}
+                onClose={closeBoard}
+                onDemo={handleDemo}
+              />
             </div>
           )}
         </>
@@ -314,15 +459,24 @@ function Landing() {
         <Suspense fallback={<div className="hero-fallback" />}>
           <OrchardHero
             authBoardOpen={authBoardOpen}
-            authPanel={AUTH0_CONFIGURED && authBoardPinned ? <AuthBoardPanel onClose={() => {
-              setAuthBoardPinned(false)
-              setAuthBoardOpen(false)
-            }} /> : null}
+            authPanel={AUTH0_CONFIGURED && authBoardPinned ? (
+              <AuthBoardPanel
+                operator={operator}
+                onLogin={handleLogin}
+                onLogout={handleLogout}
+                onClose={() => {
+                  setAuthBoardPinned(false)
+                  setAuthBoardOpen(false)
+                }}
+              />
+            ) : null}
           />
         </Suspense>
       )}
       {!stageActive && (
         <LandingAccountControl
+          operator={operator}
+          onLogout={handleLogout}
           onFocusBoard={() => {
             setAuthBoardOpen(true)
           }}

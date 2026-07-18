@@ -59,7 +59,7 @@ class LidarReader:
         self._backend = None
         self._dev = None
 
-    # -- lifecycle -----------------------------------------------------
+    # lifecycle
 
     def connect(self) -> str:
         """Resolve the port and open it. Raises NoDeviceError if absent."""
@@ -120,7 +120,7 @@ class LidarReader:
         self._dev = None
         self._backend = None
 
-    # -- scanning ------------------------------------------------------
+    # scanning
 
     def scans(self):
         """Generator of full revolutions: each item is [(angle_deg, dist_m), ...].

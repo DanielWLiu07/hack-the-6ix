@@ -213,7 +213,7 @@ export function validateSlamPose(p) {
   return errs;
 }
 
-// event name → validator, for both directions
+// event name -> validator, for both directions
 export const validators = {
   telemetry: validateTelemetry,
   detection: validateDetection,

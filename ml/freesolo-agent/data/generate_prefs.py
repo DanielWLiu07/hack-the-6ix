@@ -34,7 +34,7 @@ HERE = Path(__file__).parent
 TARGET = 600
 
 
-# ---------------------------------------------------------------- helpers
+# helpers
 
 def a_str(act):
     return g.action_str(act)
@@ -108,7 +108,7 @@ def bad_json(rng, act):
                                     " - picking now.", "\nAnything else?"])
 
 
-# ---------------------------------------------------------------- pair builders
+# pair builders
 # Each returns (prompt_msgs, chosen_str, rejected_str, reason) or None.
 
 FRUITS = ["apple", "banana", "any"]

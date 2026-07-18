@@ -1,0 +1,26 @@
+{"id": 1, "text": "yo snatch me them ripe applez", "expected": {"task": "pick", "fruit": "apple", "filter": "ripe", "zone": "any"}}
+{"id": 2, "text": "cud u grab teh unripe nanas", "expected": {"task": "pick", "fruit": "banana", "filter": "unripe", "zone": "any"}}
+{"id": 3, "text": "bring in anythin thats ready", "expected": {"task": "pick", "fruit": "any", "filter": "ripe", "zone": "any"}}
+{"id": 4, "text": "shut it down rite now", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 5, "text": "woah stoppp", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 6, "text": "roll forwrd pls", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "forward"}}
+{"id": 7, "text": "head bak to the dock", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "home"}}
+{"id": 8, "text": "organise teh ripe apples", "expected": {"task": "sort", "fruit": "apple", "filter": "ripe", "zone": "any"}}
+{"id": 9, "text": "bin all the greenish bananas", "expected": {"task": "sort", "fruit": "banana", "filter": "unripe", "zone": "any"}}
+{"id": 10, "text": "gimme a red apple", "expected": {"task": "pick", "fruit": "apple", "filter": "ripe", "zone": "any"}}
+{"id": 11, "text": "collect the frut on the left", "expected": {"task": "pick", "fruit": "any", "filter": "any", "zone": "left"}}
+{"id": 12, "text": "harvst every ripe one", "expected": {"task": "pick", "fruit": "any", "filter": "ripe", "zone": "any"}}
+{"id": 13, "text": "pls reverse", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "backward"}}
+{"id": 14, "text": "nab the not ready apples", "expected": {"task": "pick", "fruit": "apple", "filter": "unripe", "zone": "any"}}
+{"id": 15, "text": "sort em by type", "expected": {"task": "sort", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 16, "text": "get the yellow ones", "expected": {"task": "pick", "fruit": "banana", "filter": "ripe", "zone": "any"}}
+{"id": 17, "text": "freeze everything", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}
+{"id": 18, "text": "drive to teh right side", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "right"}}
+{"id": 19, "text": "pick up watever bananas are ripe", "expected": {"task": "pick", "fruit": "banana", "filter": "ripe", "zone": "any"}}
+{"id": 20, "text": "go straight ahed", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "forward"}}
+{"id": 21, "text": "fetch the ripe fruits pls", "expected": {"task": "pick", "fruit": "any", "filter": "ripe", "zone": "any"}}
+{"id": 22, "text": "sort the unrip apples", "expected": {"task": "sort", "fruit": "apple", "filter": "unripe", "zone": "any"}}
+{"id": 23, "text": "grabb both ripe n unripe apples", "expected": {"task": "pick", "fruit": "apple", "filter": "any", "zone": "any"}}
+{"id": 24, "text": "return home", "expected": {"task": "drive", "fruit": "any", "filter": "any", "zone": "home"}}
+{"id": 25, "text": "take the green apples away", "expected": {"task": "pick", "fruit": "apple", "filter": "unripe", "zone": "any"}}
+{"id": 26, "text": "halt the robot", "expected": {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}}

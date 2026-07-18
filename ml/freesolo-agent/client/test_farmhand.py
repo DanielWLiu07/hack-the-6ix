@@ -1,6 +1,7 @@
 """Unit tests for farmhand.py - run: python3 -m unittest test_farmhand -v"""
 
 import json
+import os
 import unittest
 
 import farmhand
@@ -150,6 +151,40 @@ class TestNormalize(unittest.TestCase):
     def test_invalid_never_passes(self):
         kind, p = farmhand._normalize_model_output({"task": "rm -rf /"})
         self.assertIsNone(kind)
+
+    def test_clarification_punct_normalized(self):
+        # trained model emits em dashes / smart quotes; UI strings must be ASCII
+        kind, p = farmhand._normalize_model_output({"clarify": "Which fruit — apples…"})
+        self.assertEqual(kind, "clarification")
+        self.assertNotIn("—", p)
+        self.assertNotIn("…", p)
+
+
+class TestEndpointFallback(unittest.TestCase):
+    """A dead endpoint must not break the NL box: fall back to mock, flag it."""
+
+    def _dead(self, fallback):
+        env = dict(os.environ)
+        env.update(FARMHAND_URL="http://127.0.0.1:1/v1", FARMHAND_MODEL="x",
+                   FARMHAND_TIMEOUT="1", FARMHAND_FALLBACK=fallback)
+        old = os.environ.copy()
+        os.environ.update(env)
+        try:
+            return farmhand.handle("pick all ripe apples")
+        finally:
+            os.environ.clear()
+            os.environ.update(old)
+
+    def test_fallback_on_keeps_working(self):
+        e = self._dead("1")
+        self.assertTrue(e["ok"])
+        self.assertEqual(e["action"]["task"], "pick")
+        self.assertIn("fallback", e)  # flagged honestly
+
+    def test_fallback_off_returns_error(self):
+        e = self._dead("0")
+        self.assertFalse(e["ok"])
+        self.assertIn("endpoint error", e["error"])
 
 
 if __name__ == "__main__":

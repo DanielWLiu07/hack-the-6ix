@@ -5,7 +5,7 @@
 // each pick photo also lands on public Blob storage so it loads on the Vercel
 // dashboard and judges' phones - not just clients that can reach the laptop hub.
 //
-// Get a token: Vercel dashboard → project hack-the-6ix → Storage → Blob → create
+// Get a token: Vercel dashboard -> project hack-the-6ix -> Storage -> Blob -> create
 // store (or `vercel blob store add ht6-media`); put BLOB_READ_WRITE_TOKEN in
 // web/server/.env. Cloud is fine here - the Qualcomm "no cloud" rule is about
 // robot vision INFERENCE, not the web app's images.
@@ -18,7 +18,7 @@ export function blobEnabled() {
   return !!token();
 }
 
-// Upload bytes → return the public https URL, or null on any failure (caller
+// Upload bytes -> return the public https URL, or null on any failure (caller
 // falls back to the local /media copy). Never throws.
 export async function uploadImage(pathname, bytes, contentType) {
   const t = token();

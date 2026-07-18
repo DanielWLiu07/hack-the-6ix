@@ -1,0 +1,167 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>phone scan</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #f1ece1; overflow: hidden; }
+  /* bottom-left so it never collides with the dashboard's top-left HUD when embedded */
+  #hud {
+    position: fixed; bottom: 12px; left: 12px; z-index: 10;
+    font: 11px/1.4 ui-monospace, Menlo, monospace; color: #2a2a2a;
+    background: rgba(255,253,248,.85); padding: 6px 10px; border-radius: 7px;
+    border: 1px solid rgba(17,16,13,.14); pointer-events: none; white-space: pre;
+  }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
+  .on { background:#2bb673; } .off { background:#e5484d; }
+  #clearbtn {
+    position: fixed; bottom: 44px; left: 12px; z-index: 11;
+    font: 600 11px ui-monospace, Menlo, monospace; color: #2a2a2a; letter-spacing: .04em;
+    background: rgba(255,253,248,.94); padding: 7px 12px; border-radius: 7px;
+    border: 1px solid rgba(17,16,13,.22); cursor: pointer;
+  }
+  #clearbtn:hover { background: #fff; }
+  #clearbtn:active { transform: translateY(1px); }
+</style>
+<div id="hud">loading...</div>
+<button id="clearbtn" title="reset the scan and rebuild fresh">CLEAR SCAN</button>
+
+<!-- all local, no CDN -->
+<script type="importmap">
+{ "imports": { "three": "/vendor/three.module.js", "three/addons/": "/vendor/jsm/" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const q = new URLSearchParams(location.search);
+const WORLD = q.get('world') || '/world.glb';
+const hud = document.getElementById('hud');
+
+// ---- scene: ONLY the phone mesh + a faint floor grid ----------------------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xf1ece1);   // warm, lit room
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.03, 200);
+camera.position.set(2.6, 2.0, 2.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+// recover from GPU context loss instead of going black
+renderer.domElement.addEventListener('webglcontextlost', (e) => e.preventDefault(), false);
+renderer.domElement.addEventListener('webglcontextrestored', () => { sig = null; load(true); }, false);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.target.set(0, 0.6, 0);
+
+scene.add(new THREE.HemisphereLight(0xffffff, 0xdad4c6, 1.55));
+scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+const key = new THREE.DirectionalLight(0xffffff, 1.25); key.position.set(3, 6, 2); scene.add(key);
+const fill = new THREE.DirectionalLight(0xffffff, 0.5); fill.position.set(-4, 3, -2); scene.add(fill);
+scene.add(new THREE.GridHelper(10, 20, 0xc7c1b3, 0xded8cb));
+
+// ---- the phone mesh: load /world.glb, reload live, leak-free ---------------
+let obj = null, sig = null, loading = false, ok = false;
+let verts = 0, stamp = 0, updates = 0;
+let offset = null;                 // fixed recenter offset so it never jumps
+const loader = new GLTFLoader();
+
+function dispose(o) {
+  o.traverse((c) => {
+    if (c.geometry) c.geometry.dispose();
+    const mats = Array.isArray(c.material) ? c.material : (c.material ? [c.material] : []);
+    mats.forEach((m) => { for (const k in m) { const v = m[k]; if (v && v.isTexture) v.dispose(); } if (m.dispose) m.dispose(); });
+  });
+}
+
+function apply(gltf) {
+  const next = gltf.scene;
+  let v = 0;
+  next.traverse((o2) => {
+    if (!o2.isMesh) return;
+    o2.frustumCulled = false;
+    const mats = Array.isArray(o2.material) ? o2.material : (o2.material ? [o2.material] : []);
+    mats.forEach((m) => {
+      m.side = THREE.DoubleSide;
+      m.vertexColors = true;                 // use the camera-sampled per-vertex colors
+      if ('metalness' in m) m.metalness = 0;  // metal without an env map renders BLACK - kill it
+      if ('roughness' in m) m.roughness = 0.95;
+      if (m.color) m.color.setRGB(1, 1, 1);   // white base so vertex colors show true, not tinted
+      if (m.emissive) m.emissive.setRGB(0, 0, 0);
+      m.needsUpdate = true;
+    });
+    const p = o2.geometry && o2.geometry.attributes && o2.geometry.attributes.position;
+    if (p) v += p.count;
+  });
+  // Lock the recenter offset on the first scan; reuse it forever so the world
+  // stays put as it grows (no sliding/jumping).
+  const box = new THREE.Box3().setFromObject(next);
+  if (!box.isEmpty()) {
+    if (!offset) {
+      const c = box.getCenter(new THREE.Vector3());
+      offset = new THREE.Vector3(c.x, box.min.y, c.z);
+      const s = box.getSize(new THREE.Vector3());
+      const d = Math.max(s.x, s.y, s.z, 0.6);
+      camera.position.set(d * 0.7, d * 0.55, d * 0.7);
+      controls.target.set(0, s.y * 0.4, 0);
+      controls.update();
+    }
+    next.position.sub(offset);
+  }
+  scene.add(next);
+  if (obj) { scene.remove(obj); dispose(obj); }
+  obj = next; ok = true; verts = v; stamp = performance.now(); updates++;
+}
+
+async function load(force) {
+  if (loading) return;
+  try {
+    const h = await fetch(WORLD, { method: 'HEAD', cache: 'no-store' });
+    if (h.status === 404) return;                       // no scan yet - stay empty
+    if (h.ok) {
+      const s = (h.headers.get('etag') || '') + '|' + (h.headers.get('last-modified') || '') + '|' + (h.headers.get('content-length') || '');
+      if (!force && s === sig) return;                  // unchanged - skip
+      sig = s;
+    }
+  } catch (e) { /* fall through */ }
+  loading = true;
+  loader.load(WORLD + '?t=' + Date.now(),
+    (g) => { loading = false; apply(g); },
+    undefined,
+    () => { loading = false; });
+}
+load(true);
+setInterval(load, 2000);                                // pick up the live scan
+
+// Clear button: reset the receiver's accumulated mesh + wipe the local scene so
+// a fresh scan visibly rebuilds from nothing (control server = receiver:9355).
+const CLEAR_URL = location.protocol + '//' + location.hostname + ':9355/clear';
+document.getElementById('clearbtn').addEventListener('click', async () => {
+  try { await fetch(CLEAR_URL, { cache: 'no-store' }); } catch (e) { /* offline */ }
+  if (obj) { scene.remove(obj); dispose(obj); obj = null; }
+  offset = null; sig = null; ok = false; verts = 0; updates = 0; stamp = 0;
+});
+
+// ---- render + status ------------------------------------------------------
+function tick() {
+  requestAnimationFrame(tick);
+  controls.update();
+  renderer.render(scene, camera);
+  const age = stamp ? (performance.now() - stamp) / 1000 : null;
+  hud.innerHTML = !ok
+    ? '<span class="dot off"></span>waiting for phone scan...'
+    : age < 6
+      ? `<span class="dot on"></span>LIVE - ${verts} verts (#${updates}, ${age.toFixed(0)}s ago)`
+      : `<span class="dot off"></span>IDLE ${age.toFixed(0)}s - move + scan (app foreground, screen on)`;
+}
+tick();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>

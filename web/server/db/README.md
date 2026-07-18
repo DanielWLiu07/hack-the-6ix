@@ -9,9 +9,9 @@ import { createDb } from './db/index.js';
 const db = await createDb({ uri: process.env.MONGODB_URI }); // all args optional
 ```
 
-- `MONGODB_URI` set + reachable → MongoDB (Atlas) backend, database `ht6`
+- `MONGODB_URI` set + reachable -> MongoDB (Atlas) backend, database `ht6`
   (override with `MONGODB_DB` or `dbName` option).
-- No URI, or Mongo unreachable → in-memory backend, same interface, logs a
+- No URI, or Mongo unreachable -> in-memory backend, same interface, logs a
   one-line warning. **The stack never fails to boot because of the DB.**
 - `db.backend` tells you which one you got (`'mongo' | 'memory'`).
 

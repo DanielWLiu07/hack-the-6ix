@@ -3,13 +3,13 @@
 labels into our 4-class scheme.
 
 BLOCKED without a key: needs env ROBOFLOW_API_KEY (any free roboflow.com
-account → Settings → API key). Untested until a key is available.
+account -> Settings -> API key). Untested until a key is available.
 
     ROBOFLOW_API_KEY=xxx python3 data/download_public.py
 
 Ripeness is not labeled in public sets, so each source box is auto-classified
-ripe/unripe by dominant HSV hue inside the bbox (red apple→ripe, green→unripe;
-yellow banana→ripe, green→unripe). Ambiguous boxes are dropped. Output merges
+ripe/unripe by dominant HSV hue inside the bbox (red apple->ripe, green->unripe;
+yellow banana->ripe, green->unripe). Ambiguous boxes are dropped. Output merges
 into data/dataset/ alongside the synthetic images (prefix `rf_`).
 """
 import os
@@ -55,7 +55,7 @@ def classify_ripeness(img, box_xyxy, fruit):
             return "ripe"
         if green > 0.5:
             return "unripe"
-    return None  # ambiguous → drop
+    return None  # ambiguous -> drop
 
 
 def remap_split(split_dir, split):
@@ -111,7 +111,7 @@ def main():
     rf = Roboflow(api_key=key)
     DL.mkdir(exist_ok=True)
     for ws, proj, ver, _ in SOURCES:
-        print(f"downloading {ws}/{proj}:{ver} …")
+        print(f"downloading {ws}/{proj}:{ver} ...")
         ds = rf.workspace(ws).project(proj).version(ver).download(
             "yolov8", location=str(DL / f"{ws}_{proj}_{ver}"))
         for split_src, split_dst in (("train", "train"), ("valid", "val"), ("test", "train")):

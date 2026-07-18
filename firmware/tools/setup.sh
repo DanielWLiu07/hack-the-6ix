@@ -6,7 +6,7 @@ set -euo pipefail
 say() { printf '\033[1;32m[setup]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[setup]\033[0m %s\n' "$*"; }
 
-# --- 1. arduino-cli ---------------------------------------------------------
+# 1. arduino-cli
 if ! command -v arduino-cli >/dev/null 2>&1; then
   if command -v brew >/dev/null 2>&1; then
     say "installing arduino-cli via homebrew..."
@@ -42,7 +42,7 @@ arduino-cli config set board_manager.additional_urls \
 say "updating board index..."
 arduino-cli core update-index
 
-# --- 2. UNO Q core (if Arduino publishes one for desktop CLI) ---------------
+# 2. UNO Q core (if Arduino publishes one for desktop CLI)
 say "searching for an UNO Q core..."
 UNOQ_CORE="$(arduino-cli core search 2>/dev/null | grep -i -E 'uno[ _-]?q|qualcomm' | awk '{print $1}' | head -1 || true)"
 if [ -n "${UNOQ_CORE}" ]; then
@@ -55,7 +55,7 @@ else
   arduino-cli core install STMicroelectronics:stm32 || warn "STM32 core install failed - compile checks unavailable"
 fi
 
-# --- 3. libraries fw-mcu needs ---------------------------------------------
+# 3. libraries fw-mcu needs
 say "installing sketch libraries..."
 arduino-cli lib install "Adafruit PWM Servo Driver Library" || warn "PCA9685 lib install failed"
 # MCU<->Linux RPC library for the UNO Q (see ../BRIDGE.md §4). This one is

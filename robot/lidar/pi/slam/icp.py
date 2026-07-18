@@ -1,7 +1,7 @@
 """icp.py - compact 2D point-to-point ICP (SE(2) lidar odometry).
 
 Pure numpy, no scipy. Aligns a source scan onto a reference point set and
-returns the rigid transform (x, y, theta) that best maps source→reference.
+returns the rigid transform (x, y, theta) that best maps source->reference.
 Used by slam.py as the scan-matching front-end that recovers robot motion
 from the pose-less `lidar_scan` stream.
 """
@@ -58,7 +58,7 @@ def _nearest(src, dst):
 
 
 def _best_fit(src, dst):
-    """Least-squares SE(2) mapping src→dst (Umeyama/Kabsch, 2D, no scale)."""
+    """Least-squares SE(2) mapping src->dst (Umeyama/Kabsch, 2D, no scale)."""
     mu_s = src.mean(axis=0)
     mu_d = dst.mean(axis=0)
     H = (src - mu_s).T @ (dst - mu_d)
