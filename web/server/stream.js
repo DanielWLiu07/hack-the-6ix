@@ -35,6 +35,24 @@ function renderTestFrame() {
   return encode({ data, width: W, height: H }, 70).data;
 }
 
+// One shared encode loop for ALL test-pattern viewers. Previously each client
+// opened its own setInterval and ran a full synchronous jpeg-js encode, so N
+// dashboards/phones meant N encodes/sec blocking the event loop (and stalling
+// every Socket.IO emit). Now we encode a single frame per tick and fan it out,
+// and the timer only runs while at least one client is connected.
+const streamClients = new Set();
+let streamTimer = null;
+
+function pumpTestPattern() {
+  const jpg = renderTestFrame();
+  const header = `--${BOUNDARY}\r\nContent-Type: image/jpeg\r\nContent-Length: ${jpg.length}\r\n\r\n`;
+  for (const res of streamClients) {
+    res.write(header);
+    res.write(jpg);
+    res.write('\r\n');
+  }
+}
+
 function serveTestPattern(res) {
   res.writeHead(200, {
     'Content-Type': `multipart/x-mixed-replace; boundary=${BOUNDARY}`,
@@ -42,13 +60,15 @@ function serveTestPattern(res) {
     Connection: 'close',
     'Access-Control-Allow-Origin': '*',
   });
-  const timer = setInterval(() => {
-    const jpg = renderTestFrame();
-    res.write(`--${BOUNDARY}\r\nContent-Type: image/jpeg\r\nContent-Length: ${jpg.length}\r\n\r\n`);
-    res.write(jpg);
-    res.write('\r\n');
-  }, 1000 / FPS);
-  res.on('close', () => clearInterval(timer));
+  streamClients.add(res);
+  if (!streamTimer) streamTimer = setInterval(pumpTestPattern, 1000 / FPS);
+  res.on('close', () => {
+    streamClients.delete(res);
+    if (streamClients.size === 0 && streamTimer) {
+      clearInterval(streamTimer);
+      streamTimer = null;
+    }
+  });
 }
 
 // proxy

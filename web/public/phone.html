@@ -3,10 +3,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>phone scan</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #f1ece1; overflow: hidden; }
-  /* bottom-left so it never collides with the dashboard's top-left HUD when embedded */
+  html, body { margin: 0; height: 100%; background: #fffdf8; overflow: hidden; }
+  /* left-middle band: clear of the top machine-fringe AND the bottom bar/props */
   #hud {
-    position: fixed; bottom: 12px; left: 12px; z-index: 10;
+    position: fixed; top: calc(50% + 20px); left: 14px; z-index: 10;
     font: 11px/1.4 ui-monospace, Menlo, monospace; color: #2a2a2a;
     background: rgba(255,253,248,.85); padding: 6px 10px; border-radius: 7px;
     border: 1px solid rgba(17,16,13,.14); pointer-events: none; white-space: pre;
@@ -14,7 +14,7 @@
   .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; }
   .on { background:#2bb673; } .off { background:#e5484d; }
   #clearbtn {
-    position: fixed; bottom: 44px; left: 12px; z-index: 11;
+    position: fixed; top: calc(50% - 14px); left: 14px; z-index: 11;
     font: 600 11px ui-monospace, Menlo, monospace; color: #2a2a2a; letter-spacing: .04em;
     background: rgba(255,253,248,.94); padding: 7px 12px; border-radius: 7px;
     border: 1px solid rgba(17,16,13,.22); cursor: pointer;
@@ -41,7 +41,7 @@ const hud = document.getElementById('hud');
 
 // ---- scene: ONLY the phone mesh + a faint floor grid ----------------------
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf1ece1);   // warm, lit room
+scene.background = new THREE.Color(0xfffdf8);   // warm, lit room
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.03, 200);
 camera.position.set(2.6, 2.0, 2.8);
 
@@ -69,6 +69,7 @@ scene.add(new THREE.GridHelper(10, 20, 0xc7c1b3, 0xded8cb));
 let obj = null, sig = null, loading = false, ok = false;
 let verts = 0, stamp = 0, updates = 0;
 let offset = null;                 // fixed recenter offset so it never jumps
+let intro = null;                  // cinematic fly-in animation state (first load)
 const loader = new GLTFLoader();
 
 function dispose(o) {
@@ -107,10 +108,18 @@ function apply(gltf) {
       offset = new THREE.Vector3(c.x, box.min.y, c.z);
       const s = box.getSize(new THREE.Vector3());
       const d = Math.max(s.x, s.y, s.z, 0.6);
-      camera.position.set(d * 0.7, d * 0.55, d * 0.7);
       // aim a bit above the model center so it sits LOWER on screen, clear of
       // the dashboard's top HUD bar (the model isn't hidden behind it)
-      controls.target.set(0, s.y * 0.4 + d * 0.12, 0);
+      const target = new THREE.Vector3(0, s.y * 0.4 + d * 0.12, 0);
+      const finalPos = new THREE.Vector3(d * 0.7, d * 0.55, d * 0.7);
+      // cinematic fly-in: start orbited + pulled back + higher, ease into frame
+      const dir = finalPos.clone().sub(target);
+      const startDir = dir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), 1.15).multiplyScalar(1.75);
+      startDir.y += d * 0.5;
+      intro = { t0: performance.now(), from: target.clone().add(startDir), to: finalPos, target };
+      controls.target.copy(target);
+      camera.position.copy(intro.from);
+      controls.enabled = false;   // no user control during the fly-in
       controls.update();
     }
     next.position.sub(offset);
@@ -152,7 +161,15 @@ document.getElementById('clearbtn').addEventListener('click', async () => {
 // ---- render + status ------------------------------------------------------
 function tick() {
   requestAnimationFrame(tick);
-  controls.update();
+  if (intro) {
+    const p = Math.min(1, (performance.now() - intro.t0) / 1900);
+    const e = 1 - Math.pow(1 - p, 3);            // easeOutCubic
+    camera.position.lerpVectors(intro.from, intro.to, e);
+    camera.lookAt(intro.target);
+    if (p >= 1) { intro = null; controls.enabled = true; controls.update(); }
+  } else {
+    controls.update();
+  }
   renderer.render(scene, camera);
   const age = stamp ? (performance.now() - stamp) / 1000 : null;
   hud.innerHTML = !ok

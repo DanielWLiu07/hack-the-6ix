@@ -69,12 +69,16 @@ export async function passwordLogin(username, password) {
     return { ok: false, error: map[data.error] || data.error_description || 'Sign-in failed.' }
   }
   const claims = decodeJwt(data.id_token || '')
+  // Session expiry: prefer the token's own exp, else now + expires_in.
+  const exp = claims.exp
+    || (data.expires_in ? Math.floor(Date.now() / 1000) + data.expires_in : null)
   return {
     ok: true,
     token: data.access_token || data.id_token || '',
+    exp,
     user: {
       name: claims.name || claims.nickname || claims.email || username,
-      email: claims.email || '',
+      email: claims.email || username,
       picture: claims.picture || '',
     },
   }

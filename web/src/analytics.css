@@ -25,15 +25,19 @@
   padding: 2.6rem 0 3.5rem;
   color: var(--ink);
   font-family: var(--mono);
+  /* paper page + faint screentone crust (was a WebGL sphere; now CSS) */
+  background-color: var(--page);
+  background-image: radial-gradient(rgba(23, 25, 20, 0.06) 1px, transparent 1.4px);
+  background-size: 5px 5px;
 }
 
-/* full-viewport manga-shader crust behind everything (background only) */
+/* deco props render as a transparent mangaPass cutout IN FRONT of the data so
+ * they are clearly visible; pointer-events none so the data stays clickable */
 .az-crust {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: 2;
   pointer-events: none;
-  background: var(--page);
 }
 .az-crust > div,
 .az-crust canvas {
@@ -74,7 +78,8 @@
   box-shadow: 4px 4px 0 var(--ink);
   font: 0.63rem var(--mono);
 }
-.deco-head { display: flex; justify-content: space-between; align-items: center; font-weight: 900; letter-spacing: 0.14em; margin-bottom: 0.55rem; }
+.deco-head { display: flex; justify-content: space-between; align-items: center; font-weight: 900; letter-spacing: 0.14em; margin-bottom: 0.55rem; cursor: move; user-select: none; touch-action: none; }
+.deco-head span::before { content: '::  '; opacity: 0.5; }
 .deco-x { border: none; background: transparent; color: var(--ink); cursor: pointer; font: 900 0.85rem var(--mono); line-height: 1; }
 .deco-add { display: flex; gap: 0.3rem; margin-bottom: 0.55rem; }
 .deco-add select { flex: 1; min-width: 0; border: 1px solid var(--ink); background: #fff; color: var(--ink); font: inherit; padding: 0.32rem; }
@@ -90,17 +95,41 @@
 .deco-remove { width: 100%; margin-top: 0.6rem; border: 1px solid var(--ink); background: #fff; color: var(--ink); font: 800 inherit; padding: 0.35rem; cursor: pointer; }
 .deco-remove:hover { background: var(--ink); color: var(--paper); }
 
+/* edit mode: a transparent full-screen catcher takes drag input WITHOUT covering
+ * the data (the 3D canvas stays behind at z0, so the data panels stay visible) */
+.deco-catcher {
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: auto;
+  cursor: grab;
+}
+.deco-catcher:active { cursor: grabbing; }
+
+.deco-row2 { display: flex; gap: 0.4rem; align-items: center; margin: 0.55rem 0; }
+.deco-row2 > button { flex: 1; border: 1px solid var(--ink); background: #fff; color: var(--ink); font: 800 inherit; padding: 0.32rem; cursor: pointer; }
+.deco-row2 > button:hover { background: var(--track); }
+.deco-row2 > button.on { background: var(--ink); color: var(--paper); }
+.deco-preset, .deco-export { width: 100%; margin: 0.55rem 0; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); font: 800 0.63rem var(--mono); letter-spacing: 0.04em; padding: 0.4rem; cursor: pointer; }
+.deco-preset:hover, .deco-export:hover { background: var(--paper); color: var(--ink); }
+.deco-hint { font-size: 0.58rem; color: var(--ink-2); margin: -0.15rem 0 0.5rem; opacity: 0.85; }
+.deco-check { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 700; white-space: nowrap; }
+.deco-check input { accent-color: var(--ink); }
+.deco-danger:hover { background: var(--ink); color: var(--paper); }
+.deco-clear { width: 100%; margin-top: 0.6rem; border: 1px dashed var(--ink); background: transparent; color: var(--ink); font: 800 inherit; padding: 0.32rem; cursor: pointer; }
+.deco-clear:hover { background: var(--ink); color: var(--paper); }
+
 .az-overlay {
   position: relative;
   z-index: 1;
-  max-width: 1140px;
+  max-width: 1220px;
   margin: 0 auto;
-  padding: 0 2.2rem;
+  padding: 0 1.8rem;
   display: flex;
   flex-direction: column;
-  gap: 2.2rem;
+  gap: 1.3rem;
 }
-.az-main { display: flex; flex-direction: column; gap: 2.2rem; }
+.az-main { display: flex; flex-direction: column; gap: 1.3rem; }
 
 /* inked panel with a hard offset shadow (teleop signature) */
 .az-panel {
@@ -110,10 +139,10 @@
   border: 2px solid var(--ink);
   border-radius: 4px;
   box-shadow: 4px 4px 0 var(--ink);
-  padding: 1.5rem 1.6rem;
+  padding: 1.1rem 1.25rem;
 }
 .az-panel > h3 {
-  margin: 0 0 1.1rem;
+  margin: 0 0 0.8rem;
   font: 800 0.66rem var(--mono);
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -192,17 +221,17 @@
 }
 
 /* ---- grids ---------------------------------------------------------- */
-.az-grid { display: grid; gap: 2.2rem; }
-.az-metrics { grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); }
-.az-two { grid-template-columns: 1.4fr 1fr; align-items: start; }
+.az-grid { display: grid; gap: 1.3rem; }
+.az-metrics { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); align-items: start; }
+.az-two { grid-template-columns: 1.4fr 1fr; align-items: stretch; }
 @media (max-width: 760px) { .az-two { grid-template-columns: 1fr; } }
 
 /* ---- metric tiles --------------------------------------------------- */
 .az-metric { display: flex; flex-direction: column; }
-.az-metric .az-num { font: 800 2.5rem var(--mono); font-variant-numeric: tabular-nums; line-height: 1; color: var(--ink); }
+.az-metric .az-num { font: 800 2.05rem var(--mono); font-variant-numeric: tabular-nums; line-height: 1; color: var(--ink); }
 .az-metric .az-num .u { font-size: 0.9rem; font-weight: 600; color: var(--ink-3); margin-left: 0.3rem; }
-.az-metric .az-delta { font: 500 0.74rem var(--mono); margin-top: 0.5rem; color: var(--ink-2); }
-.az-spark { display: block; width: 100%; height: 30px; margin-top: 1rem; border-top: 2px solid var(--ink); padding-top: 0.5rem; }
+.az-metric .az-delta { font: 500 0.72rem var(--mono); margin-top: 0.35rem; color: var(--ink-2); }
+.az-spark { display: block; width: 100%; height: 26px; margin-top: 0.6rem; border-top: 1.5px solid var(--line-2); padding-top: 0.4rem; }
 .az-spark .line { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
 
 /* ---- bin table (solid ink vs screentone) ---------------------------- */
@@ -255,3 +284,62 @@
 
 /* ---- throughput strip ----------------------------------------------- */
 .az-strip .az-spark { height: 62px; border-top: none; padding-top: 0; }
+
+/* ---- impact / ROI strip --------------------------------------------- */
+.az-impact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.7rem 1rem; }
+.az-imp { display: flex; flex-direction: column; gap: 0.25rem; }
+.az-imp b { font: 800 1.7rem var(--mono); font-variant-numeric: tabular-nums; line-height: 1; color: var(--ink); display: inline-flex; align-items: baseline; }
+.az-imp b i { font-size: 0.85rem; font-weight: 600; font-style: normal; color: var(--ink-3); margin-left: 0.18rem; }
+.az-imp span { font: 600 0.64rem var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+
+/* ---- trends chart --------------------------------------------------- */
+.az-chart { display: block; width: 100%; height: 96px; }
+.az-chart .axis { stroke: var(--line-2); stroke-width: 0.5; vector-effect: non-scaling-stroke; }
+.az-chart .bar { fill: var(--ink); opacity: 0.42; }
+.az-chart .succ { fill: none; stroke: var(--ink); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+.az-trend-legend { display: flex; gap: 1.3rem; flex-wrap: wrap; align-items: center; margin-top: 0.75rem; font: 700 0.64rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.az-trend-legend i { display: inline-block; width: 13px; height: 10px; margin-right: 0.35rem; vertical-align: -1px; }
+.az-trend-legend .k-bar { background: var(--ink); opacity: 0.3; }
+.az-trend-legend .k-line { height: 0; width: 15px; border-top: 2px solid var(--ink); }
+.az-trend-legend .k-all { margin-left: auto; }
+
+/* ---- live pick feed ------------------------------------------------- */
+.az-feed { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; max-height: 268px; overflow-y: auto; }
+.az-feed li { display: flex; align-items: center; gap: 0.55rem; font: 500 0.73rem var(--mono); padding: 0.4rem 0.2rem; border-bottom: 1px solid var(--line); }
+.az-feed li:last-child { border-bottom: none; }
+.az-feed .t { color: var(--ink-3); white-space: nowrap; }
+.az-feed .f { font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; }
+.az-feed .ar { color: var(--ink-3); }
+.az-feed .bn { color: var(--ink-2); }
+.az-feed .st { margin-left: auto; font-weight: 800; padding: 0.05rem 0.4rem; border: 1.5px solid var(--ink); border-radius: 2px; }
+.az-feed .st.y { background: var(--ink); color: var(--paper); }
+.az-feed .dd { color: var(--ink-3); width: 3rem; text-align: right; white-space: nowrap; }
+.az-feed .empty { color: var(--ink-3); text-align: center; padding: 1.2rem; }
+
+/* ---- key/value panel ------------------------------------------------ */
+.az-kv { display: flex; flex-direction: column; }
+.az-kv > div { display: flex; justify-content: space-between; align-items: baseline; padding: 0.55rem 0.1rem; border-bottom: 1px solid var(--line); }
+.az-kv > div:last-child { border-bottom: none; }
+.az-kv span { font: 600 0.68rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.az-kv b { font: 800 1.15rem var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* ---- motion --------------------------------------------------------- */
+@keyframes az-flash {
+  0% { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--ink); }
+  100% { transform: none; box-shadow: 4px 4px 0 var(--ink); }
+}
+.az-metric.flash { animation: az-flash 0.6s ease-out; }
+
+@keyframes az-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.7); opacity: 0.45; }
+}
+.az-live:not(.stale) .sq { animation: az-pulse 1.4s ease-in-out infinite; }
+
+.az-num { transition: color 0.2s; }
+.az-metric.flash .az-num { color: var(--ink); }
+
+@media (prefers-reduced-motion: reduce) {
+  .az-metric.flash,
+  .az-live:not(.stale) .sq { animation: none; }
+}

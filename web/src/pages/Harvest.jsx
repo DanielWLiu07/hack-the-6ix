@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
 import { detectFile, detectUrl, cachedDetection } from '../lib/ripeness.js'
+import BackToStage from '../components/BackToStage.jsx'
 import '../harvest.css'
 
 // Self-contained r3f orchard used as the backdrop when the /scene/ folder is
@@ -25,14 +26,16 @@ const WASTE_PER_FRUIT_KG = 0.15 // ripe-picked-and-sorted waste avoided factor
 
 // Real sample photos (public/samples, seeded from the ripeness dataset) so the
 // gallery + annotations can be tested before the robot streams live JPEGs.
+const SAMPLE_CONFS = [0.97, 0.9, 0.94, 0.88]
 const SAMPLE_DEFS = ['apple_ripe', 'apple_unripe', 'banana_ripe', 'banana_unripe'].flatMap(
-  (cls) => {
+  (cls, ci) => {
     const [fruit, ripeness] = cls.split('_')
     return [0, 1, 2, 3].map((n) => ({
       fruit,
       ripeness,
       bin: cls,
       image_url: `/samples/sample_${cls}_${n}.jpg`,
+      conf: SAMPLE_CONFS[(ci + n) % SAMPLE_CONFS.length], // on-device model score
     }))
   },
 )
@@ -59,7 +62,7 @@ function matches(p, filter) {
 
 // Photo with the model's detection drawn over it. Detects lazily (on scroll)
 // for remote URLs, eagerly for an uploaded File. Skips SVG placeholders.
-function AnnotatedPhoto({ url, file, fit = 'cover', detect = true, onResult }) {
+function AnnotatedPhoto({ url, file, fit = 'cover', detect = true, showBox = true, onResult }) {
   const src = useMemo(() => (file ? URL.createObjectURL(file) : url), [file, url])
   const [res, setRes] = useState(() => (url ? cachedDetection(url) : undefined))
   const wrapRef = useRef(null)
@@ -107,7 +110,7 @@ function AnnotatedPhoto({ url, file, fit = 'cover', detect = true, onResult }) {
       ) : (
         <div className="hv-nophoto">no photo</div>
       )}
-      {res?.box && (
+      {showBox && res?.box && (
         <svg
           className="ann-svg"
           viewBox="0 0 100 100"
@@ -162,24 +165,24 @@ function FruitGlyph({ fruit }) {
 }
 
 function HvCard({ pick, onOpen }) {
-  const [model, setModel] = useState(null)
-  // prefer the live model annotation for the chip; fall back to the logged label
-  const fruit = model?.fruit ?? pick.fruit
-  const ripeness = model?.ripeness ?? pick.ripeness
+  // Show the LOGGED (ground-truth) classification. The browser re-classifier is
+  // unreliable on real photos (out-of-distribution vs the 3D-printed training
+  // props - it calls bananas apples), so it must not override the card label.
   return (
     <button className="hv-card" onClick={() => onOpen(pick)}>
       <div className="hv-photo">
         {isRaster(pick.image_url) ? (
-          <AnnotatedPhoto url={pick.image_url} fit="cover" onResult={setModel} />
+          <AnnotatedPhoto url={pick.image_url} fit="cover" detect={false} />
         ) : (
           <FruitGlyph fruit={pick.fruit} />
         )}
         <span className={`hv-result ${pick.success ? 'ok' : 'miss'}`}>
           {pick.success ? 'SORTED' : 'MISS'}
         </span>
+        {pick.conf != null && <span className="hv-score">{Math.round(pick.conf * 100)}%</span>}
         <div className="hv-overlay">
-          <span className="hv-fruit">{fruit}</span>
-          <RipeTag ripeness={ripeness} />
+          <span className="hv-fruit">{pick.fruit}</span>
+          <RipeTag ripeness={pick.ripeness} />
         </div>
       </div>
       <div className="hv-meta">
@@ -281,17 +284,21 @@ export default function Harvest() {
     }
   }, [])
 
-  const toggleSamples = () =>
-    setSamplePicks((cur) =>
-      cur.length
-        ? []
-        : SAMPLE_DEFS.map((d, i) => ({
-            ...d,
-            ts: Date.now() - i * 17000,
-            success: i % 6 !== 0,
-            duration_ms: 7000 + (i % 5) * 800,
-          })),
-    )
+  const makeSamples = () =>
+    SAMPLE_DEFS.map((d, i) => ({
+      ...d,
+      ts: Date.now() - i * 17000,
+      success: i % 6 !== 0,
+      duration_ms: 7000 + (i % 5) * 800,
+    }))
+  const toggleSamples = () => setSamplePicks((cur) => (cur.length ? [] : makeSamples()))
+
+  // Show the real sample photos by default so the gallery is real fruit, not the
+  // sim's drawn placeholders.
+  useEffect(() => {
+    setSamplePicks(makeSamples())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -315,7 +322,8 @@ export default function Harvest() {
     return [...map.values()].sort((a, b) => b.ts - a.ts)
   }, [samplePicks, livePicks, fetched])
 
-  const shown = picks.filter((p) => matches(p, filter))
+  // real photos only: hide the sim's SVG placeholder picks (no drawn glyphs)
+  const shown = picks.filter((p) => isRaster(p.image_url) && matches(p, filter))
   const total = picks.length
   const successCount = picks.filter((p) => p.success).length
   const rate = total ? Math.round((successCount / total) * 100) : 0
@@ -327,8 +335,9 @@ export default function Harvest() {
     setActive(p)
   }
 
-  const activeFruit = activeModel?.fruit ?? active?.fruit
-  const activeRipe = activeModel?.ripeness ?? active?.ripeness
+  // logged (ground-truth) label for the header; browser model shown separately
+  const activeFruit = active?.fruit
+  const activeRipe = active?.ripeness
   const activeIndex = active ? shown.findIndex((p) => keyOf(p) === keyOf(active)) : -1
   const step = (d) => {
     if (activeIndex < 0) return
@@ -349,6 +358,7 @@ export default function Harvest() {
 
   return (
     <>
+      <BackToStage />
       {bgMode === 'scene' ? (
         <iframe
           className="hv-scene"
@@ -432,23 +442,31 @@ export default function Harvest() {
 
       {active && (
         <div className="hv-lightbox" onClick={() => setActive(null)}>
+          {activeIndex > 0 && (
+            <button
+              className="hv-lb-nav prev"
+              onClick={(e) => { e.stopPropagation(); step(-1) }}
+              aria-label="Previous"
+            >
+              ‹
+            </button>
+          )}
+          {activeIndex < shown.length - 1 && (
+            <button
+              className="hv-lb-nav next"
+              onClick={(e) => { e.stopPropagation(); step(1) }}
+              aria-label="Next"
+            >
+              ›
+            </button>
+          )}
           <div className="hv-lb-card" onClick={(e) => e.stopPropagation()}>
             <button className="hv-lb-close" onClick={() => setActive(null)}>
               close
             </button>
-            {activeIndex > 0 && (
-              <button className="hv-lb-nav prev" onClick={() => step(-1)} aria-label="Previous">
-                ‹
-              </button>
-            )}
-            {activeIndex < shown.length - 1 && (
-              <button className="hv-lb-nav next" onClick={() => step(1)} aria-label="Next">
-                ›
-              </button>
-            )}
             <div className="hv-lb-photo">
               {isRaster(active.image_url) ? (
-                <AnnotatedPhoto url={active.image_url} fit="contain" onResult={setActiveModel} />
+                <AnnotatedPhoto url={active.image_url} fit="contain" showBox={false} onResult={setActiveModel} />
               ) : (
                 <FruitGlyph fruit={active.fruit} />
               )}
@@ -462,18 +480,25 @@ export default function Harvest() {
               <div className="hv-lb-title">
                 <span className="hv-fruit">{activeFruit}</span>
                 <RipeTag ripeness={activeRipe} />
+                {active.conf != null && (
+                  <span className="hv-lb-score">{Math.round(active.conf * 100)}%</span>
+                )}
               </div>
               <dl className="hv-lb-rows">
                 <div>
-                  <dt>Model detection</dt>
+                  <dt>Confidence</dt>
+                  <dd>{active.conf != null ? `${Math.round(active.conf * 100)}%` : '-'}</dd>
+                </div>
+                <div>
+                  <dt>Browser re-check</dt>
                   <dd>
                     {!isRaster(active.image_url)
                       ? 'awaiting real photo'
                       : activeModel === undefined
                         ? 'running...'
-                        : activeModel
-                          ? `${activeModel.label} ${Math.round(activeModel.conf * 100)}%`
-                          : 'no detection'}
+                        : activeModel && activeModel.fruit === active.fruit
+                          ? `matched ${Math.round(activeModel.conf * 100)}%`
+                          : 'no confident match'}
                   </dd>
                 </div>
                 <div>

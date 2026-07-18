@@ -33,7 +33,9 @@ const sim = {
   drive: { l: 0, r: 0 },
   manualDriveUntil: 0,
   pendingFruit: null, // detection carried into the pick cycle
-  pos: { x: 1.0, y: 1.0, heading: 0 }, // meters, inside a 6x4 room
+  // Random start pose inside the 6x4 room so several sims launched together
+  // (the swarm demo) spread across the map instead of stacking on one point.
+  pos: { x: 0.8 + Math.random() * 4.4, y: 0.8 + Math.random() * 2.4, heading: Math.random() * Math.PI * 2 },
   autostart: true, // demo toggle: false pauses the autonomous cycle (set_mode)
 };
 

@@ -10,6 +10,12 @@
   --ink-3: #8a877a;
   --line: rgba(20, 22, 15, 0.16);
   --mono: var(--ui-mono);
+  --glass: rgba(255, 255, 255, 0.38);
+  --glass-2: rgba(255, 255, 255, 0.6);
+  --glass-edge: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-shadow: 0 10px 32px rgba(20, 22, 15, 0.16);
+  --blur: blur(20px) saturate(1.3);
 
   position: relative;
   margin-left: calc(50% - 50vw);
@@ -56,10 +62,13 @@
 .hv-kicker { margin: 0 0 0.35rem; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink); opacity: 0.6; }
 .hv-head h2 {
   margin: 0;
-  font: 900 clamp(1.5rem, 3.2vw, 2.3rem) / 1 var(--mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink);
+  font-family: var(--ui-display), 'Brush Script MT', cursive;
+  font-weight: 400;
+  font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+  line-height: 0.9;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: #e5484d;
 }
 .hv-sub { margin: 0.55rem 0 0; font-size: 0.74rem; line-height: 1.5; color: var(--ink-2); max-width: 52ch; }
 
@@ -71,9 +80,11 @@
   gap: 3px;
   min-width: 90px;
   padding: 0.7rem 0.9rem;
-  background: var(--panel);
-  border: 1.5px solid var(--ink);
-  border-radius: 6px;
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-edge);
 }
 .hv-stat .n { font-size: 1.7rem; font-weight: 900; font-variant-numeric: tabular-nums; color: var(--ink); }
 .hv-stat .k { font-size: 0.56rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
@@ -85,14 +96,16 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink);
-  background: var(--panel);
-  border: 1.5px solid var(--ink);
-  border-radius: 6px;
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 9px;
   padding: 0.42rem 0.9rem;
   cursor: pointer;
+  box-shadow: inset 0 1px 0 var(--glass-edge);
   transition: background 0.12s, color 0.12s;
 }
-.hv-filters button:hover { background: #eceae0; }
+.hv-filters button:hover { background: var(--glass-2); }
 .hv-filters button.on { color: var(--panel); background: var(--ink); }
 .hv-sample-btn {
   margin-left: auto;
@@ -100,20 +113,23 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--ink);
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: var(--blur);
   border: 1.5px dashed var(--ink);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 0.42rem 0.9rem;
   cursor: pointer;
 }
-.hv-sample-btn:hover { background: #eceae0; }
+.hv-sample-btn:hover { background: var(--glass-2); }
 .hv-count { align-self: center; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
 
 /* ---- classify panel ---- */
 .hv-classify {
-  background: var(--panel);
-  border: 1.5px solid var(--ink);
-  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-edge);
   padding: 1rem 1.15rem;
   display: grid;
   gap: 0.8rem;
@@ -146,7 +162,7 @@
 
 /* ---- annotated photo (model detection box drawn over the image) ---- */
 .ann { position: absolute; inset: 0; width: 100%; height: 100%; }
-.ann-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; filter: grayscale(1) contrast(1.08); }
+.ann-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; filter: contrast(1.03) saturate(1.06); }
 .ann-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 3; }
 .ann-box { fill: none; stroke: var(--ink); stroke-width: 2.25; vector-effect: non-scaling-stroke; }
 .ann-lab {
@@ -171,13 +187,14 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ink);
-  background: var(--panel);
+  background: var(--glass);
+  backdrop-filter: var(--blur);
   border: 1.5px solid var(--ink);
   border-radius: 6px;
   padding: 0.45rem 0.85rem;
   cursor: pointer;
 }
-.hv-run-btn:hover { background: #eceae0; }
+.hv-run-btn:hover { background: var(--glass-2); }
 
 /* ---- gallery grid ---- */
 .hv-grid {
@@ -189,26 +206,28 @@
   display: block;
   text-align: left;
   padding: 0;
-  background: var(--panel);
-  border: 1.5px solid var(--ink);
-  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.12s;
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-edge);
+  transition: transform 0.14s, box-shadow 0.14s;
 }
-.hv-card:hover { transform: translateY(-2px); box-shadow: 0 6px 0 -2px var(--ink); }
+.hv-card:hover { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(20, 22, 15, 0.26), inset 0 1px 0 var(--glass-edge); }
 
 .hv-photo {
   position: relative;
   aspect-ratio: 1 / 1;
   background: #e6e3d8;
   overflow: hidden;
-  border-bottom: 1.5px solid var(--ink);
+  border-bottom: 1px solid var(--glass-border);
 }
 .hv-nophoto { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-3); font-size: 0.7rem; letter-spacing: 0.1em; }
 
 /* inked fruit glyph placeholder */
-.hv-glyph { position: absolute; inset: 0; display: grid; place-items: center; background: var(--panel); }
+.hv-glyph { position: absolute; inset: 0; display: grid; place-items: center; background: var(--glass-2); backdrop-filter: var(--blur); }
 .hv-glyph svg { width: 52%; height: 52%; }
 .hv-glyph .g-fill { fill: #e6e3d8; stroke: var(--ink); stroke-width: 2.5; stroke-linejoin: round; }
 .hv-glyph .g-ink { fill: var(--ink); }
@@ -226,6 +245,21 @@
 .hv-result.ok { color: var(--panel); background: var(--ink); }
 .hv-result.miss { color: var(--ink); background: var(--panel); border: 1.5px solid var(--ink); }
 
+/* model confidence score, top-right of the photo */
+.hv-score {
+  position: absolute;
+  top: 8px; right: 8px;
+  z-index: 1;
+  font: 800 0.6rem var(--mono);
+  color: var(--ink);
+  background: var(--glass-2);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 5px;
+  padding: 3px 6px;
+  box-shadow: inset 0 1px 0 var(--glass-edge);
+}
+
 .hv-overlay {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -235,7 +269,8 @@
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.45rem 0.55rem;
-  background: var(--panel);
+  background: var(--glass-2);
+  backdrop-filter: var(--blur);
   border-top: 1.5px solid var(--ink);
 }
 .hv-fruit { color: var(--ink); font-weight: 900; text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.04em; }
@@ -270,9 +305,11 @@
   place-items: center;
   text-align: center;
   padding: 3rem 1rem;
-  background: var(--panel);
-  border: 1.5px dashed var(--ink);
-  border-radius: 8px;
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  border: 1px dashed var(--glass-border);
+  border-radius: 14px;
+  box-shadow: var(--glass-shadow), inset 0 1px 0 var(--glass-edge);
 }
 .hv-empty-t { margin: 0; color: var(--ink); font-weight: 900; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.95rem; }
 
@@ -292,10 +329,12 @@
   flex-wrap: wrap;
   max-width: 760px;
   width: 100%;
-  background: var(--panel);
-  border: 2px solid var(--ink);
-  border-radius: 8px;
+  background: var(--glass-2);
+  backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 var(--glass-edge);
 }
 .hv-lb-nav {
   position: absolute;
@@ -312,8 +351,8 @@
   border-radius: 6px;
   cursor: pointer;
 }
-.hv-lb-nav.prev { left: 10px; }
-.hv-lb-nav.next { right: 10px; }
+.hv-lb-nav.prev { left: max(12px, calc(50% - 424px)); }
+.hv-lb-nav.next { right: max(12px, calc(50% - 424px)); }
 .hv-lb-nav:hover { background: var(--ink-2); }
 .hv-lb-count {
   position: absolute;
@@ -343,6 +382,15 @@
 .hv-lb-photo { position: relative; flex: 1 1 320px; background: #e6e3d8; min-height: 300px; border-right: 2px solid var(--ink); }
 .hv-lb-info { flex: 1 1 240px; padding: 1.2rem; display: grid; gap: 0.9rem; align-content: start; }
 .hv-lb-title { display: flex; align-items: center; gap: 0.6rem; }
+.hv-lb-score {
+  margin-left: auto;
+  font: 800 0.74rem var(--mono);
+  color: var(--ink);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
 .hv-lb-title .hv-fruit { color: var(--ink); font-size: 1.05rem; }
 .hv-lb-rows { margin: 0; display: grid; gap: 0.5rem; }
 .hv-lb-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--line); padding-bottom: 0.4rem; }

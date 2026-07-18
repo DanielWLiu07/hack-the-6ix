@@ -330,6 +330,10 @@
   cursor: pointer;
 }
 .scene-editor-title { display: block; margin-bottom: .45rem; font-weight: 900; letter-spacing: .12em; }
+/* pin editor lives on the LEFT so it never collides with the EDIT SCENE panel */
+.pin-toggle { left: 1rem; right: auto; }
+.pin-panel { left: 1rem; right: auto; top: 8.4rem; width: min(220px, 30vw); }
+.pin-hint { margin: 0 0 .5rem; font-size: .56rem; line-height: 1.35; opacity: .8; }
 .scene-editor select, .scene-editor button { width: 100%; border: 1px solid #171914; background: #fff; color: #171914; font: inherit; padding: .32rem; }
 .scene-editor button { margin-top: .35rem; cursor: pointer; font-weight: 900; }
 .scene-editor button:hover { background: #171914; color: #fff; }
@@ -361,7 +365,9 @@
   white-space: nowrap;
 }
 .scene-control-label b { letter-spacing: .06em; }
-.scene-control-label em { font-size: .5rem; font-style: normal; opacity: .55; }
+/* Fixed-width state text so the badge does NOT resize when IDLE -> PRESSED
+   (which would otherwise grow into and overlap neighbouring callouts). */
+.scene-control-label em { font-size: .5rem; font-style: normal; opacity: .55; display: inline-block; min-width: 4.6em; text-align: center; }
 .scene-control-label > span.on { color: #fff; background: #111; border-color: #111; }
 .scene-control-label > span.on em { opacity: 1; }
 .scene-dpad {

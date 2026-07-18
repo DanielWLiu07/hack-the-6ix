@@ -7,6 +7,7 @@ const LINKS = [
   { to: '/pov', label: 'Robot POV' },
   { to: '/teleop', label: 'Teleop' },
   { to: '/lidar', label: 'Lidar' },
+  { to: '/swarm', label: 'Swarm' },
   { to: '/analytics', label: 'Analytics' },
 ]
 

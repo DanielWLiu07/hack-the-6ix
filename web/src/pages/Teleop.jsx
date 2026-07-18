@@ -1,5 +1,6 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { useRobot, useRobotEvent } from '../lib/robot.jsx'
+import BackToStage from '../components/BackToStage.jsx'
 import './teleop.css'
 
 const SpeechRecognitionCtor =
@@ -590,6 +591,7 @@ function TeleopInner() {
 export default function Teleop() {
   return (
     <>
+      <BackToStage />
       <p className="simnote" style={{ marginBottom: '1rem' }}>
         {AUTH0_CONFIGURED
           ? 'Guest mode is enabled. Login is optional; signed-in actions are attributed to the operator.'

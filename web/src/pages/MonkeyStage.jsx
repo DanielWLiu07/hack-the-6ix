@@ -5,14 +5,16 @@
 // the user just left) then the camera eases back and it settles as a hanging
 // painting. Direct visits skip to the settled state. Fully orbit-controllable.
 
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { MangaPass } from '../lib/mangaPass.js'
 import { CanvasGuard, SAFE_DPR } from '../lib/canvasGuard.jsx'
 import { buildRig, applyPose } from '../lib/poseRig.js'
+import { useTvTransition } from '../lib/tvTransition.jsx'
+import { preloadRoute } from '../lib/routePreload.js'
 import { StageProp, PropBoundary } from '../components/StageProp.jsx'
 import { PROP_CATALOG, CATALOG_BY_ID, DEFAULT_PLACEMENT, FLOOR } from '../lib/stageProps.js'
 
@@ -24,10 +26,20 @@ import '../App.css'
 // Fresh Meshy-generated cartoon monkey, arms out in a T-pose (a clean static
 // mesh - no skinning weights to break). The rig/mimic code below no-ops when
 // there are no bones, so it just renders in this cheerful arms-up pose.
-const SUZANNE_FULLBODY_URL = '/assets/suzanne-tpose.glb'
+// The mascot is now a Mixamo-rigged body (clean weights + baked Idle/Walk/Run,
+// and a real humanoid skeleton for webcam mimic) with the Suzanne monkey head
+// grafted on. The head is extracted from the old monkey mesh and rides on the
+// body's head bone (heads do not deform, so a rigid attach is all it needs).
+const BODY_URL = '/assets/suit.glb'
+const HEAD_SRC_URL = '/assets/suzanne-tpose.glb'
+// head extraction: keep triangles above this height fraction (the head, not the
+// T-pose arms). head sized to this fraction of body height, lifted by UP_FRAC.
+const HEAD_THR = 0.83
+const HEAD_SIZE_FRAC = 0.17
+const HEAD_UP_FRAC = 0.35
 // the painted splash: a wide floating plane, hung upper-left, facing the camera
 const SPLASH = { w: 2.95, h: 1.85, pos: [0.034, -1.037, 0.312], rot: [0, 0, 0], scale: [0.59, 0.58, 0.59] }
-const MONKEY_POS = [0.086, -1.731, 0.764]
+const MONKEY_POS = [0, -1.731, 0.764]
 const ORBIT_TARGET = [0, 1.15, 0.3]
 const CAM_HOME = [0, 1.5, 5.6]
 
@@ -166,6 +178,50 @@ function FuzzCanvas({ w, h, fuzzRef }) {
   return <canvas ref={ref} style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated' }} />
 }
 
+// Fullscreen TV-static overlay for the landing->stage arrival. CameraIntro
+// drives fuzzRef.current.opacity (full during the hold, then fading as the
+// camera pulls back); this fixed DOM canvas reads it each frame and scrambles
+// while visible. Standalone (not tied to the removed painting), so the tune-in
+// transition survives even though the Splash/TV is gone.
+function StageFuzz({ fuzzRef }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return undefined
+    const ctx = canvas.getContext('2d')
+    let w = 2
+    let h = 2
+    const resize = () => {
+      // low-res canvas stretched to fill => chunky pixelated static
+      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 7))
+      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 7))
+    }
+    resize()
+    window.addEventListener('resize', resize)
+    let raf = 0
+    const step = () => {
+      const op = fuzzRef.current?.opacity ?? 0
+      if (op > 0.01) {
+        const img = ctx.createImageData(w, h)
+        const d = img.data
+        for (let i = 0; i < d.length; i += 4) {
+          const v = (Math.random() * 255) | 0
+          d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
+        }
+        ctx.putImageData(img, 0, 0)
+      }
+      canvas.style.opacity = String(op)
+      raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', resize)
+    }
+  }, [fuzzRef])
+  return <canvas ref={ref} className="stage-fuzz" aria-hidden="true" />
+}
+
 // A source image drawn into a small canvas then upscaled with nearest-neighbour,
 // so it reads as chunky pixels (same look as the fuzz). Used for the POMME screen
 // shown inside one of the nav monitors.
@@ -240,71 +296,242 @@ function Splash({ bind, fuzzRef }) {
   )
 }
 
-// Single Meshy-generated, rigged full-body character using the Suzanne face.
+// Build a static head mesh from the monkey's skinned mesh, keeping only the
+// triangles above HEAD_THR of height (the head, not the T-pose arms which sit at
+// shoulder height). The geometry is recentred at its own origin so it can be hung
+// on any bone. Material keeps the face texture but is whitened for the manga pass.
+function extractMonkeyHead(monkeyScene) {
+  let src = null
+  monkeyScene.traverse((o) => { if ((o.isSkinnedMesh || o.isMesh) && o.geometry) src = o })
+  const geo = src.geometry
+  const pos = geo.attributes.position
+  let minY = Infinity, maxY = -Infinity
+  for (let i = 0; i < pos.count; i++) { const y = pos.getY(i); if (y<minY)minY=y; if (y>maxY)maxY=y }
+  const thr = minY + (maxY - minY) * HEAD_THR
+  const idx = geo.index ? geo.index.array : null
+  const triCount = idx ? idx.length/3 : pos.count/3
+  const nrm = geo.attributes.normal, uv = geo.attributes.uv
+  const used = new Map(), P = [], N = [], U = [], I = []
+  const push = (vi) => {
+    let n = used.get(vi)
+    if (n === undefined) {
+      n = P.length/3; used.set(vi, n)
+      P.push(pos.getX(vi), pos.getY(vi), pos.getZ(vi))
+      if (nrm) N.push(nrm.getX(vi), nrm.getY(vi), nrm.getZ(vi))
+      if (uv) U.push(uv.getX(vi), uv.getY(vi))
+    }
+    I.push(n)
+  }
+  for (let t = 0; t < triCount; t++) {
+    const a = idx ? idx[t*3] : t*3, b = idx ? idx[t*3+1] : t*3+1, c = idx ? idx[t*3+2] : t*3+2
+    if (pos.getY(a) > thr && pos.getY(b) > thr && pos.getY(c) > thr) { push(a); push(b); push(c) }
+  }
+  const hg = new THREE.BufferGeometry()
+  hg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3))
+  if (nrm) hg.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3))
+  if (uv) hg.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2))
+  hg.setIndex(I); hg.computeBoundingBox()
+  const size = hg.boundingBox.getSize(new THREE.Vector3())
+  const ctr = hg.boundingBox.getCenter(new THREE.Vector3())
+  hg.translate(-ctr.x, -ctr.y, -ctr.z)
+  hg.computeVertexNormals()
+  // Plain light material - NOT the monkey's textured material. The manga pass is
+  // B&W so the face texture is discarded anyway, and its baked map fed NaNs into
+  // the half-float manga target (blanking the whole frame). Suzanne's features
+  // are geometric, so the ink shading defines the face cleanly on a flat surface.
+  // Flat emissive lift so the manga pass reads the face as paper + ink outlines
+  // rather than a dark blob (deep-set eyes / downward faces get little light).
+  const mat = new THREE.MeshStandardMaterial({
+    color: '#ffffff', roughness: 1, metalness: 0,
+    emissive: new THREE.Color('#ffffff'), emissiveIntensity: 1.0,
+  })
+  return { mesh: new THREE.Mesh(hg, mat), height: size.y }
+}
+
+// Delete the soldier's own head: hide the visor and drop the vanguard triangles
+// whose vertices are weighted to the head/neck bones (so nothing stretches when
+// the monkey head sits on top - the verts are gone, not collapsed).
+function stripSoldierHead(body) {
+  const comp = ['getX', 'getY', 'getZ', 'getW']
+  body.traverse((o) => {
+    if (/visor/i.test(o.name)) o.visible = false
+    if (!o.isSkinnedMesh || !o.skeleton) return
+    const headIdx = new Set()
+    o.skeleton.bones.forEach((b, i) => { if (/head|neck/i.test(b.name)) headIdx.add(i) })
+    const g = o.geometry, sk = g.attributes.skinIndex, sw = g.attributes.skinWeight
+    if (!sk) return
+    const isHead = (v) => { let w = 0; for (let k = 0; k < 4; k++) if (headIdx.has(sk[comp[k]](v))) w += sw[comp[k]](v); return w > 0.5 }
+    const src = g.index ? Array.from(g.index.array) : Array.from({ length: g.attributes.position.count }, (_, i) => i)
+    const kept = []
+    for (let t = 0; t < src.length; t += 3) {
+      const a = src[t], b = src[t+1], c = src[t+2]
+      if (isHead(a) && isHead(b) && isHead(c)) continue
+      kept.push(a, b, c)
+    }
+    g.setIndex(kept)
+  })
+}
+
+// The mascot: a Mixamo-rigged body (its own Idle plays by default; mimic drives
+// its arms/legs from your webcam via the shared poseRig) with the Suzanne head
+// grafted onto the head bone. The head follows the head bone each frame but stays
+// upright, so the clean face never distorts no matter what the body does.
+const _hm = new THREE.Matrix4()
+const _hp = new THREE.Vector3()
+// Rotate `bone` so its rest world direction points at `targetDir` (world). Used
+// to drop the arms into a natural rest when the body ships only a T-pose.
+const _adq = new THREE.Quaternion()
+const _awq = new THREE.Quaternion()
+const _apq = new THREE.Quaternion()
+function aimBone(bone, bindDir, bindWQ, targetDir) {
+  _adq.setFromUnitVectors(bindDir, targetDir)
+  _awq.copy(_adq).multiply(bindWQ)
+  bone.parent.getWorldQuaternion(_apq)
+  bone.quaternion.copy(_apq.invert().multiply(_awq))
+}
+// mouse-follow scratch: cursor ray -> a world target at the monkey's depth that
+// the arms point at (upper body only, no torso lean).
+const _mv = new THREE.Vector3()
+const _mtarget = new THREE.Vector3()
+const _sh = new THREE.Vector3()
+const _tdir = new THREE.Vector3()
+// Two-bone IK scratch. Solving shoulder+elbow so the hand reaches the cursor
+// target gives natural behaviour for free: fully extended only when reaching far,
+// bent when the target is close, elbow held down/back so the hand stays in front.
+const _aim = new THREE.Vector3()
+const _udir = new THREE.Vector3()
+const _elb = new THREE.Vector3()
+const _fdir = new THREE.Vector3()
+const _pole = new THREE.Vector3()
+const _bax = new THREE.Vector3()
+const _bq = new THREE.Quaternion()
+const clamp = THREE.MathUtils.clamp
+// Aim the upper arm + forearm so the hand reaches `target` (world). S=shoulder.
+function solveArm(a, S, target) {
+  _aim.copy(target).sub(S)
+  let d = _aim.length()
+  if (d < 1e-4) return
+  _aim.divideScalar(d)
+  const L1 = a.L1, L2 = a.L2
+  d = clamp(d, Math.abs(L1 - L2) + 1e-3, L1 + L2 - 1e-3)
+  // shoulder-angle between the upper arm and the straight aim line
+  const angA = Math.acos(clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1))
+  // bend plane: elbow points down-and-back so the forearm/hand come to the front
+  _pole.set(0, -1, -0.35).normalize()
+  _bax.crossVectors(_aim, _pole)
+  if (_bax.lengthSq() < 0.02) _bax.crossVectors(_aim, new THREE.Vector3(1, 0, 0))
+  _bax.normalize()
+  _bq.setFromAxisAngle(_bax, angA)
+  _udir.copy(_aim).applyQuaternion(_bq).normalize()      // upper-arm direction
+  aimBone(a.bone, a.bindDir, a.bindWQ, _udir)
+  a.bone.updateWorldMatrix(true, true)
+  _elb.copy(S).addScaledVector(_udir, L1)                 // elbow position
+  _fdir.copy(target).sub(_elb).normalize()               // forearm points elbow->hand target
+  aimBone(a.fore, a.foreBindDir, a.foreBindWQ, _fdir)
+}
 function Monkey({ bind, poseRef, mimic, mirror }) {
-  const { scene, animations } = useGLTF(SUZANNE_FULLBODY_URL)
-  const fit = useMemo(() => {
-    const box = new THREE.Box3().setFromObject(scene)
-    const size = new THREE.Vector3()
-    box.getSize(size)
-    const s = 2.4 / (size.y || 1)
+  const soldier = useGLTF(BODY_URL)
+  const headSrc = useGLTF(HEAD_SRC_URL)
+
+  const built = useMemo(() => {
+    // clone so our mutations (head-strip, added head) never touch the GLTF cache
+    const body = skeletonClone(soldier.scene)
+    stripSoldierHead(body)
+    body.updateWorldMatrix(true, true)
+    let headBone = null
+    body.traverse((o) => { if (o.isBone && /^head$/i.test(o.name.replace(/[^a-z]/gi, '').replace(/^mixamorig/i, ''))) headBone = o })
+    // body extent from the skeleton (setFromObject is unreliable on skinned meshes)
+    let mnx=Infinity,mxx=-Infinity,mny=Infinity,mxy=-Infinity,mnz=Infinity,mxz=-Infinity
+    body.traverse((o) => { if (o.isBone) { const p = new THREE.Vector3(); o.getWorldPosition(p)
+      if(p.x<mnx)mnx=p.x; if(p.x>mxx)mxx=p.x; if(p.y<mny)mny=p.y; if(p.y>mxy)mxy=p.y; if(p.z<mnz)mnz=p.z; if(p.z>mxz)mxz=p.z } })
+    const bodyH = (mxy - mny) || 1
+    const { mesh: head, height: hh } = extractMonkeyHead(headSrc.scene)
+    const headWorldH = bodyH * HEAD_SIZE_FRAC
+    head.scale.setScalar(headWorldH / (hh || 1))
+    body.add(head)
+    const s = 2.4 / bodyH
+    // Capture an arm-rest for bodies that ship only a T-pose: aim each upper arm
+    // DOWN and slightly out to its own side (sign from its bind direction, so it
+    // works whichever way the rig is handed).
+    const wp = (o) => o.getWorldPosition(new THREE.Vector3())
+    const armRest = []
+    ;[['LeftArm', 'LeftForeArm', 'LeftHand'], ['RightArm', 'RightForeArm', 'RightHand']].forEach(([an, cn, hn]) => {
+      let a = null, c = null, h = null
+      body.traverse((o) => {
+        const nm = o.name.replace(/[^a-z]/gi, '').replace(/^mixamorig/i, '').toLowerCase()
+        if (nm === an.toLowerCase()) a = o
+        if (nm === cn.toLowerCase()) c = o
+        if (nm === hn.toLowerCase()) h = o
+      })
+      if (!a || !c || !h) return
+      armRest.push({
+        bone: a,
+        fore: c,
+        bindDir: wp(c).sub(wp(a)).normalize(),
+        bindWQ: a.getWorldQuaternion(new THREE.Quaternion()),
+        foreBindDir: wp(h).sub(wp(c)).normalize(),
+        foreBindWQ: c.getWorldQuaternion(new THREE.Quaternion()),
+        L1: wp(c).distanceTo(wp(a)),
+        L2: wp(h).distanceTo(wp(c)),
+      })
+    })
     return {
-      s,
-      pos: [
-        -((box.min.x + box.max.x) / 2) * s,
-        -box.min.y * s,
-        -((box.min.z + box.max.z) / 2) * s,
-      ],
+      body, head, headBone, headUp: headWorldH * HEAD_UP_FRAC, armRest,
+      animated: (soldier.animations?.[0]?.duration ?? 0) > 0.5,
+      fit: { s, pos: [-((mnx+mxx)/2)*s, -mny*s, -((mnz+mxz)/2)*s] },
     }
-  }, [scene])
+  }, [soldier.scene, headSrc.scene])
 
-  // Play the GLB's OWN authored clip on loop - it was made for this exact mesh,
-  // so it can't break the skinning the way a hand-synthesized retarget did
-  // (hands snapping to the knees). Mimic mode stops it and drives bones instead.
-  const rig = useMemo(() => buildRig(scene), [scene])
-  const clipRoot = useRef(null)
-  const { actions, names } = useAnimations(animations, clipRoot)
-  // Forcing a full T-pose stretches this rig's mesh (its skin weights can't take
-  // that much arm rotation). So leave the monkey in its clean authored pose and
-  // play its own idle clip; mimic mode still drives the bones live.
+  const { body, head, headBone, headUp, armRest, animated, fit } = built
+  // Mixamo-skeleton retarget rig for webcam mimic (arms + legs look-at).
+  const rig = useMemo(() => buildRig(body), [body])
+  // Only auto-play a REAL clip (>0.5s). A T-pose-only download has a 2-frame clip
+  // we skip, posing the arms into a rest instead. Mimic always stops it.
+  const { actions, names } = useAnimations(soldier.animations, body)
   useEffect(() => {
-    const action = names.length ? actions[names[0]] : null
-    if (!action) return undefined
-    if (mimic) {
-      action.stop()
-    } else {
-      action.reset().setLoop(THREE.LoopRepeat, Infinity).play()
-      action.timeScale = 0.85
-    }
-    return () => action?.stop()
-  }, [actions, names, mimic])
+    if (!animated) return undefined
+    const idleName = names.find((n) => /idle/i.test(n)) || names[0]
+    const idle = idleName ? actions[idleName] : null
+    if (!idle) return undefined
+    if (mimic) idle.stop()
+    else idle.reset().setLoop(THREE.LoopRepeat, Infinity).play()
+    return () => idle?.stop()
+  }, [actions, names, mimic, animated])
 
-  // Idle-animation wrapper: separate from the draggable outer group so the bob
-  // rides ON TOP of wherever the operator places the monkey.
-  const idleRef = useRef(null)
+  const mouseSmooth = useRef(new THREE.Vector3())
   useFrame((state) => {
-    if (mimic && rig.ok) {
-      const world = poseRef.current
-      if (world) applyPose(rig, world, { mirror })
+    if (mimic && rig.ok && poseRef.current) {
+      applyPose(rig, poseRef.current, { mirror })
+    } else if (!mimic && !animated) {
+      // Arms follow the cursor (upper body only - torso/legs never move). Cast the
+      // pointer to a world target at the monkey's depth and aim each arm at it,
+      // slerp-smoothed. When the cursor is low the arms naturally drop to a rest.
+      const cam = state.camera
+      _mv.set(state.pointer.x, state.pointer.y, 0.5).unproject(cam).sub(cam.position).normalize()
+      let D = 6
+      if (armRest[0]) { armRest[0].bone.getWorldPosition(_sh); D = cam.position.distanceTo(_sh) }
+      _mtarget.copy(cam.position).addScaledVector(_mv, D)
+      if (mouseSmooth.current.lengthSq() === 0) mouseSmooth.current.copy(_mtarget)
+      mouseSmooth.current.lerp(_mtarget, 0.18)
+      for (const a of armRest) {
+        a.bone.getWorldPosition(_sh)
+        solveArm(a, _sh, mouseSmooth.current)
+      }
     }
-    // gentle breathing bob + weight-shift sway
-    const g = idleRef.current
-    if (g && !mimic) {
-      const t = state.clock.elapsedTime
-      g.position.y = Math.sin(t * 1.6) * 0.045
-      g.rotation.z = Math.sin(t * 0.9) * 0.02
-    } else if (g) {
-      g.position.y = 0
-      g.rotation.z = 0
+    // hang the head on the head bone (position only, kept upright + forward)
+    if (headBone && head) {
+      body.updateWorldMatrix(true, true)
+      _hm.copy(body.matrixWorld).invert().multiply(headBone.matrixWorld)
+      _hp.setFromMatrixPosition(_hm)
+      head.position.set(_hp.x, _hp.y + headUp, _hp.z)
+      head.quaternion.identity()
     }
   })
 
   return (
     <group name="monkey" position={MONKEY_POS} {...bind}>
-      <group ref={idleRef}>
-        <group ref={clipRoot} scale={fit.s} position={fit.pos}>
-          <primitive object={scene} />
-        </group>
+      <group scale={fit.s} position={fit.pos}>
+        <primitive object={body} />
       </group>
     </group>
   )
@@ -321,6 +548,7 @@ function CameraIntro({ active, fuzzRef }) {
   const started = useRef(false)
   const done = useRef(false)
   const t = useRef(0)
+  const clock = useRef(0)
   const pose = useRef(null)
   // Hold on the full painting while the scramble clears, THEN zoom out.
   const DELAY = 0.7
@@ -343,11 +571,12 @@ function CameraIntro({ active, fuzzRef }) {
     return { center, pos: center.clone().add(normal.multiplyScalar(dist)) }
   }, [size.width, size.height])
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     if (!active || done.current) return
     if (!started.current) {
       started.current = true
       t.current = 0
+      clock.current = performance.now()
       // Capture the SETTLED pose straight off the camera (its current, untouched
       // position/orientation) so the pull-back lands exactly on the normal
       // stage framing - no guessing where the default camera looks.
@@ -357,10 +586,13 @@ function CameraIntro({ active, fuzzRef }) {
       const startQuat = new THREE.Quaternion().setFromRotationMatrix(m)
       pose.current = { homePos, homeQuat, startQuat }
     }
-    // Clamp: the first frame after the heavy scene load can carry a multi-second
-    // delta, which would jump straight to the end (the "teleport"). Cap it so the
-    // pull-back always plays out smoothly.
-    t.current += Math.min(delta, 0.05)
+    // Wall-clock timeline, measured from the first rendered frame (so a slow
+    // first frame after the heavy scene load cannot teleport to the end). Real
+    // elapsed time, not accumulated frame deltas: the landing->stage handoff is
+    // the heaviest moment (GLBs decoding, WebGL contexts collapsing 3->1) and
+    // tying the timeline to frame rate stretched the full-screen black fuzz into
+    // a multi-second freeze. Wall-clock keeps the hold + zoom-out at ~2s always.
+    t.current = (performance.now() - clock.current) / 1000
     const p = Math.min(Math.max(t.current - DELAY, 0) / DURATION, 1)
     const e = easeOutCubic(p)
     const s = pose.current
@@ -477,164 +709,96 @@ function TransformSliders({ selected, getAll }) {
   )
 }
 
-// Backdrop spotlights aimed at the lab equipment behind the monkey. The back of
-// the room is otherwise unlit (ambient is deliberately low for the foreground),
-// so these carry the backdrop. They "power on": intensity ramps from black once
-// the stage is active (synced to the camera pull-back), then holds with a gentle
-// out-of-phase shimmer so the equipment reads as live/humming.
-//
-// Config arrays are MODULE-STABLE references so r3f never re-applies the
-// position/target props on re-render - that is what lets a dragged/slider-moved
-// light KEEP its new spot (same trick the placed props use). Turn on the
-// "lights" toolbar toggle to reveal draggable handles and edit them like any
-// other stage object; the intensity is scaled live by the "bg light" slider.
-const BACKDROP_LIGHTS = [
-  // Both aim at the SAME centre point behind the monkey (x=0), so their pools
-  // overlap dead-centre instead of splitting left/right.
-  { key: 'bl-L', name: 'back light L', pos: [-2.6, 3.6, 2.6], target: [0, 0.4, -2.4], color: '#e7edff', max: 42, angle: 0.6, distance: 20, phase: 1 },
-  { key: 'bl-R', name: 'back light R', pos: [2.6, 3.6, 2.6], target: [0, 0.4, -2.4], color: '#fff0d6', max: 38, angle: 0.6, distance: 20, phase: -1 },
-]
+// Default transform of the radial light. Drag/slider it, hit "copy this", and
+// paste the pos/rot/scale here to make the new spot the default.
+const RADIAL_LIGHT = { position: [0.004, -2.349, -2.576], rotation: [0, 0, 0], scale: [1, 1, 1] }
 
-// Build the live, mutable light params from the static config. The lighting
-// panel writes into this each frame BackdropLights reads it, so every knob
-// (intensity / angle / penumbra / distance / aim) updates in real time with no
-// React re-render. Position is edited separately by dragging the handle.
-function makeLightState() {
-  return BACKDROP_LIGHTS.map((l) => ({
-    intensity: l.max,
-    angle: l.angle ?? 1.1,
-    penumbra: l.penumbra ?? 0.9,
-    distance: l.distance ?? 32,
-    target: [...l.target],
-  }))
-}
-
-function BackLight({ cfg, edit, bind, lightRef, target }) {
-  return (
-    <>
-      <primitive object={target} />
-      <group name={cfg.name} position={cfg.pos} {...(edit ? bind : {})}>
-        <spotLight ref={lightRef} target={target} intensity={0} decay={2} color={cfg.color} />
-        {/* Draggable handle - only shown/clickable while editing lights. */}
-        {edit && (
-          <mesh>
-            <sphereGeometry args={[0.17, 16, 16]} />
-            <meshBasicMaterial color={cfg.color} toneMapped={false} />
-          </mesh>
-        )}
-      </group>
-    </>
-  )
-}
-
-function BackdropLights({ active, gainRef, edit, bind, stateRef }) {
-  const lightRefs = useRef([])
-  const targets = useMemo(() => BACKDROP_LIGHTS.map(() => new THREE.Object3D()), [])
-  const t = useRef(0)
-  const DELAY = 0.5
-  const DURATION = 1.8
-  useFrame((state, delta) => {
-    if (active) t.current = Math.min(t.current + delta, DELAY + DURATION + 1)
-    const ramp = easeOutCubic(Math.min(Math.max(t.current - DELAY, 0) / DURATION, 1))
-    const gain = gainRef?.current ?? 1
-    const s = Math.sin(state.clock.elapsedTime * 4.5)
-    const params = stateRef.current
-    for (let i = 0; i < BACKDROP_LIGHTS.length; i++) {
-      const l = lightRefs.current[i]
-      const p = params[i]
-      if (l && p) {
-        l.intensity = p.intensity * ramp * gain * (0.93 + 0.07 * s * BACKDROP_LIGHTS[i].phase)
-        l.angle = p.angle
-        l.penumbra = p.penumbra
-        l.distance = p.distance
-      }
-      targets[i].position.set(p.target[0], p.target[1], p.target[2])
-    }
+// A big camera-facing plane textured with a white->black radial gradient: a
+// manga "spotlight / moon" that splits the frame into a white disc and black
+// void. Unlit (meshBasicMaterial) so it is exactly the gradient regardless of
+// scene lights; the manga pass screentones it. Draggable via the shared bind so
+// the operator can slide the division around; slider-editable when selected.
+function RadialLight({ bind, groupRef }) {
+  const tex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 512
+    c.height = 512
+    const ctx = c.getContext('2d')
+    const g = ctx.createRadialGradient(256, 256, 8, 256, 256, 256)
+    g.addColorStop(0, '#ffffff')
+    g.addColorStop(0.5, '#ffffff')
+    g.addColorStop(0.72, '#000000')
+    g.addColorStop(1, '#000000')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, 512, 512)
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = THREE.SRGBColorSpace
+    return t
+  }, [])
+  // Idle "breathing" pulse - the disc slowly swells/shrinks and throbs in
+  // brightness so the light reads as alive. Applied on an INNER group/material
+  // so it rides ON TOP of wherever the operator drags the outer group.
+  const pulse = useRef(null)
+  const matRef = useRef(null)
+  useFrame((state) => {
+    const t = state.clock.elapsedTime
+    if (pulse.current) pulse.current.scale.setScalar(1 + 0.08 * Math.sin(t * 0.7))
+    if (matRef.current) matRef.current.color.setScalar(0.9 + 0.1 * Math.sin(t * 0.9 + 1))
   })
-  return BACKDROP_LIGHTS.map((cfg, i) => (
-    <BackLight
-      key={cfg.key}
-      cfg={cfg}
-      edit={edit}
-      bind={bind}
-      target={targets[i]}
-      lightRef={(el) => { lightRefs.current[i] = el }}
-    />
-  ))
+  return (
+    <group ref={groupRef} name="radial light" position={RADIAL_LIGHT.position} rotation={RADIAL_LIGHT.rotation} scale={RADIAL_LIGHT.scale} {...bind}>
+      <group ref={pulse}>
+        <mesh>
+          <planeGeometry args={[10, 10]} />
+          <meshBasicMaterial ref={matRef} map={tex} toneMapped={false} depthWrite={false} />
+        </mesh>
+      </group>
+    </group>
+  )
 }
 
-// Full manual control of the backdrop lights: per-light sliders for intensity,
-// cone angle, penumbra, distance, and aim (target x/y/z). Writes straight into
-// the shared params ref (no re-render). Position is set by dragging the handle.
-const LIGHT_ROWS = [
-  ['intensity', 'intensity', 0, 400, 1],
-  ['angle', 'angle', 0.1, 1.4, 0.01],
-  ['penumbra', 'penumbra', 0, 1, 0.01],
-  ['distance', 'distance', 4, 60, 0.5],
-]
-function LightPanel({ stateRef }) {
-  const setVal = (i, key, v) => { stateRef.current[i][key] = v }
-  const setAim = (i, axis, v) => { stateRef.current[i].target[axis] = v }
-  const copy = (e) => {
-    const r = (n) => Number(n.toFixed(3))
-    const text = stateRef.current
-      .map((p, i) => `${BACKDROP_LIGHTS[i].name}: intensity ${r(p.intensity)}, angle ${r(p.angle)}, penumbra ${r(p.penumbra)}, distance ${r(p.distance)}, aim [${p.target.map(r).join(', ')}]`)
-      .join('\n')
-    navigator.clipboard?.writeText(text).then(
-      () => { e.target.textContent = 'copied' },
-      () => { e.target.textContent = 'copy failed' },
-    )
-    setTimeout(() => { if (e.target) e.target.textContent = 'copy values' }, 1200)
-  }
-  return (
-    <div className="stage-lights">
-      <div className="stage-lights-title">Backdrop lights</div>
-      {BACKDROP_LIGHTS.map((cfg, i) => (
-        <div className="stage-lights-group" key={cfg.key}>
-          <div className="stage-lights-head">{cfg.name}</div>
-          {LIGHT_ROWS.map(([label, key, min, max, step]) => (
-            <label className="slider-row" key={label}>
-              <span className="slider-label">{label}</span>
-              <input
-                type="range"
-                min={min}
-                max={max}
-                step={step}
-                defaultValue={stateRef.current[i][key]}
-                onInput={(e) => setVal(i, key, parseFloat(e.target.value))}
-              />
-            </label>
-          ))}
-          {['x', 'y', 'z'].map((axis, ai) => (
-            <label className="slider-row" key={`aim-${axis}`}>
-              <span className="slider-label">aim {axis}</span>
-              <input
-                type="range"
-                min={-6}
-                max={6}
-                step={0.05}
-                defaultValue={stateRef.current[i].target[ai]}
-                onInput={(e) => setAim(i, ai, parseFloat(e.target.value))}
-              />
-            </label>
-          ))}
-        </div>
-      ))}
-      <button className="stage-sliders-copy" onClick={copy}>copy values</button>
-    </div>
-  )
+// Page load-in: the whole stage (floor, props, monkey, TVs, radial light) grows
+// up + rises into place with an ease-out when the scene first mounts, so the set
+// "assembles" on load. Time-based from mount; settles to identity so dragging /
+// framing math is unaffected afterwards.
+function IntroGroup({ children }) {
+  const ref = useRef(null)
+  const t = useRef(0)
+  const DUR = 1.1
+  // Set the entrance pose ONCE, imperatively - passing scale/position as JSX
+  // props would let r3f re-apply (reset) them on any re-render mid-animation.
+  useLayoutEffect(() => {
+    const g = ref.current
+    if (g) { g.scale.setScalar(0.7); g.position.y = -0.7 }
+  }, [])
+  useFrame((_, delta) => {
+    const g = ref.current
+    if (!g || t.current >= DUR) return
+    t.current = Math.min(t.current + delta, DUR)
+    const e = 1 - Math.pow(1 - t.current / DUR, 3)
+    g.scale.setScalar(0.7 + 0.3 * e)
+    g.position.y = (1 - e) * -0.7
+  })
+  return <group ref={ref}>{children}</group>
 }
 
 function MangaRender() {
   const { gl, scene, camera, size } = useThree()
-  const pass = useMemo(() => new MangaPass(gl, { grit: 0.75, ink: 0.04 }), [gl])
-  const sized = useRef('')
-  const key = `${size.width}x${size.height}`
-  if (sized.current !== key) {
-    sized.current = key
+  // `gen` bumps on GPU context restore so the pass (and its render target, which
+  // is lost with the context) is rebuilt - otherwise the scene stays pure black
+  // after a GPU reset while the DOM labels keep showing.
+  const [gen, setGen] = useState(0)
+  const pass = useMemo(() => new MangaPass(gl, { grit: 0.75, ink: 0.04 }), [gl, gen])
+  useEffect(() => {
     const dpr = gl.getPixelRatio()
     pass.setSize(size.width * dpr, size.height * dpr)
-  }
+  }, [pass, gl, size.width, size.height])
+  useEffect(() => {
+    const canvas = gl.domElement
+    const onRestored = () => setGen((g) => g + 1)
+    canvas.addEventListener('webglcontextrestored', onRestored, false)
+    return () => canvas.removeEventListener('webglcontextrestored', onRestored)
+  }, [gl])
   useFrame(() => pass.render(scene, camera), 1)
   return null
 }
@@ -646,11 +810,16 @@ function MangaRender() {
 // coloured on top of the B&W manga TV body. All placement is tunable here.
 const TV_URL = '/assets/tv-monitor.glb' // tv.glb with the stand geometry removed
 const NAV_TVS = [
-  { to: '/stage', label: 'Stage', color: '#ffcf3f' },
-  { to: '/pov', label: 'Robot POV', color: '#7cd4ff' },
-  { to: '/teleop', label: 'Teleop', color: '#ff8fbf', screen: '/assets/pomme-screen.jpg' },
-  { to: '/lidar', label: 'Lidar', color: '#86e6a0' },
-  { to: '/analytics', label: 'Analytics', color: '#c3a2ff' },
+  // Four text monitors, left to right, each placed independently.
+  { to: '/pov', label: 'Robot', color: '#7cd4ff', pos: [-1.908, 0.953, 0.322], rot: [0, 0.688, 0.068], scale: 0.67 },
+  { to: '/analytics', label: 'Data', color: '#c3a2ff', pos: [-0.616, 1.046, 0.365], rot: [0, 0.065, 0], scale: 0.6 },
+  { to: '/teleop', label: 'TeleOp', color: '#ff8fbf', pos: [0.604, 1.045, 0.365], rot: [0, -0.065, 0], scale: 0.6 },
+  { to: '/lidar', label: 'Extra', color: '#86e6a0', pos: [1.891, 0.948, 0.323], rot: [0, -0.688, -0.068], scale: 0.66 },
+  {
+    // POMME monitor - a text TV like the others, hand-placed.
+    to: '/', label: 'Pomme', color: '#ffcf3f',
+    pos: [0.011, -0.49, 1.11], rot: [-0.547, 0, 0], scale: 0.68,
+  },
 ]
 // The whole stage sits around y = -1.7 (see DEFAULT_PLACEMENT), so the arc lives
 // just above the monkey's head, not up near y = 2.
@@ -661,38 +830,125 @@ const TV_ARC = {
   dome: 0.4, // how far the side TVs drop below the centre one
   yaw: 0.3, // how much each TV turns to follow the arc (0 = all face camera)
   size: 0.9, // target TV height in world units (auto-fit)
+  textScale: 0.49, // group scale for the text (non-POMME) TVs
   faceY: 0, // base yaw; flip by Math.PI if the TVs show their backs
   labelZ: 0.28, // label offset out from the TV centre toward the screen
   labelScale: 5, // drei Html distanceFactor (smaller = smaller label)
-  screenY: -0.3, // vertical offset of the POMME screen (negative = toward bottom)
+  screenY: 0, // vertical offset of the POMME screen (0 = centred on the monitor)
   screenZ: 0.11, // POMME screen offset onto the monitor face (local units)
-  screenScale: 3.4, // drei Html distanceFactor for the on-monitor screen
+  screenScale: 3.4, // drei Html distanceFactor for the label frame (text TVs)
+  pommeScale: 4.3, // drei Html distanceFactor for the POMME image (bigger monitor)
   screenPx: [200, 128], // screen DOM size (px) - aspect roughly matches the panel
 }
 
-function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, bind, navigate, edit }) {
+// Live TV static drawn onto the monitor face (a plane with a per-frame canvas
+// texture). Rendered as a child of the clicked TV so it scales/zooms WITH the
+// monitor - the fuzz is on the screen, not the whole viewport.
+function TvStaticMesh() {
+  const tex = useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 64
+    c.height = 40
+    const t = new THREE.CanvasTexture(c)
+    t.magFilter = THREE.NearestFilter
+    t.minFilter = THREE.NearestFilter
+    return { c, t }
+  }, [])
+  useFrame(() => {
+    const ctx = tex.c.getContext('2d')
+    const img = ctx.createImageData(tex.c.width, tex.c.height)
+    const d = img.data
+    for (let i = 0; i < d.length; i += 4) {
+      const v = (Math.random() * 255) | 0
+      d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
+    }
+    ctx.putImageData(img, 0, 0)
+    tex.t.needsUpdate = true
+  })
+  return (
+    <mesh position={[0, 0, 0.135]}>
+      <planeGeometry args={[1.95, 1.25]} />
+      <meshBasicMaterial map={tex.t} toneMapped={false} />
+    </mesh>
+  )
+}
+
+// Camera push-in to a clicked monitor: eases the camera to the pose that frames
+// that monitor's face so it fills the viewport (the static screen "encompasses
+// the screen"), then fires onDone (the real route change).
+function TvZoom({ groupRef, onDone }) {
+  const { camera, size } = useThree()
+  const started = useRef(false)
+  const done = useRef(false)
+  const t = useRef(0)
+  const clock = useRef(0)
+  const from = useRef(null)
+  const to = useRef(null)
+  const DURATION = 0.85
+  useFrame(() => {
+    const g = groupRef.current
+    if (!g || done.current) return
+    if (!started.current) {
+      started.current = true
+      t.current = 0
+      clock.current = performance.now()
+      const worldPos = g.getWorldPosition(new THREE.Vector3())
+      const worldQuat = g.getWorldQuaternion(new THREE.Quaternion())
+      const s = g.scale.x || 1
+      const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(worldQuat).normalize()
+      const center = worldPos.clone().add(normal.clone().multiplyScalar(0.14 * s))
+      const faceW = 1.95 * s
+      const faceH = 1.25 * s
+      const fovY = THREE.MathUtils.degToRad(camera.fov)
+      const aspect = (size.width || 1) / (size.height || 1)
+      const fitH = (faceH / 2) / Math.tan(fovY / 2)
+      const fitW = (faceW / 2) / (Math.tan(fovY / 2) * aspect)
+      const dist = Math.min(fitH, fitW) * 0.9 // <1 = slight overfill so it fully covers
+      const toPos = center.clone().add(normal.clone().multiplyScalar(dist))
+      const m = new THREE.Matrix4().lookAt(toPos, center, new THREE.Vector3(0, 1, 0))
+      from.current = { pos: camera.position.clone(), quat: camera.quaternion.clone() }
+      to.current = { pos: toPos, quat: new THREE.Quaternion().setFromRotationMatrix(m) }
+    }
+    t.current = (performance.now() - clock.current) / 1000
+    const p = Math.min(t.current / DURATION, 1)
+    const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2 // easeInOutQuad
+    camera.position.lerpVectors(from.current.pos, to.current.pos, e)
+    camera.quaternion.slerpQuaternions(from.current.quat, to.current.quat, e)
+    if (p >= 1) { done.current = true; onDone() }
+  })
+  return null
+}
+
+function StageTV({ label, color, to, screen, mirrorOf, position, rotation, scale, labelZ, bind, onNav, edit, zoomActive, onReady, registry }) {
   const { scene } = useGLTF(TV_URL)
-  const model = useMemo(() => {
+  const { object, materials } = useMemo(() => {
     const clone = scene.clone(true)
+    const mats = []
     // tv-monitor.glb is already stand-free; just brighten it so the monitor reads
     // white through the manga pass (its own texture is dark = pitch black otherwise).
     clone.traverse((o) => {
       if (!o.isMesh || !o.material) return
-      const mats = Array.isArray(o.material) ? o.material : [o.material]
-      mats.forEach((m) => {
-        m.emissive = new THREE.Color(0xcfcfcf)
-        m.emissiveMap = null
-        m.emissiveIntensity = 1
-        m.color = new THREE.Color(0xffffff)
-        m.needsUpdate = true
+      const list = Array.isArray(o.material) ? o.material : [o.material]
+      // CLONE each material so every TV owns its own - scene.clone(true) shares
+      // materials, so without this the per-frame emissive writes fight across all
+      // five monitors and they flicker/darken.
+      const cloned = list.map((m) => {
+        const c = m.clone()
+        c.emissive = new THREE.Color(0xffffff)
+        c.emissiveMap = null
+        c.emissiveIntensity = 1.7 // stay bright (paper-white) at rest, no darkening
+        c.color = new THREE.Color(0xffffff)
+        c.needsUpdate = true
+        mats.push(c)
+        return c
       })
+      o.material = Array.isArray(o.material) ? cloned : cloned[0]
     })
-    // Recentre the monitor on the group origin.
     const box = new THREE.Box3().setFromObject(clone)
     const centre = new THREE.Vector3()
     box.getCenter(centre)
-    clone.position.sub(centre)
-    return clone
+    clone.position.sub(centre) // recentre on the group origin
+    return { object: clone, materials: mats }
   }, [scene])
   const groupRef = useRef(null)
   const [hover, setHover] = useState(false)
@@ -701,27 +957,49 @@ function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, 
   // position prop would snap it back to the arc on every re-render.
   useEffect(() => {
     const g = groupRef.current
-    if (!g) return
+    if (!g) return undefined
     g.position.set(position[0], position[1], position[2])
     g.rotation.set(rotation[0], rotation[1], rotation[2])
     g.scale.setScalar(scale)
+    onReady?.(to, g) // register for COPY ALL serialization
+    return () => onReady?.(to, null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  // Smoothly ease the monitor's pop on hover instead of snapping instantly.
-  const modelRef = useRef(null)
+  // Hover: brighten the monitor (highlight) AND grow it very slightly. Eased so
+  // it ramps smoothly. The label grows a touch too (CSS). No grow while editing.
   useFrame((_, delta) => {
-    const g = modelRef.current
+    const k = 1 - Math.pow(0.002, delta)
+    // Emissive stays constant (set once) so the monitor never darkens on leave;
+    // the hover highlight is the radial glow + the slight scale below.
+    const g = groupRef.current
     if (!g) return
-    const target = hover ? 1.07 : 1
-    const k = 1 - Math.pow(0.001, delta) // frame-rate independent easing
-    const s = g.scale.x + (target - g.scale.x) * k
-    g.scale.setScalar(s)
+    // Live mirror: this TV tracks another one across centre (flip X, negate the
+    // Y-rotation), so dragging the source moves this one too.
+    if (mirrorOf) {
+      const src = registry?.current?.get(mirrorOf)
+      if (src) {
+        // true reflection across x=0: flip X, negate the Y and Z rotations, and
+        // copy the source's scale so the pair matches exactly.
+        g.position.set(-src.position.x, src.position.y, src.position.z)
+        g.rotation.set(src.rotation.x, -src.rotation.y, -src.rotation.z)
+        const sTarget = src.scale.x * (!edit && hover ? 1.03 : 1)
+        const s = g.scale.x + (sTarget - g.scale.x) * k
+        g.scale.setScalar(s)
+      }
+    } else if (!edit) {
+      // On hover: grow a touch (the label, a child, grows too) and lift up a bit.
+      const sTarget = scale * (hover ? 1.05 : 1)
+      const s = g.scale.x + (sTarget - g.scale.x) * k
+      g.scale.setScalar(s)
+      const yTarget = position[1] + (hover ? 0.06 : 0)
+      g.position.y += (yTarget - g.position.y) * k
+    }
   })
   // In edit mode the TV is a draggable/selectable object (bind, no navigation) so
   // you can position it; otherwise it is a nav button (click = go to the page).
   const handlers = edit
     ? { ...bind }
-    : { onClick: (event) => { event.stopPropagation(); navigate(to) } }
+    : { onClick: (event) => { event.stopPropagation(); onNav(to, groupRef.current) } }
   return (
     <group
       ref={groupRef}
@@ -729,16 +1007,22 @@ function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, 
       onPointerOver={(event) => { event.stopPropagation(); setHover(true) }}
       onPointerOut={() => setHover(false)}
     >
-      <group ref={modelRef}>
-        <primitive object={model} />
-      </group>
+      <primitive object={object} />
+      {/* Whole-TV click target so the entire monitor is the button (bubbles to
+          the group handlers). Rotates/scales with the TV. */}
+      <mesh position={[0, 0, 0.13]}>
+        <planeGeometry args={[1.95, 1.25]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+      {/* Channel-change static on THIS screen while zooming into it. */}
+      {zoomActive && <TvStaticMesh />}
       {screen ? (
         // POMME on this monitor's screen face: black-and-white, not pixelated.
         <Html
           center
           transform
-          position={[0, 0, TV_ARC.screenZ]}
-          distanceFactor={TV_ARC.screenScale}
+          position={[0, TV_ARC.screenY, TV_ARC.screenZ]}
+          distanceFactor={TV_ARC.pommeScale}
           pointerEvents="none"
           style={{ width: `${TV_ARC.screenPx[0]}px`, height: `${TV_ARC.screenPx[1]}px`, pointerEvents: 'none' }}
         >
@@ -750,9 +1034,25 @@ function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, 
           />
         </Html>
       ) : (
-        <Html center position={[0, 0, labelZ]} distanceFactor={TV_ARC.labelScale} pointerEvents="none">
+        // Label lives ON the screen (transform): centred, and it rotates/scales
+        // together with the TV instead of always facing the camera.
+        <Html
+          center
+          transform
+          position={[0, 0, TV_ARC.screenZ]}
+          distanceFactor={TV_ARC.screenScale}
+          pointerEvents="none"
+          style={{
+            width: `${TV_ARC.screenPx[0]}px`,
+            height: `${TV_ARC.screenPx[1]}px`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none',
+          }}
+        >
           <span
-            className="tv3d-label"
+            className={`tv3d-label${hover ? ' is-hover' : ''}`}
             style={hover
               ? { color, textShadow: `0 0 16px ${color}, 0 0 6px ${color}` }
               : { color: '#9aa0a6', textShadow: '0 1px 2px rgba(0, 0, 0, .65)' }}
@@ -765,65 +1065,145 @@ function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, 
   )
 }
 
-function StageTVNav({ bind, navigate, edit }) {
-  const { scene } = useGLTF(TV_URL)
-  const fit = useMemo(() => {
-    const box = new THREE.Box3().setFromObject(scene)
-    const size = new THREE.Vector3()
-    box.getSize(size)
-    return TV_ARC.size / (size.y || 1)
-  }, [scene])
-  const items = useMemo(() => {
-    const n = NAV_TVS.length
-    const spread = THREE.MathUtils.degToRad(TV_ARC.spreadDeg)
-    return NAV_TVS.map((tv, i) => {
-      const a = -spread / 2 + (n === 1 ? 0 : (i * spread) / (n - 1))
-      const x = TV_ARC.center[0] + Math.sin(a) * TV_ARC.radius
-      const y = TV_ARC.center[1] - (1 - Math.cos(a)) * TV_ARC.radius * TV_ARC.dome
-      return {
-        ...tv,
-        position: [x, y, TV_ARC.center[2]],
-        rotation: [0, TV_ARC.faceY - a * TV_ARC.yaw, 0],
-      }
-    })
-  }, [])
+// Deterministic monitor layout (position / rotation / scale per TV). Shared by
+// the nav renderer and the exit zoom-out so the framing matches exactly without
+// needing a live group ref.
+function layoutTvs() {
+  // Only the text TVs (no explicit pos) fan on the arc; index them among
+  // themselves so a hand-placed monitor does not leave a gap in the fan.
+  const textTVs = NAV_TVS.filter((tv) => !tv.pos)
+  const n = textTVs.length
+  const spread = THREE.MathUtils.degToRad(TV_ARC.spreadDeg)
+  return NAV_TVS.map((tv) => {
+    if (tv.pos) {
+      return { ...tv, position: tv.pos, rotation: tv.rot || [0, 0, 0], scaleVal: tv.scale ?? 1 }
+    }
+    const i = textTVs.indexOf(tv)
+    const a = -spread / 2 + (n === 1 ? 0 : (i * spread) / (n - 1))
+    const x = TV_ARC.center[0] + Math.sin(a) * TV_ARC.radius
+    const y = TV_ARC.center[1] - (1 - Math.cos(a)) * TV_ARC.radius * TV_ARC.dome
+    return {
+      ...tv,
+      position: [x, y, TV_ARC.center[2]],
+      rotation: [0, TV_ARC.faceY - a * TV_ARC.yaw, 0],
+      scaleVal: TV_ARC.textScale,
+    }
+  })
+}
+
+// The camera pose that frames a monitor's face so it fills the viewport (min-fit
+// = cover, slight overfill). Used by both the click push-in and the exit
+// zoom-out; kept as one helper so enter/exit are exact mirrors.
+function tvFramingPose(item, fovDeg, width, height) {
+  const pos = new THREE.Vector3(...item.position)
+  const quat = new THREE.Quaternion().setFromEuler(new THREE.Euler(...item.rotation))
+  const s = item.scaleVal || 1
+  const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quat).normalize()
+  const center = pos.clone().add(normal.clone().multiplyScalar(0.14 * s))
+  const faceW = 1.95 * s
+  const faceH = 1.25 * s
+  const fovY = THREE.MathUtils.degToRad(fovDeg)
+  const aspect = (width || 1) / (height || 1)
+  const fitH = (faceH / 2) / Math.tan(fovY / 2)
+  const fitW = (faceW / 2) / (Math.tan(fovY / 2) * aspect)
+  const dist = Math.min(fitH, fitW) * 0.9
+  const camPos = center.clone().add(normal.clone().multiplyScalar(dist))
+  const m = new THREE.Matrix4().lookAt(camPos, center, new THREE.Vector3(0, 1, 0))
+  return { pos: camPos, quat: new THREE.Quaternion().setFromRotationMatrix(m) }
+}
+
+// Exit arrival: when we return to the stage after clicking INTO a monitor, start
+// the camera framed inside that monitor and ease out to the settled stage view,
+// mirroring the push-in. The static reveal (tvTransition) clears over it.
+function TvZoomOut({ to }) {
+  const { camera, size } = useThree()
+  const started = useRef(false)
+  const done = useRef(false)
+  const t = useRef(0)
+  const home = useRef(null)
+  const DURATION = 1.0
+  const framing = useMemo(() => {
+    const item = layoutTvs().find((it) => it.to === to)
+    return item ? tvFramingPose(item, camera.fov, size.width, size.height) : null
+  }, [to, camera.fov, size.width, size.height])
+
+  useFrame((_, delta) => {
+    if (!framing || done.current) return
+    if (!started.current) {
+      started.current = true
+      t.current = 0
+      // Capture the settled home pose (as configured on the Canvas), then jump
+      // the camera into the monitor so the pull-back starts fully zoomed in.
+      home.current = { pos: camera.position.clone(), quat: camera.quaternion.clone() }
+      camera.position.copy(framing.pos)
+      camera.quaternion.copy(framing.quat)
+    }
+    t.current += Math.min(delta, 0.05)
+    const p = Math.min(t.current / DURATION, 1)
+    const e = 1 - Math.pow(1 - p, 3) // easeOutCubic
+    camera.position.lerpVectors(framing.pos, home.current.pos, e)
+    camera.quaternion.slerpQuaternions(framing.quat, home.current.quat, e)
+    if (p >= 1) done.current = true
+  })
+  return null
+}
+
+function StageTVNav({ bind, onNav, edit, zoomTo, onReady, registry }) {
+  const items = useMemo(layoutTvs, [])
   return (
     <group>
       {/* The nav sits above the stage spotlight, so give the TV arc its own light
           or the manga pass renders them near-black on the black ceiling. */}
       <pointLight position={[0, TV_ARC.center[1] + 0.6, TV_ARC.center[2] + 2.4]} intensity={38} distance={9} decay={2} />
       {items.map((it) => (
-        <StageTV key={it.to} {...it} scale={fit} labelZ={TV_ARC.labelZ} bind={bind} navigate={navigate} edit={edit} />
+        <StageTV key={it.to} {...it} scale={it.scaleVal} labelZ={TV_ARC.labelZ} bind={bind} onNav={onNav} edit={edit} zoomActive={zoomTo === it.to} onReady={onReady} registry={registry} />
       ))}
     </group>
   )
 }
 
+// Which monitor we last dived INTO. Module-scope so it survives the unmount when
+// the route changes; on returning to the stage we zoom back OUT of it. Consumed
+// (cleared) once, so a later plain visit to /stage does not replay the pull-out.
+let pendingTvOut = null
+
 // edit: false = clean stage (TVs are nav buttons, no editor UI). 'tv' = position
 // the nav TVs (they become draggable/selectable, props stay locked).
 export default function MonkeyStage({ showNav = true, playIntro = false, liveScene = true, edit = false }) {
   const editTV = edit === 'tv'
-  // Router context does not cross into the r3f Canvas, so resolve navigate here
-  // (outside the Canvas) and hand it to the in-scene TV nav.
-  const navigate = useNavigate()
+  // Clicking a monitor "changes the channel": the clicked monitor's screen fills
+  // with static, the camera pushes IN until that screen fills the viewport, then
+  // tvNavigate swaps the route and clears the static over the new page (reveal).
+  const { tvNavigate } = useTvTransition()
+  const [zoomTo, setZoomTo] = useState(null) // the `to` of the monitor being entered
+  const zoomGroupRef = useRef(null) // live THREE group of that monitor (for framing)
+  const startZoom = useCallback((to, group) => {
+    if (zoomTo || !group) return // ignore repeat clicks mid-transition
+    // Warm the destination chunk now (during the ~0.85s zoom + static cover), so
+    // the tune-in reveal fades over the real page instead of a blank loader.
+    preloadRoute(to)
+    zoomGroupRef.current = group
+    pendingTvOut = to // remember it so the return pulls back out of this monitor
+    setZoomTo(to)
+  }, [zoomTo])
+  // On mount, consume any pending "exit" monitor: if we arrived by clicking into
+  // a TV, play the reverse pull-out. Never on the tv-positioning editor route.
+  const [tvOut] = useState(() => {
+    if (editTV) return null
+    const v = pendingTvOut
+    pendingTvOut = null
+    return v
+  })
   const spotTarget = useMemo(() => new THREE.Object3D(), [])
   // Shared handle so the camera intro drives the on-screen fuzz opacity.
   const fuzzRef = useRef({ opacity: 0 })
-  // Live multiplier on the backdrop-spot intensity (the toolbar slider writes
-  // here; BackdropLights reads it each frame, so no re-render while dragging).
-  const bgGain = useRef(1)
-  // When on, the backdrop lights show draggable handles + the lighting panel.
-  const [lightsEdit, setLightsEdit] = useState(false)
-  // Live, mutable per-light params (intensity/angle/penumbra/distance/aim) the
-  // panel writes and BackdropLights reads each frame.
-  const lightState = useRef(makeLightState())
   const splash = useSplash()
   const [sceneAvailable, setSceneAvailable] = useState(false)
   const [selected, setSelected] = useState(null)
   const [transformMode, setTransformMode] = useState('translate')
   // Mimic mode: the monkey copies the operator's body via the webcam pose.
   const [mimic, setMimic] = useState(false)
-  const [mirror, setMirror] = useState(true)
+  const [mirror, setMirror] = useState(false)
   const poseRef = useRef(null)
 
   // Placeable lab props. `placed` only tracks WHICH props exist (add / place /
@@ -835,6 +1215,14 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
   const propCounter = useRef(0)
   const pendingSelect = useRef(null)
   const groups = useRef(new Map())
+  // Live TV monitor groups, keyed by route, so COPY ALL can serialize the TVs too.
+  const tvGroups = useRef(new Map())
+  // Live radial-light group so COPY ALL can serialize it (into RADIAL_LIGHT).
+  const radialRef = useRef(null)
+  const onTvReady = useCallback((to, group) => {
+    if (group) tvGroups.current.set(to, group)
+    else tvGroups.current.delete(to)
+  }, [])
 
   const onPropReady = useCallback((id, group) => {
     groups.current.set(id, group)
@@ -895,7 +1283,22 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
       const scalePart = uniform1 ? '' : `, scale: [${r(s.x)}, ${r(s.y)}, ${r(s.z)}]`
       return `  { id: '${inst.id}', catalogId: '${inst.catalogId}', position: [${r(p.x)}, ${r(p.y)}, ${r(p.z)}], rotation: [${r(rot.x)}, ${r(rot.y)}, ${r(rot.z)}]${scalePart} },`
     })
-    return `export const DEFAULT_PLACEMENT = [\n${rows.join('\n')}\n]`
+    // TV monitors, keyed by route - paste these pos/rot/scale into NAV_TVS.
+    const tvRows = []
+    tvGroups.current.forEach((g, to) => {
+      if (!g) return
+      const p = g.position
+      const rot = g.rotation
+      const s = g.scale
+      tvRows.push(`  { to: '${to}', pos: [${r(p.x)}, ${r(p.y)}, ${r(p.z)}], rot: [${r(rot.x)}, ${r(rot.y)}, ${r(rot.z)}], scale: ${r(s.x)} },`)
+    })
+    const tvBlock = tvRows.length ? `\n\n// TV MONITORS (into NAV_TVS):\n${tvRows.join('\n')}` : ''
+    // Radial light (into RADIAL_LIGHT) - read live off its group.
+    const rl = radialRef.current
+    const rlBlock = rl
+      ? `\n\n// RADIAL LIGHT (into RADIAL_LIGHT):\nconst RADIAL_LIGHT = { position: [${r(rl.position.x)}, ${r(rl.position.y)}, ${r(rl.position.z)}], rotation: [${r(rl.rotation.x)}, ${r(rl.rotation.y)}, ${r(rl.rotation.z)}], scale: [${r(rl.scale.x)}, ${r(rl.scale.y)}, ${r(rl.scale.z)}] }`
+      : ''
+    return `export const DEFAULT_PLACEMENT = [\n${rows.join('\n')}\n]${tvBlock}${rlBlock}`
   }, [placed])
 
   // Direct pointer dragging. The manga post-process renders any TransformControls
@@ -996,13 +1399,22 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
       <Canvas
         onPointerMissed={() => setSelected(null)}
         flat
-        dpr={SAFE_DPR}
+        dpr={[1, 1.25]}
         camera={{ position: CAM_HOME, fov: 32, near: 0.1, far: 100 }}
-        gl={{ antialias: true }}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
         <CanvasGuard />
-        <color attach="background" args={['#0d0e12']} />
-        <CameraIntro active={playIntro} fuzzRef={fuzzRef} />
+        <color attach="background" args={['#000000']} />
+        <CameraIntro active={playIntro && !tvOut} fuzzRef={fuzzRef} />
+        {tvOut && <TvZoomOut to={tvOut} />}
+        {/* The heavy scene (lights, backdrop, monkey, TV nav, props, manga
+            post-process) renders only once the stage takes over (liveScene).
+            On the landing it stays empty, so the stage does not add a third
+            heavy WebGL scene next to the painterly iframe and the robot splat -
+            that combo was losing the GPU context and blacking out the stage
+            after the handoff. Direct /stage visits default liveScene=true. */}
+        {liveScene && (
+        <>
         <ambientLight intensity={0.13} />
         <primitive object={spotTarget} position={[0, 1.1, 0.3]} />
         <group position={[2.4, 5.4, 3.6]}>
@@ -1019,60 +1431,65 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
             <meshBasicMaterial color="#cddcff" />
           </mesh>
         </group>
-        <BackdropLights active={playIntro} gainRef={bgGain} edit={editTV && lightsEdit} bind={bind} stateRef={lightState} />
-        {/* Room backdrop: a wall behind everything so the void is a lit surface,
-            not a flat black clear. A light matte material catches the ambient +
-            backdrop spots; the manga pass then shades it into paper / tone bands
-            (with the spot pools whitening it) instead of pure ink. A small
-            emissive lift keeps it off pure black even where unlit. */}
-        <mesh position={[0, 1.4, -4.3]}>
-          <planeGeometry args={[30, 18]} />
-          <meshStandardMaterial color="#c8c8c2" roughness={1} emissive="#343432" emissiveIntensity={1} />
-        </mesh>
-        <Suspense fallback={null}>
-          <Monkey bind={bind} poseRef={poseRef} mimic={mimic} mirror={mirror} />
-          {showNav && <StageTVNav bind={bind} navigate={navigate} edit={editTV} />}
-        </Suspense>
-        {placed.map((inst) => {
-          const catalog = CATALOG_BY_ID[inst.catalogId]
-          if (!catalog) return null
-          return (
-            <PropBoundary key={inst.id}>
-              <Suspense fallback={null}>
-                {/* Props are locked scenery here - only the TVs are positionable. */}
-                <StageProp inst={inst} catalog={catalog} bind={undefined} onReady={onPropReady} />
-              </Suspense>
-            </PropBoundary>
-          )
-        })}
+        {/* Backdrop wall removed - pure black void. Everything below grows in on
+            load via IntroGroup. */}
+        <IntroGroup>
+          {/* Black floor - grounds the scene; catches the spotlights as a manga
+              tone pool, and the radial disc reads like a moon behind its edge. */}
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, FLOOR, 0]}>
+            <planeGeometry args={[60, 60]} />
+            <meshStandardMaterial color="#050505" roughness={1} />
+          </mesh>
+          <RadialLight bind={bind} groupRef={radialRef} />
+          <Suspense fallback={null}>
+            <Monkey bind={bind} poseRef={poseRef} mimic={mimic} mirror={mirror} />
+            {showNav && <StageTVNav bind={bind} onNav={editTV ? () => {} : startZoom} edit={editTV} zoomTo={zoomTo} onReady={onTvReady} registry={tvGroups} />}
+          </Suspense>
+          {placed.map((inst) => {
+            const catalog = CATALOG_BY_ID[inst.catalogId]
+            if (!catalog) return null
+            return (
+              <PropBoundary key={inst.id}>
+                <Suspense fallback={null}>
+                  {/* Props are locked on the clean stage, draggable in the editor. */}
+                  <StageProp inst={inst} catalog={catalog} bind={editTV ? bind : undefined} onReady={onPropReady} />
+                </Suspense>
+              </PropBoundary>
+            )
+          })}
+        </IntroGroup>
+        {zoomTo && <TvZoom groupRef={zoomGroupRef} onDone={() => tvNavigate(zoomTo)} />}
         <MangaRender />
+        </>
+        )}
       </Canvas>
+      {/* Fullscreen tune-in static for the landing->stage arrival. */}
+      <StageFuzz fuzzRef={fuzzRef} />
       {/* Editor UI only in the TV-positioning route; the plain /stage is clean. */}
       {editTV && (
-        <div className="stage-editor" role="toolbar" aria-label="Position the TVs">
-          <span>Drag a TV to move · W/E/R + arrows to fine-tune · COPY THIS for its coords</span>
+        <div className="stage-editor" role="toolbar" aria-label="Edit the stage">
+          <span>Drag a TV or prop · W/E/R + arrows · COPY THIS for coords</span>
           {['translate', 'rotate', 'scale'].map((m) => (
             <button key={m} className={transformMode === m ? 'is-active' : ''} onClick={() => setTransformMode(m)}>
               {m}
             </button>
           ))}
-          <label className="stage-editor-slider" title="Backdrop light intensity (global)">
-            bg light
-            <input
-              type="range"
-              min="0"
-              max="3"
-              step="0.05"
-              defaultValue="1"
-              onInput={(e) => { bgGain.current = parseFloat(e.target.value) }}
-            />
-          </label>
-          <button className={lightsEdit ? 'is-active' : ''} onClick={() => setLightsEdit((v) => !v)}>
-            lights
-          </button>
+          <button className={paletteOpen ? 'is-active' : ''} onClick={() => setPaletteOpen((v) => !v)}>add prop</button>
+          <button onClick={duplicateSelected}>duplicate</button>
+          <button onClick={deleteSelected}>delete</button>
         </div>
       )}
-      {editTV && lightsEdit && <LightPanel stateRef={lightState} />}
+      {editTV && paletteOpen && (
+        <div className="stage-palette" role="menu" aria-label="Place a prop">
+          <div className="stage-palette-head">Place a prop</div>
+          <div className="stage-palette-grid">
+            {PROP_CATALOG.map((p) => (
+              <button key={p.id} onClick={() => addProp(p.id)} title={`Add ${p.label}`}>{p.label}</button>
+            ))}
+          </div>
+          <div className="stage-palette-note">Drops in front of the monkey - drag it into place.</div>
+        </div>
+      )}
       {/* Mimic control stays on the clean stage - it is a feature, not editing. */}
       <div className="stage-editor stage-editor--mimic">
         <button className={mimic ? 'is-active' : ''} onClick={() => setMimic((v) => !v)}>
@@ -1089,10 +1506,15 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
           <MimicCam poseRef={poseRef} mirror={mirror} />
         </Suspense>
       )}
-      {editTV && <TransformSliders selected={selected} />}
+      {/* The transform panel (with copy) shows in the editor, and also on the
+          clean stage when the radial light is picked - so it can be copied. */}
+      {(editTV || selected?.name === 'radial light') && (
+        <TransformSliders selected={selected} getAll={serializeAll} />
+      )}
     </div>
   )
 }
 
-useGLTF.preload(SUZANNE_FULLBODY_URL)
+useGLTF.preload(BODY_URL)
+useGLTF.preload(HEAD_SRC_URL)
 useGLTF.preload(TV_URL)

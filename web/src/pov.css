@@ -142,16 +142,18 @@
 }
 
 /* top bar */
-.pov-top {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 46px;
+/* bottom control row: status (left) | tabs (center) | GO LIVE/FULL (right) */
+.pov-barrow {
+  width: 100%;
+  max-width: 940px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  background: transparent;
+  gap: 14px;
 }
+.pov-barrow .pov-top-l,
+.pov-barrow .pov-top-r { flex: 1 1 0; }
+.pov-barrow .pov-top-r { justify-content: flex-end; }
 .pov-top-l { display: flex; align-items: center; gap: 10px; }
 .pov-top-r { display: flex; align-items: center; gap: 10px; }
 
@@ -327,3 +329,83 @@
   .pov-seg-btn { padding: 0 14px; }
   .pov-tick { display: none; }
 }
+
+/* machine-fringe editor (only mounted on /pov?tab=cam&edit=1) */
+.pov-fringe.editing { cursor: crosshair; }
+.fringe-edit {
+  position: absolute;
+  top: 64px;
+  left: 16px;
+  z-index: 20;
+  width: 232px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(20, 20, 24, 0.86);
+  border: 1px solid rgba(246, 245, 240, 0.22);
+  border-radius: 8px;
+  color: #f6f5f0;
+  font: 500 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(6px);
+}
+.fringe-edit-head { font-weight: 700; letter-spacing: 0.12em; color: #f2a03c; }
+.fringe-edit-hint { color: #b7b4ac; font-size: 10px; }
+.fringe-edit-palette { display: flex; flex-wrap: wrap; gap: 5px; }
+.fringe-edit-palette button {
+  padding: 4px 7px;
+  background: rgba(246, 245, 240, 0.09);
+  border: 1px solid rgba(246, 245, 240, 0.25);
+  border-radius: 5px;
+  color: #f6f5f0;
+  font: inherit;
+  cursor: pointer;
+}
+.fringe-edit-palette button:hover { background: rgba(242, 160, 60, 0.25); border-color: #f2a03c; }
+.fringe-edit-sel { color: #7cd4ff; font-size: 10px; word-break: break-all; }
+.fringe-edit-sel.muted { color: #7d7a73; }
+.fringe-edit-sliders { display: flex; flex-direction: column; gap: 4px; }
+.fringe-slider-row { display: grid; grid-template-columns: 44px 1fr 40px; align-items: center; gap: 6px; }
+.fringe-slider-row span { color: #b7b4ac; }
+.fringe-slider-row input { width: 100%; accent-color: #f2a03c; }
+.fringe-slider-row output { color: #f6f5f0; text-align: right; font-variant-numeric: tabular-nums; }
+.fringe-edit-row { display: flex; gap: 6px; }
+.fringe-edit-row button {
+  flex: 1;
+  padding: 5px;
+  background: rgba(246, 245, 240, 0.09);
+  border: 1px solid rgba(246, 245, 240, 0.25);
+  border-radius: 5px;
+  color: #f6f5f0;
+  font: inherit;
+  cursor: pointer;
+}
+.fringe-edit-row button:hover { background: rgba(246, 245, 240, 0.18); }
+.fringe-edit-copy {
+  padding: 6px;
+  background: #f2a03c;
+  border: 0;
+  border-radius: 5px;
+  color: #17170f;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.fringe-edit-copy:hover { background: #ffb454; }
+.fringe-edit-copied { color: #86e6a0; font-size: 10px; text-align: center; }
+
+.fringe-edit-anim {
+  padding: 5px;
+  background: rgba(246, 245, 240, 0.09);
+  border: 1px solid rgba(246, 245, 240, 0.25);
+  border-radius: 5px;
+  color: #b7b4ac;
+  font: inherit;
+  cursor: pointer;
+}
+.fringe-edit-anim.on { border-color: #86e6a0; color: #86e6a0; }
+.fringe-edit-anim:hover { background: rgba(246, 245, 240, 0.18); }

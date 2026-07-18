@@ -1,5 +1,6 @@
-import { Component, Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
+import BackToStage from '../components/BackToStage.jsx'
 import '../analytics.css'
 
 // Manga-shaded decoration scene + editor (background). Lazy so three/r3f stays
@@ -37,14 +38,6 @@ function binCounts(picks) {
   const b = Object.fromEntries(BINS.map((k) => [k, 0]))
   for (const p of picks) if (p.bin in b) b[p.bin]++
   return b
-}
-
-function fmt(n, d = 0) {
-  if (n == null || Number.isNaN(n)) return '--'
-  return Number(n).toLocaleString(undefined, {
-    minimumFractionDigits: d,
-    maximumFractionDigits: d,
-  })
 }
 
 // Inline SVG sparkline, no chart library.
@@ -105,9 +98,35 @@ class HeroBoundary extends Component {
   }
 }
 
-function Metric({ label, value, unit, sub, series, color, area = true }) {
+// Count-up number: animates from its previous value toward the new one.
+function Num({ value, digits = 0 }) {
+  const [disp, setDisp] = useState(typeof value === 'number' ? value : 0)
+  const ref = useRef(disp)
+  ref.current = disp
+  useEffect(() => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return undefined
+    const from = ref.current
+    const start = performance.now()
+    let raf
+    const tick = (t) => {
+      const k = Math.min(1, Math.max(0, (t - start) / 500))
+      const e = 1 - Math.pow(1 - k, 3)
+      setDisp(from + (value - from) * e)
+      if (k < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+  if (typeof value !== 'number' || Number.isNaN(value)) return value
+  return disp.toLocaleString(undefined, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })
+}
+
+function Metric({ label, value, unit, sub, series, color, area = true, flash = false }) {
   return (
-    <div className="az-panel az-metric">
+    <div className={`az-panel az-metric${flash ? ' flash' : ''}`}>
       <h3>{label}</h3>
       <div className="az-num">
         {value}
@@ -119,8 +138,34 @@ function Metric({ label, value, unit, sub, series, color, area = true }) {
   )
 }
 
+// Throughput bars + sort-success line over the window.
+function TrendChart({ bars, line }) {
+  const maxB = Math.max(1, ...bars)
+  const n = bars.length || 1
+  const bw = 100 / n
+  return (
+    <svg className="az-chart" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden>
+      <line className="axis" x1="0" y1="38" x2="100" y2="38" />
+      {bars.map((b, i) => {
+        const hh = (b / maxB) * 34
+        return (
+          <rect key={i} className="bar" x={i * bw + bw * 0.16} y={38 - hh} width={bw * 0.68} height={Math.max(0, hh)} />
+        )
+      })}
+      {line && line.length > 1 && (
+        <path
+          className="succ"
+          d={line
+            .map((v, i) => `${i ? 'L' : 'M'}${((i / (line.length - 1)) * 100).toFixed(2)} ${(37 - (v / 100) * 33).toFixed(2)}`)
+            .join(' ')}
+        />
+      )}
+    </svg>
+  )
+}
+
 export default function Analytics() {
-  const { picks, sim, connected } = useRobot()
+  const { picks, sim, connected, detections } = useRobot()
   const [serverStats, setServerStats] = useState(null)
   const [fetchError, setFetchError] = useState(false)
   const [win, setWin] = useState('all')
@@ -234,10 +279,58 @@ export default function Analytics() {
   }
 
   const live = !sim && connected && !fetchError
-  const co2eShown = co2e != null
+  const streaming = sim || live
+
+  // flash the pick counter whenever a new pick arrives
+  const [flash, setFlash] = useState(false)
+  const prevPicks = useRef(picks.length)
+  useEffect(() => {
+    if (picks.length > prevPicks.current) {
+      setFlash(true)
+      const t = setTimeout(() => setFlash(false), 700)
+      prevPicks.current = picks.length
+      return () => clearTimeout(t)
+    }
+    prevPicks.current = picks.length
+    return undefined
+  }, [picks.length])
+  // ---- impact model. picks + waste stay live-derived; these are documented
+  // conversion factors (see docs/IMPACT.md), not mock data. ----
+  const CO2E_PER_KG = 2.5 // kg CO2e per kg food waste avoided
+  const USD_PER_KG = 2.2 // wholesale produce value, $/kg
+  const MANUAL_SEC = 18 // manual-picker cycle-time baseline
+  const wasteKg = waste ?? 0
+  const co2eKg = co2e != null ? co2e : +(wasteKg * CO2E_PER_KG).toFixed(2)
+  const usd = Math.round(wasteKg * USD_PER_KG)
+  const laborHrs = +(((total || 0) * MANUAL_SEC) / 3600).toFixed(1)
+  const spanH =
+    winPicks.length > 1
+      ? Math.max(1 / 60, (winPicks[winPicks.length - 1].ts - winPicks[0].ts) / 3600000)
+      : null
+  const kgPerHr = spanH ? +((okCount * KG_PER_PICK) / spanH).toFixed(1) : null
+  const vsManual = avgMs ? +(MANUAL_SEC / (avgMs / 1000)).toFixed(1) : null
+  const peakThroughput = Math.max(0, ...series.buckets)
+
+  // detection stats (from the live detection stream)
+  const detCount = detections.length
+  const detConf = detCount
+    ? detections.reduce((s, d) => s + (d.conf ?? 0), 0) / detCount
+    : null
+  const lastDet = detections[0] ?? null
+
+  // all-time aggregate from the server (live only)
+  const allTime =
+    serverStats && !sim
+      ? {
+          total: serverStats.total,
+          rate: serverStats.success_rate,
+          waste: serverStats.waste_avoided_kg,
+        }
+      : null
 
   return (
     <div className="az">
+      <BackToStage />
       {/* manga-shaded deco scene + editor (background) */}
       <HeroBoundary>
         <Suspense fallback={null}>
@@ -264,7 +357,7 @@ export default function Analytics() {
             </button>
           ))}
         </div>
-        <span className={`az-live${live ? '' : ' stale'}`}>
+        <span className={`az-live${streaming ? '' : ' stale'}`}>
           <span className="sq" />
           {sim
             ? 'SIM STREAM'
@@ -284,18 +377,31 @@ export default function Analytics() {
         </p>
       )}
 
+      {/* impact / ROI strip */}
+      <div className="az-panel az-impact">
+        <h3>Impact // waste kept off the ground this {winLabel === 'ALL' ? 'session' : winLabel.toLowerCase()}</h3>
+        <div className="az-impact-grid">
+          <div className="az-imp"><b><Num value={wasteKg} digits={1} /><i>kg</i></b><span>waste avoided</span></div>
+          <div className="az-imp"><b><Num value={co2eKg} digits={1} /><i>kg</i></b><span>CO2e avoided</span></div>
+          <div className="az-imp"><b><i>$</i><Num value={usd} /></b><span>value recovered</span></div>
+          <div className="az-imp"><b><Num value={laborHrs} digits={1} /><i>h</i></b><span>labor saved</span></div>
+          <div className="az-imp"><b><Num value={kgPerHr ?? 0} digits={1} /><i>kg/h</i></b><span>{vsManual ? `${vsManual}x manual` : 'throughput'}</span></div>
+        </div>
+      </div>
+
       {/* metric tiles */}
       <div className="az-grid az-metrics">
         <Metric
           label="Total picks"
-          value={fmt(total)}
+          value={<Num value={total} />}
+          flash={flash}
           sub={`${okCount} ok / ${winPicks.length - okCount} fail (${winLabel})`}
           series={series.picksCum}
           color={C_INK}
         />
         <Metric
           label="Sort success"
-          value={rate != null ? Math.round(rate * 100) : '--'}
+          value={<Num value={rate != null ? Math.round(rate * 100) : '--'} />}
           unit="%"
           sub={
             rate != null
@@ -307,29 +413,22 @@ export default function Analytics() {
           area={false}
         />
         <Metric
-          label="Waste avoided"
-          value={fmt(waste, 2)}
-          unit="kg"
-          sub={`${KG_PER_PICK} kg per fruit`}
-          series={series.wasteCum}
-          color={C_INK}
-        />
-        <Metric
-          label={co2eShown ? 'CO2e avoided' : 'Avg pick time'}
-          value={
-            co2eShown
-              ? fmt(co2e, 2)
-              : avgMs != null
-                ? (avgMs / 1000).toFixed(1)
-                : '--'
-          }
-          unit={co2eShown ? 'kg' : 's'}
-          sub={
-            avgMs != null ? `avg cycle ${(avgMs / 1000).toFixed(1)}s` : undefined
-          }
+          label="Avg pick time"
+          value={<Num value={avgMs != null ? avgMs / 1000 : '--'} digits={1} />}
+          unit="s"
+          sub={vsManual ? `${vsManual}x a manual picker` : 'cycle time'}
           series={series.wasteCum}
           color={C_GREY}
-          area={co2eShown}
+          area={false}
+        />
+        <Metric
+          label="Vision confidence"
+          value={<Num value={detConf != null ? Math.round(detConf * 100) : '--'} />}
+          unit="%"
+          sub={detCount ? `${detCount} detections` : 'no detections yet'}
+          series={series.successRoll}
+          color={C_INK}
+          area={false}
         />
       </div>
 
@@ -390,10 +489,55 @@ export default function Analytics() {
         </div>
       </div>
 
-      {/* throughput strip */}
-      <div className="az-panel az-strip">
-        <h3>Throughput / picks over {winLabel === 'ALL' ? 'session' : winLabel}</h3>
-        <Sparkline data={series.buckets} color={C_INK} area height={58} />
+      {/* trends */}
+      <div className="az-panel az-trends">
+        <h3>Trends // throughput bars + sort-success line over {winLabel === 'ALL' ? 'session' : winLabel}</h3>
+        <TrendChart bars={series.buckets} line={series.successRoll} />
+        <div className="az-trend-legend">
+          <span><i className="k-bar" /> throughput (peak {peakThroughput}/bucket)</span>
+          <span><i className="k-line" /> sort success</span>
+          {allTime && <span className="k-all">all-time {allTime.total} picks</span>}
+        </div>
+      </div>
+
+      {/* live feed + all-time / vision */}
+      <div className="az-grid az-two">
+        <div className="az-panel">
+          <h3>Last picks</h3>
+          <ul className="az-feed">
+            {picks.length === 0 && <li className="empty">waiting for picks...</li>}
+            {picks.slice(0, 8).map((p, i) => (
+              <li key={`${p.ts}-${i}`}>
+                <span className="t">{new Date(p.ts).toLocaleTimeString([], { hour12: false })}</span>
+                <span className="f">{p.fruit} {p.ripeness}</span>
+                <span className="ar">{'->'}</span>
+                <span className="bn">{p.bin}</span>
+                <span className={`st ${p.success ? 'y' : 'n'}`}>{p.success ? 'OK' : 'FAIL'}</span>
+                <span className="dd">{p.duration_ms ? `${(p.duration_ms / 1000).toFixed(1)}s` : ''}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="az-panel">
+          <h3>{allTime ? 'All-time (server)' : 'Vision'}</h3>
+          <div className="az-kv">
+            {allTime ? (
+              <>
+                <div><span>picks</span><b>{allTime.total}</b></div>
+                <div><span>success</span><b>{allTime.rate != null ? `${Math.round(allTime.rate * 100)}%` : '--'}</b></div>
+                <div><span>waste</span><b>{allTime.waste != null ? `${allTime.waste} kg` : '--'}</b></div>
+                <div><span>CO2e</span><b>{co2eKg} kg</b></div>
+              </>
+            ) : (
+              <>
+                <div><span>avg confidence</span><b>{detConf != null ? `${Math.round(detConf * 100)}%` : '--'}</b></div>
+                <div><span>detections</span><b>{detCount}</b></div>
+                <div><span>last seen</span><b>{lastDet ? `${lastDet.fruit} ${lastDet.ripeness}` : '--'}</b></div>
+                <div><span>last conf</span><b>{lastDet ? `${Math.round((lastDet.conf ?? 0) * 100)}%` : '--'}</b></div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
         </div>
       </div>

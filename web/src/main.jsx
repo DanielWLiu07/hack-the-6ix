@@ -5,9 +5,6 @@ import { Auth0Provider, useAuth0 } from '@auth0/auth0-react'
 import './index.css'
 import App from './App.jsx'
 import Layout from './components/Layout.jsx'
-import Teleop from './pages/Teleop.jsx'
-import Analytics from './pages/Analytics.jsx'
-import Harvest from './pages/Harvest.jsx'
 
 // three.js is ~1 MB - only load it when the lidar page is opened
 const LidarView = lazy(() => import('./pages/LidarView.jsx'))
@@ -19,7 +16,16 @@ const RobotPOV = lazy(() => import('./pages/RobotPOV.jsx'))
 const SlamEmbed = lazy(() => import('./pages/SlamEmbed.jsx'))
 // monkey-page stage (TV + rising manga monkey) - heavy 3D, lazy-loaded
 const MonkeyStage = lazy(() => import('./pages/MonkeyStage.jsx'))
+// These pages never load on the landing, so keep them out of the entry chunk.
+const Teleop = lazy(() => import('./pages/Teleop.jsx'))
+const Analytics = lazy(() => import('./pages/Analytics.jsx'))
+const Harvest = lazy(() => import('./pages/Harvest.jsx'))
+const Info = lazy(() => import('./pages/Info.jsx'))
+const Swarm = lazy(() => import('./pages/Swarm.jsx'))
 import { RobotProvider } from './lib/robot.jsx'
+import { OperatorAuthProvider } from './lib/auth.jsx'
+import OperatorBadge from './components/OperatorBadge.jsx'
+import TvTransitionProvider from './lib/tvTransition.jsx'
 
 const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN
 const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID
@@ -88,9 +94,12 @@ function MaybeAuth0({ children }) {
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
+    <OperatorAuthProvider>
     <MaybeAuth0>
       <MaybeRobotProvider>
         <BrowserRouter>
+          <OperatorBadge />
+          <TvTransitionProvider>
           <Routes>
             <Route path="/" element={<App />} />
             <Route
@@ -131,7 +140,14 @@ createRoot(document.getElementById('root')).render(
                 </Suspense>
               }
             />
-            <Route path="/teleop" element={<Teleop />} />
+            <Route
+              path="/teleop"
+              element={
+                <Suspense fallback={<p className="empty">Loading...</p>}>
+                  <Teleop />
+                </Suspense>
+              }
+            />
             <Route element={<Layout />}>
             {/* Kept as a compatibility redirect; the stage is the app hub. */}
             <Route path="/dashboard" element={<Navigate replace to="/stage" />} />
@@ -143,12 +159,44 @@ createRoot(document.getElementById('root')).render(
                   </Suspense>
                 }
               />
-              <Route path="/analytics" element={<Analytics />} />
-              <Route path="/harvest" element={<Harvest />} />
+              <Route
+                path="/analytics"
+                element={
+                  <Suspense fallback={<p className="empty">Loading...</p>}>
+                    <Analytics />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/swarm"
+                element={
+                  <Suspense fallback={<p className="empty">Loading...</p>}>
+                    <Swarm />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/harvest"
+                element={
+                  <Suspense fallback={<p className="empty">Loading...</p>}>
+                    <Harvest />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/info"
+                element={
+                  <Suspense fallback={<p className="empty">Loading...</p>}>
+                    <Info />
+                  </Suspense>
+                }
+              />
             </Route>
           </Routes>
+          </TvTransitionProvider>
         </BrowserRouter>
       </MaybeRobotProvider>
     </MaybeAuth0>
+    </OperatorAuthProvider>
   </StrictMode>,
 )

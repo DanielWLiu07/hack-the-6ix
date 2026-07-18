@@ -77,6 +77,7 @@ export function RobotProvider({ children, authToken = null, authReady = true }) 
       'slam_map',
       'slam_pose',
       'nl_action',
+      'fleet',
     ]) {
       socket.on(ev, (payload) => bus.push(ev, payload))
     }

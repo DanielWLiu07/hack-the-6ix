@@ -7,7 +7,16 @@
 
 import { Component, useLayoutEffect, useMemo, useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+
+// Stable 0..2pi phase from an instance id so two copies of one prop (the two
+// banana bunches) idle out of sync without needing Math.random at mount.
+function phaseFromId(id) {
+  let h = 0
+  for (let i = 0; i < id.length; i += 1) h = (h * 31 + id.charCodeAt(i)) % 997
+  return (h / 997) * Math.PI * 2
+}
 
 export function StageProp({ inst, catalog, bind, onReady }) {
   const { scene } = useGLTF(catalog.url)
@@ -63,6 +72,26 @@ export function StageProp({ inst, catalog, bind, onReady }) {
     }
   }, [model, catalog.height])
 
+  // Idle background motion. Applied to an INNER group so the editor's drag /
+  // slider writes on the outer placement group are never fought. `anim` comes
+  // from the catalog: 'sway' = pendulum (hanging fruit), 'scan' = slow base yaw
+  // (idle robot arm sweeping). Frameloop is already paused when the tab hides
+  // (CanvasGuard), so this stops itself off-screen.
+  const anim = catalog.anim
+  const phase = useMemo(() => phaseFromId(inst.id), [inst.id])
+  const animRef = useRef(null)
+  useFrame((state) => {
+    const g = animRef.current
+    if (!g || !anim) return
+    const t = state.clock.elapsedTime
+    if (anim === 'sway') {
+      g.rotation.z = Math.sin(t * 0.9 + phase) * 0.06
+      g.rotation.x = Math.sin(t * 0.7 + phase * 1.3) * 0.035
+    } else if (anim === 'scan') {
+      g.rotation.y = Math.sin(t * 0.35 + phase) * 0.16
+    }
+  })
+
   const groupRef = useRef(null)
   useLayoutEffect(() => {
     const g = groupRef.current
@@ -83,8 +112,10 @@ export function StageProp({ inst, catalog, bind, onReady }) {
       scale={inst.scale || [1, 1, 1]}
       {...bind}
     >
-      <group scale={fit.s} position={fit.pos}>
-        <primitive object={model} />
+      <group ref={animRef}>
+        <group scale={fit.s} position={fit.pos}>
+          <primitive object={model} />
+        </group>
       </group>
     </group>
   )

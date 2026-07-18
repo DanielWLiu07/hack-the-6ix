@@ -1,0 +1,49 @@
+/* Fixed back-to-stage pill. Translucent dark so it reads on both the dark app
+   pages and the light paper-toned POV view. Sits above page chrome and 3D
+   canvases, but below the stage nav portal (which uses the max z-index). */
+.back-to-stage {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 2147483000;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 12px 7px 8px;
+  border-radius: 999px;
+  font: 600 12.5px/1 var(--ui-mono, ui-monospace, 'SF Mono', Menlo, monospace);
+  letter-spacing: 0.02em;
+  color: #eef4ef;
+  text-decoration: none;
+  background: rgba(11, 16, 13, 0.62);
+  border: 1px solid rgba(232, 239, 233, 0.2);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  transition: background 0.14s ease, border-color 0.14s ease, transform 0.1s ease;
+}
+
+.back-to-stage:hover {
+  background: rgba(18, 26, 21, 0.84);
+  border-color: var(--ui-green, #46a758);
+}
+
+.back-to-stage:active {
+  transform: translateY(1px);
+}
+
+.back-to-stage:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(70, 167, 88, 0.5);
+}
+
+.back-to-stage-chevron {
+  flex: none;
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .back-to-stage {
+    transition: none;
+  }
+}

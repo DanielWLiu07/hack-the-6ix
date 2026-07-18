@@ -9,12 +9,39 @@
 // MangaPass. GLB props load from /scene/models/ and degrade gracefully if any
 // are missing (e.g. not deployed) - the procedural machinery always shows.
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader, MeshoptDecoder } from 'three-stdlib'
 import { MangaPass } from '../lib/mangaPass.js'
+import {
+  FRINGE_MODELS,
+  FRINGE_PROPS,
+  FRINGE_DEFAULT_SCALE,
+  FRINGE_DEFAULT_Z,
+} from '../lib/fringeProps.js'
 
 const MODELS = '/scene/models/'
+
+// Idle motion so every fringe prop reads "alive". Each is additive to the
+// prop's baked transform (applied around a captured rest pose in the loop). A
+// global toggle and the currently-selected prop freeze it so editing is stable.
+const ANIM_KINDS = {
+  bob: { kind: 'bob', spd: 1.1, amp: 0.09 },     // vertical hover
+  sway: { kind: 'sway', spd: 0.9, amp: 0.08 },   // roll rock
+  spin: { kind: 'spin', spd: 0.6, amp: 0 },      // continuous yaw (beacon)
+  nod: { kind: 'nod', spd: 1.3, amp: 0.13 },     // pitch scan (cam head)
+  pulse: { kind: 'pulse', spd: 1.6, amp: 0.05 }, // scale breathing (vents)
+}
+// Thematic motion per model, with a cycle fallback for anything unlisted.
+const FILE_ANIM = {
+  'beacon.glb': ANIM_KINDS.spin,
+  'camhead2.glb': ANIM_KINDS.nod,
+  'vent2.glb': ANIM_KINDS.pulse,
+  'manifold.glb': ANIM_KINDS.sway,
+  'console.glb': ANIM_KINDS.bob,
+  'infosign.glb': ANIM_KINDS.sway,
+}
+const ANIM_CYCLE = [ANIM_KINDS.bob, ANIM_KINDS.sway, ANIM_KINDS.spin, ANIM_KINDS.nod, ANIM_KINDS.pulse]
 
 // scale a loaded model to a target longest-edge and recenter it
 function fitUnit(root, len) {
@@ -29,8 +56,19 @@ function fitUnit(root, len) {
   return inner
 }
 
-export default function RobotFringe() {
+export default function RobotFringe({ edit = false }) {
   const canvasRef = useRef(null)
+  // Imperative bridge into the three.js scene, populated once by the effect and
+  // called by the DOM editor panel (add / delete / duplicate / export).
+  const apiRef = useRef(null)
+  // Latest edit flag, read inside the (build-once) effect's pointer handlers.
+  const editRef = useRef(edit)
+  editRef.current = edit
+  // Selected prop summary for the panel (id + file), or null. The effect owns
+  // the live THREE object; this only drives which panel/handles show.
+  const [sel, setSel] = useState(null)
+  const setSelRef = useRef(setSel)
+  setSelRef.current = setSel
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -326,34 +364,214 @@ export default function RobotFringe() {
       deco.traverse((o) => { o.frustumCulled = false })
     }, undefined, () => console.warn('[pov] gears.glb missing'))
 
-    const PROPS = [
-      { file: 'vent2.glb', x: -1.64, y: 5.93, s: 1.25, rz: 0.05 },
-      { file: 'manifold.glb', x: -7.9, y: 5.85, s: 2.1, rz: 0 },
-      { file: 'console.glb', x: 3.84, y: 6.29, s: 1.35, rz: -0.07 },
-      { file: 'beacon.glb', x: 7.6, y: 5.65, s: 0.85, rz: 0.1 },
-      { file: 'vent2.glb', x: -8.55, y: 4.62, s: 1.05, rz: -0.18 },
-      { file: 'vent2.glb', x: 8.52, y: 4.56, s: 1.05, rz: 0.18 },
-      { file: 'console.glb', x: -5.2, y: 6.54, s: 0.92, rz: 0.12 },
-      { file: 'beacon.glb', x: -0.1, y: 6.84, s: 0.72, rz: 0 },
-      { file: 'manifold.glb', x: 5.92, y: 6.1, s: 1.15, rz: -0.08 },
-      // extra generated props placed around the fringe (camera head + info sign)
-      { file: 'camhead2.glb', x: -4.35, y: 6.98, s: 1.15, rz: 0.09 },
-      { file: 'infosign.glb', x: 4.75, y: 6.92, s: 1.35, rz: -0.06 },
-      { file: 'camhead2.glb', x: 8.15, y: 6.35, s: 0.9, rz: 0.16 },
-    ]
-    for (const p of PROPS) {
-      loader.load(MODELS + p.file, (g) => {
+    // ---- editable props (the "stuff" the editor adds / arranges) ----
+    // Each spec becomes a holder group added to `fringe`. `editable` keeps
+    // insertion order so exportProps() emits the layout you see. The eyes/gears
+    // above are NOT in this list, so the editor never grabs them.
+    const editable = []
+    let editSeq = 0
+    const round = (n) => Number(n.toFixed(3))
+
+    function spawnProp(spec, select = false) {
+      const editId = (editSeq += 1)
+      const baseScale = spec.s ?? FRINGE_DEFAULT_SCALE
+      const holder = new THREE.Group()
+      holder.position.set(spec.x, spec.y, spec.z ?? FRINGE_DEFAULT_Z)
+      holder.rotation.set(spec.rx ?? 0, spec.ry ?? 0, spec.rz ?? 0)
+      holder.userData.editId = editId
+      fringe.add(holder)
+      const rec = {
+        editId,
+        file: spec.file,
+        holder,
+        baseScale,
+        anim: FILE_ANIM[spec.file] || ANIM_CYCLE[(editId - 1) % ANIM_CYCLE.length],
+        phase: editId * 1.7, // deterministic per-prop offset so they desync
+        // rest pose the idle motion oscillates around; edits (while selected)
+        // write back into it, so animation resumes from the new placement.
+        base: {
+          px: holder.position.x, py: holder.position.y, pz: holder.position.z,
+          rx: holder.rotation.x, ry: holder.rotation.y, rz: holder.rotation.z, sc: 1,
+        },
+      }
+      editable.push(rec)
+      loader.load(MODELS + spec.file, (g) => {
         if (disposed) return
         const lifted = new THREE.MeshStandardMaterial({ color: '#e8eaee', roughness: 0.55, metalness: 0.05, emissive: '#75797f', emissiveIntensity: 0.9 })
         g.scene.traverse((o) => { if (o.isMesh) o.material = lifted })
-        const holder = new THREE.Group()
-        holder.add(fitUnit(g.scene, p.s))
-        holder.position.set(p.x, p.y, -1.3)
-        holder.rotation.z = p.rz
+        holder.add(fitUnit(g.scene, baseScale))
         holder.traverse((o) => { o.frustumCulled = false })
-        fringe.add(holder)
-      }, undefined, () => console.warn('[pov]', p.file, 'missing'))
+        if (select) selectProp(rec)
+      }, undefined, () => console.warn('[pov]', spec.file, 'missing'))
+      return rec
     }
+
+    // ---- selection + pick/drag/nudge (raw three.js; the manga pass makes a
+    // TransformControls gizmo unusable, so props are grabbed on a camera-facing
+    // plane like the /stage editor). Gated by editRef so the normal POV never
+    // captures pointer/keys. ----
+    const raycaster = new THREE.Raycaster()
+    const ndc = new THREE.Vector2()
+    const selBox = new THREE.BoxHelper(new THREE.Object3D(), 0xff8c1a)
+    selBox.visible = false
+    selBox.material.depthTest = false
+    deco.add(selBox)
+    let selected = null
+    let animEnabled = true
+    const drag = { active: false, plane: new THREE.Plane(), offset: new THREE.Vector3() }
+
+    function selectProp(rec) {
+      selected = rec || null
+      if (selected) {
+        selBox.setFromObject(selected.holder)
+        selBox.visible = true
+        setSelRef.current({ editId: selected.editId, file: selected.file })
+      } else {
+        selBox.visible = false
+        setSelRef.current(null)
+      }
+    }
+
+    function recFromHit(obj) {
+      let o = obj
+      while (o) {
+        if (o.userData?.editId) return editable.find((r) => r.editId === o.userData.editId) || null
+        o = o.parent
+      }
+      return null
+    }
+
+    function toNdc(event) {
+      const rect = canvas.getBoundingClientRect()
+      ndc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      ndc.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    }
+
+    function onDown(event) {
+      if (!editRef.current) return
+      toNdc(event)
+      raycaster.setFromCamera(ndc, dcam)
+      const hits = raycaster.intersectObjects(editable.map((r) => r.holder), true)
+      const rec = hits.length ? recFromHit(hits[0].object) : null
+      selectProp(rec)
+      if (!rec) return
+      event.preventDefault()
+      canvas.setPointerCapture(event.pointerId)
+      const worldPos = rec.holder.getWorldPosition(new THREE.Vector3())
+      const normal = dcam.getWorldDirection(new THREE.Vector3())
+      drag.plane.setFromNormalAndCoplanarPoint(normal, worldPos)
+      const grab = new THREE.Vector3()
+      raycaster.ray.intersectPlane(drag.plane, grab)
+      drag.offset.copy(worldPos).sub(grab)
+      drag.active = true
+    }
+
+    function onMove(event) {
+      if (!drag.active || !selected) return
+      toNdc(event)
+      raycaster.setFromCamera(ndc, dcam)
+      const hit = new THREE.Vector3()
+      if (!raycaster.ray.intersectPlane(drag.plane, hit)) return
+      hit.add(drag.offset)
+      fringe.worldToLocal(hit)
+      selected.holder.position.x = hit.x
+      selected.holder.position.y = hit.y
+    }
+
+    function onUp(event) {
+      if (!drag.active) return
+      drag.active = false
+      try { canvas.releasePointerCapture(event.pointerId) } catch { /* was not captured */ }
+    }
+
+    function onKey(event) {
+      if (!editRef.current || !selected) return
+      const tag = event.target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+      const h = selected.holder
+      const step = event.shiftKey ? 0.25 : 0.06
+      const turn = event.shiftKey ? 0.12 : 0.03
+      let used = true
+      switch (event.key) {
+        case 'ArrowLeft': h.position.x -= step; break
+        case 'ArrowRight': h.position.x += step; break
+        case 'ArrowUp': h.position.y += step; break
+        case 'ArrowDown': h.position.y -= step; break
+        case '[': h.position.z -= step; break
+        case ']': h.position.z += step; break
+        case ',': h.rotation.z += turn; break
+        case '.': h.rotation.z -= turn; break
+        case '-': case '_': h.scale.multiplyScalar(0.96); break
+        case '=': case '+': h.scale.multiplyScalar(1.04); break
+        case 'Delete': case 'Backspace': api.deleteSelected(); break
+        default: used = false
+      }
+      if (used) event.preventDefault()
+    }
+
+    // Imperative bridge for the DOM editor panel.
+    const api = {
+      add(file) {
+        return spawnProp({ file, x: 0, y: 6.2, s: FRINGE_DEFAULT_SCALE, rz: 0 }, true)
+      },
+      deleteSelected() {
+        if (!selected) return
+        fringe.remove(selected.holder)
+        const i = editable.indexOf(selected)
+        if (i >= 0) editable.splice(i, 1)
+        selectProp(null)
+      },
+      duplicateSelected() {
+        if (!selected) return
+        const h = selected.holder
+        spawnProp({
+          file: selected.file,
+          x: h.position.x + 0.5,
+          y: h.position.y,
+          z: h.position.z,
+          s: selected.baseScale * h.scale.x,
+          rx: h.rotation.x,
+          ry: h.rotation.y,
+          rz: h.rotation.z,
+        }, true)
+      },
+      clearSelection() { selectProp(null) },
+      getSelected() { return selected ? selected.holder : null },
+      setAnimate(on) { animEnabled = Boolean(on) },
+      getAnimate() { return animEnabled },
+      // live transform sample (used by the editor/tests to inspect motion)
+      sample() {
+        return editable.map((r) => ({
+          file: r.file,
+          y: r.holder.position.y,
+          rx: r.holder.rotation.x,
+          ry: r.holder.rotation.y,
+          rz: r.holder.rotation.z,
+          s: r.holder.scale.x,
+        }))
+      },
+      exportProps() {
+        const rows = editable.map((r) => {
+          const h = r.holder
+          const s = round(r.baseScale * h.scale.x)
+          const zPart = round(h.position.z) === round(FRINGE_DEFAULT_Z) ? '' : `, z: ${round(h.position.z)}`
+          const rxPart = round(h.rotation.x) === 0 ? '' : `, rx: ${round(h.rotation.x)}`
+          const ryPart = round(h.rotation.y) === 0 ? '' : `, ry: ${round(h.rotation.y)}`
+          return `  { file: '${r.file}', x: ${round(h.position.x)}, y: ${round(h.position.y)}, s: ${s}${rxPart}${ryPart}, rz: ${round(h.rotation.z)}${zPart} },`
+        })
+        return `export const FRINGE_PROPS = [\n${rows.join('\n')}\n]`
+      },
+    }
+    apiRef.current = api
+    if (typeof window !== 'undefined') window.__fringe = api
+
+    for (const p of FRINGE_PROPS) spawnProp(p)
+
+    canvas.addEventListener('pointerdown', onDown)
+    canvas.addEventListener('pointermove', onMove)
+    canvas.addEventListener('pointerup', onUp)
+    canvas.addEventListener('pointercancel', onUp)
+    window.addEventListener('keydown', onKey)
 
     // ---- resize + loop ----
     function resize() {
@@ -385,6 +603,34 @@ export default function RobotFringe() {
         gaze.y += Math.sin(t * 1.0 + e.ph) * 1.1
         e.head.lookAt(gaze)
       }
+      // per-prop idle motion. The selected prop follows the user (its rest pose
+      // tracks the live edit); everything else oscillates around its rest pose.
+      // Global toggle off snaps each prop back to rest.
+      for (const r of editable) {
+        const h = r.holder
+        const b = r.base
+        if (r === selected) {
+          b.px = h.position.x; b.py = h.position.y; b.pz = h.position.z
+          b.rx = h.rotation.x; b.ry = h.rotation.y; b.rz = h.rotation.z; b.sc = h.scale.x
+          continue
+        }
+        h.position.set(b.px, b.py, b.pz)
+        h.rotation.set(b.rx, b.ry, b.rz)
+        h.scale.setScalar(b.sc)
+        if (!animEnabled) continue
+        const a = r.anim
+        const w = Math.sin(t * a.spd + r.phase)
+        switch (a.kind) {
+          case 'bob': h.position.y = b.py + w * a.amp; break
+          case 'sway': h.rotation.z = b.rz + w * a.amp; break
+          case 'nod': h.rotation.x = b.rx + w * a.amp; break
+          case 'spin': h.rotation.y = b.ry + t * a.spd; break
+          case 'pulse': h.scale.setScalar(b.sc * (1 + w * a.amp)); break
+          default: break
+        }
+      }
+      // keep the selection outline glued to a prop while it is dragged/nudged
+      if (selBox.visible && selected) selBox.setFromObject(selected.holder)
       manga.render(deco, dcam)
       raf = requestAnimationFrame(loop)
     }
@@ -395,9 +641,155 @@ export default function RobotFringe() {
       cancelAnimationFrame(raf)
       ro.disconnect()
       window.removeEventListener('resize', resize)
+      canvas.removeEventListener('pointerdown', onDown)
+      canvas.removeEventListener('pointermove', onMove)
+      canvas.removeEventListener('pointerup', onUp)
+      canvas.removeEventListener('pointercancel', onUp)
+      window.removeEventListener('keydown', onKey)
+      apiRef.current = null
+      if (typeof window !== 'undefined' && window.__fringe === api) window.__fringe = null
       renderer.dispose()
     }
   }, [])
 
-  return <canvas ref={canvasRef} className="pov-fringe" aria-hidden />
+  // Toggle pointer capture with edit mode without rebuilding the scene. The
+  // fringe canvas is pointer-transparent in normal POV; in edit mode it grabs
+  // clicks so props can be picked/dragged.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.style.pointerEvents = edit ? 'auto' : 'none'
+    if (!edit) apiRef.current?.clearSelection?.()
+  }, [edit])
+
+  return (
+    <>
+      <canvas ref={canvasRef} className={`pov-fringe${edit ? ' editing' : ''}`} aria-hidden />
+      {edit && <FringeEditor apiRef={apiRef} sel={sel} />}
+    </>
+  )
+}
+
+// DOM editor panel (only mounted in edit mode). Palette adds props; the sliders
+// read/write the selected THREE object live via rAF (no React re-render while
+// dragging), mirroring the /stage transform panel. "copy FRINGE_PROPS" emits a
+// paste-ready array for src/lib/fringeProps.js.
+const FRINGE_SLIDERS = [
+  ['pos x', 'position', 'x', -10, 10, 0.01],
+  ['pos y', 'position', 'y', -4, 8, 0.01],
+  ['pos z', 'position', 'z', -4, 2, 0.01],
+  ['rot x', 'rotation', 'x', -Math.PI, Math.PI, 0.005],
+  ['rot y', 'rotation', 'y', -Math.PI, Math.PI, 0.005],
+  ['rot z', 'rotation', 'z', -Math.PI, Math.PI, 0.005],
+  ['scale', 'scale', 'uniform', 0.1, 4, 0.01],
+]
+
+function FringeEditor({ apiRef, sel }) {
+  const inputs = useRef([])
+  const outs = useRef([])
+  const editing = useRef(false)
+  const [copied, setCopied] = useState('')
+  const [animOn, setAnimOn] = useState(true)
+
+  const toggleAnim = () => {
+    setAnimOn((v) => {
+      const next = !v
+      apiRef.current?.setAnimate?.(next)
+      return next
+    })
+  }
+
+  useEffect(() => {
+    let raf
+    const tick = () => {
+      const obj = apiRef.current?.getSelected?.()
+      if (obj && !editing.current) {
+        for (let i = 0; i < FRINGE_SLIDERS.length; i++) {
+          const [, prop, axis] = FRINGE_SLIDERS[i]
+          const v = axis === 'uniform' ? obj[prop].x : obj[prop][axis]
+          const inp = inputs.current[i]
+          const out = outs.current[i]
+          if (inp && document.activeElement !== inp) inp.value = String(v)
+          if (out) out.textContent = v.toFixed(2)
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    tick()
+    return () => cancelAnimationFrame(raf)
+  }, [apiRef])
+
+  const onInput = (i) => (e) => {
+    const obj = apiRef.current?.getSelected?.()
+    if (!obj) return
+    const [, prop, axis] = FRINGE_SLIDERS[i]
+    const v = parseFloat(e.target.value)
+    if (axis === 'uniform') obj.scale.set(v, v, v)
+    else obj[prop][axis] = v
+    if (outs.current[i]) outs.current[i].textContent = v.toFixed(2)
+  }
+
+  const copyProps = () => {
+    const text = apiRef.current?.exportProps?.()
+    if (!text) return
+    navigator.clipboard?.writeText(text).then(
+      () => { setCopied('copied to clipboard'); setTimeout(() => setCopied(''), 1400) },
+      () => setCopied('copy failed - see console') || console.log(text),
+    )
+  }
+
+  return (
+    <div className="fringe-edit">
+      <div className="fringe-edit-head">MACHINE FRINGE EDITOR</div>
+      <div className="fringe-edit-hint">
+        click a prop to select · drag to move · arrows nudge · , . roll · - = scale · del removes
+      </div>
+      <button
+        className={`fringe-edit-anim${animOn ? ' on' : ''}`}
+        type="button"
+        onClick={toggleAnim}
+      >
+        idle animation: {animOn ? 'ON' : 'OFF'}
+      </button>
+      <div className="fringe-edit-palette">
+        {FRINGE_MODELS.map((m) => (
+          <button key={m.id} type="button" onClick={() => apiRef.current?.add?.(m.file)}>
+            + {m.label}
+          </button>
+        ))}
+      </div>
+      {sel ? (
+        <>
+          <div className="fringe-edit-sel">{sel.file}</div>
+          <div className="fringe-edit-sliders">
+            {FRINGE_SLIDERS.map(([label, , , min, max, step], i) => (
+              <label className="fringe-slider-row" key={label}>
+                <span>{label}</span>
+                <input
+                  type="range"
+                  min={min}
+                  max={max}
+                  step={step}
+                  ref={(el) => { inputs.current[i] = el }}
+                  onPointerDown={() => { editing.current = true }}
+                  onPointerUp={() => { editing.current = false }}
+                  onPointerCancel={() => { editing.current = false }}
+                  onInput={onInput(i)}
+                />
+                <output ref={(el) => { outs.current[i] = el }} />
+              </label>
+            ))}
+          </div>
+          <div className="fringe-edit-row">
+            <button type="button" onClick={() => apiRef.current?.duplicateSelected?.()}>duplicate</button>
+            <button type="button" onClick={() => apiRef.current?.deleteSelected?.()}>delete</button>
+          </div>
+        </>
+      ) : (
+        <div className="fringe-edit-sel muted">no prop selected</div>
+      )}
+      <button className="fringe-edit-copy" type="button" onClick={copyProps}>copy FRINGE_PROPS</button>
+      {copied && <div className="fringe-edit-copied">{copied}</div>}
+    </div>
+  )
 }

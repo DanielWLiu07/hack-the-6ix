@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRobot, useRobotEvent, SERVER_URL } from '../lib/robot.jsx'
 import RobotFringe from '../components/RobotFringe.jsx'
 import LidarViewport from '../components/LidarViewport.jsx'
+import BackToStage from '../components/BackToStage.jsx'
 import '../pov.css'
 
 // Robot POV 
@@ -15,9 +16,9 @@ const CAM_H = 480
 const DET_TTL = 2600 // ms a detection box lingers before fading
 
 const TABS = [
-  { id: 'cam', label: 'ARM CAM' },
   { id: 'slam', label: 'SLAM MAP' },
-  { id: 'iphone', label: 'iPHONE LIDAR' },
+  { id: 'iphone', label: '3D LIDAR' },
+  { id: 'cam', label: 'ARM CAM' },
 ]
 
 function LidarLayer({ world }) {
@@ -153,12 +154,16 @@ export default function RobotPOV() {
     const q = new URLSearchParams(window.location.search).get('tab')
     return TABS.some((t) => t.id === q) ? q : 'iphone'
   })
+  // ?edit=1 turns the machine-fringe into a 3D-prop editor on the cam tab (drag
+  // props, tweak, add from the palette, copy the layout back to fringeProps.js).
+  const editFringe =
+    new URLSearchParams(window.location.search).has('edit') && tab === 'cam'
   const [isFs, setIsFs] = useState(false)
 
   // Live gate. OFF by default so no socket-sourced data (which may be a stand-in
   // robot / camera test pattern, indistinguishable from real hardware here)
   // shows. The operator presses GO LIVE once the real robot is streaming.
-  const [live, setLive] = useState(false)
+  const [live] = useState(true) // always live now (GO LIVE removed)
   const liveRef = useRef(live)
   liveRef.current = live
 
@@ -171,7 +176,7 @@ export default function RobotPOV() {
     setTimeout(() => setBoxes((prev) => prev.filter((b) => b.id !== id)), DET_TTL)
   })
 
-  const feedsOn = live && connected // gate every live sensor + readout on this
+  const feedsOn = connected // live data shows whenever the hub is connected (no GO LIVE gate)
   const hasTele = feedsOn && telemetry
   const state = feedsOn ? (telemetry?.state ?? 'IDLE') : 'OFFLINE'
   const batt = hasTele ? telemetry.battery_v : null
@@ -221,6 +226,7 @@ export default function RobotPOV() {
 
   return (
     <div className="pov-root" ref={rootRef}>
+      <BackToStage />
    {/* active sensor view */}
       <div className="pov-main">{view}</div>
       <div className="pov-vignette" />
@@ -231,7 +237,7 @@ export default function RobotPOV() {
           WebGL context in THIS document: the camera tab has no 3D canvas, and
           both the SLAM and iPhone tabs render their 3D inside isolated iframes
           (/pov-slam and phone.html), each with its own context. */}
-      <RobotFringe />
+      <RobotFringe edit={editFringe} />
 
    {/* HUD */}
       <div className="pov-hud">
@@ -242,35 +248,6 @@ export default function RobotPOV() {
         <div className="pov-scanline" />
 
         {/* top bar */}
-        <div className="pov-top">
-          <div className="pov-top-l">
-            <span className={`pov-state ${state}`}>{state}</span>
-            <span className="pov-batt">
-              <span className="lab">PWR</span>
-              <span className="track">
-                <span
-                  className={battPct < 0.2 ? 'crit' : battPct < 0.4 ? 'warn' : ''}
-                  style={{ width: `${battPct * 100}%` }}
-                />
-              </span>
-              <span className="v">{batt != null ? `${batt.toFixed(1)}V` : '-'}</span>
-            </span>
-          </div>
-
-          <div className="pov-top-r">
-            <button
-              className={`pov-live ${live ? 'on' : ''}`}
-              onClick={() => setLive((v) => !v)}
-              title={live ? 'Stop live feeds' : 'Show live robot feeds'}
-            >
-              {live ? 'LIVE' : 'GO LIVE'}
-            </button>
-            <button className="pov-fs" onClick={toggleFs} title="Fullscreen">
-              {isFs ? 'EXIT FS' : 'FULL'}
-            </button>
-          </div>
-        </div>
-
         {/* center reticle (camera view only) */}
         {tab === 'cam' && feedsOn && (
           <div className={`pov-reticle ${locked ? 'lock' : ''}`}>
@@ -281,7 +258,7 @@ export default function RobotPOV() {
           </div>
         )}
 
-        {/* bottom: uniform telemetry chips + segmented view tabs */}
+        {/* bottom: status + controls, telemetry chips, segmented view tabs */}
         <div className="pov-bottom">
           <div className="pov-tele">
             <div className="chip">
@@ -314,17 +291,39 @@ export default function RobotPOV() {
             </div>
           </div>
 
-          <div className="pov-seg" style={{ '--n': TABS.length, '--i': activeTab }}>
-            <span className="pov-seg-thumb" aria-hidden="true" />
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                className={`pov-seg-btn ${tab === t.id ? 'on' : ''}`}
-                onClick={() => setTab(t.id)}
-              >
-                {t.label}
+          <div className="pov-barrow">
+            <div className="pov-top-l">
+              <span className={`pov-state ${state}`}>{state}</span>
+              <span className="pov-batt">
+                <span className="lab">PWR</span>
+                <span className="track">
+                  <span
+                    className={battPct < 0.2 ? 'crit' : battPct < 0.4 ? 'warn' : ''}
+                    style={{ width: `${battPct * 100}%` }}
+                  />
+                </span>
+                <span className="v">{batt != null ? `${batt.toFixed(1)}V` : '-'}</span>
+              </span>
+            </div>
+
+            <div className="pov-seg" style={{ '--n': TABS.length, '--i': activeTab }}>
+              <span className="pov-seg-thumb" aria-hidden="true" />
+              {TABS.map((t) => (
+                <button
+                  key={t.id}
+                  className={`pov-seg-btn ${tab === t.id ? 'on' : ''}`}
+                  onClick={() => setTab(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="pov-top-r">
+              <button className="pov-fs" onClick={toggleFs} title="Fullscreen">
+                {isFs ? 'EXIT FS' : 'FULL'}
               </button>
-            ))}
+            </div>
           </div>
         </div>
       </div>

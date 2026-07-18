@@ -377,6 +377,41 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
   z-index: 2;
 }
 
+/* Scanned-robot splat overlay: above the painterly backdrop (z 2), below the
+   landing UI (z 5+). Non-interactive so it never blocks the scene or controls. */
+.robot-rollin {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+.robot-rollin canvas { display: block; width: 100%; height: 100%; }
+/* ?tunesplat orientation panel (dev-only). */
+.splat-tune {
+  position: fixed;
+  right: 20px;
+  top: 20px;
+  z-index: 60;
+  pointer-events: auto;
+  width: 230px;
+  padding: 10px 12px;
+  color: rgba(255, 255, 255, .85);
+  font: 600 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: rgba(9, 10, 13, .75);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.splat-tune-head { color: #f3ecdd; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.splat-tune .slider-row { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 8px; }
+.splat-tune .slider-label { color: rgba(255,255,255,.6); }
+.splat-tune input[type="range"] { width: 100%; height: 4px; accent-color: #46a758; cursor: pointer; }
+
 /* In scene mode this layer IS the landing: one MonkeyStage hosting the single
    painterly iframe, camera zoomed in. The zoom-out is driven entirely by the
    stage's r3f camera (CameraRig), so this layer carries no CSS transform, or
@@ -649,11 +684,19 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
 /* Colour-coded page label billboarded on each 3D manga TV in the stage nav. */
 .tv3d-label {
   font-family: var(--ui-display, 'Brush Script MT', cursive);
-  font-size: 30px;
+  font-size: 46px;
   line-height: 1;
   white-space: nowrap;
   user-select: none;
-  transform: rotate(-1.5deg);
+  transform: rotate(-1.5deg) scale(1);
+  transform-origin: center;
+  transition: transform .18s ease, color .18s ease, text-shadow .18s ease;
+}
+/* Hover grows the TEXT (the monitor itself does not scale, it just brightens). */
+/* The label is a child of the TV group, so it already grows with the TV on
+   hover - no extra scale here, or the text would grow more than the monitor. */
+.tv3d-label.is-hover {
+  transform: rotate(-1.5deg) scale(1);
 }
 
 /* Mimic mode: live webcam preview pinned bottom-right of the stage. */
@@ -707,6 +750,18 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
 /* -- Monkey stage: TV + rising manga monkey, funky navbar fades in on zoom -- */
 .stage { position: relative; width: 100%; height: 100vh; overflow: hidden; background: #0b0d10; }
 .stage canvas { display: block; }
+/* Fullscreen tune-in static for the landing->stage arrival. Above the nav so it
+   reads as a full static screen during the hold; JS drives its opacity. */
+.stage-fuzz {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483040;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  opacity: 0;
+  image-rendering: pixelated;
+}
 .stage-nav {
   /* above the drei <Html> screen container (z ~15.7M) so the nav is never hidden */
   position: absolute; top: 0; left: 0; right: 0; z-index: 2147483000;

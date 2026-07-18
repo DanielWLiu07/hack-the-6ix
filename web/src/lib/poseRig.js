@@ -34,18 +34,22 @@ const SEGMENTS = [
   { bone: 'RightLeg', child: 'RightFoot', a: LM.R_KNEE, b: LM.R_ANKLE },
 ]
 
+// Normalize a bone name so both the Meshy rig ('LeftArm') and a Mixamo rig
+// ('mixamorig:LeftArm', sanitized by three to 'mixorigLeftArm') resolve the same.
+const normBone = (name) => name.toLowerCase().replace(/[^a-z]/g, '').replace(/^mixamorig/, '')
+
 // Build the retarget rig once from a GLB scene in its rest (bind) pose. Captures
 // each bone's rest child-direction and rest world orientation in model space.
 export function buildRig(scene) {
   const bones = {}
   scene.updateMatrixWorld(true)
-  scene.traverse((o) => { if (o.isBone) bones[o.name] = o })
+  scene.traverse((o) => { if (o.isBone) bones[normBone(o.name)] = o })
   const wp = new THREE.Vector3()
   const cp = new THREE.Vector3()
   const segs = []
   for (const s of SEGMENTS) {
-    const bone = bones[s.bone]
-    const child = bones[s.child]
+    const bone = bones[normBone(s.bone)]
+    const child = bones[normBone(s.child)]
     if (!bone || !child) continue
     bone.getWorldPosition(wp)
     child.getWorldPosition(cp)

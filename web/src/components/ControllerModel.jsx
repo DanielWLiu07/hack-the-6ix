@@ -74,18 +74,51 @@ const CONTROLS = [
 // A thumbstick proxy (dark base + concave cap) sat over the model's stick so it
 // visibly tilts with the real one.
 const LIVE_LABELS = [
-  { key: 'up', label: 'D-PAD', type: 'dpad', pos: [-1.85, 0.32, 0.12], target: [-0.62, 0.34, 0.28] },
-  { key: 'triangle', label: '△', pos: [1.7, 0.86, 0.12], target: [0.53, 0.45, 0.28] },
-  { key: 'circle', label: '○', pos: [1.95, 0.34, 0.12], target: [0.69, 0.34, 0.28] },
-  { key: 'cross', label: '✕', pos: [1.92, -0.24, 0.12], target: [0.53, 0.22, 0.28] },
-  { key: 'square', label: '□', pos: [1.92, -0.72, 0.12], target: [0.37, 0.34, 0.28] },
-  { key: 'l1', label: 'L1/L2', pos: [-1.7, 1.3, 0.12], target: [-0.52, 0.55, 0.22] },
-  { key: 'r1', label: 'R1/R2', pos: [1.7, 1.3, 0.12], target: [0.52, 0.55, 0.22] },
+  { key: 'up', label: 'D-PAD', type: 'dpad', pos: [-1.85, 0.32, 0.12], target: [-0.73, 0.39, 0.28] },
+  { key: 'triangle', label: '△', pos: [1.7, 0.86, 0.12], target: [0.72, 0.57, 0.28] },
+  { key: 'circle', label: '○', pos: [1.95, 0.34, 0.12], target: [0.9, 0.39, 0.28] },
+  { key: 'cross', label: '✕', pos: [1.92, -0.24, 0.12], target: [0.72, 0.22, 0.28] },
+  { key: 'square', label: '□', pos: [1.92, -0.72, 0.12], target: [0.54, 0.38, 0.28] },
+  { key: 'l1', label: 'L1/L2', pos: [-1.7, 1.3, 0.12], target: [-0.68, 0.78, 0.22] },
+  { key: 'r1', label: 'R1/R2', pos: [1.7, 1.3, 0.12], target: [0.7, 0.76, 0.22] },
   { key: 'leftStick', label: 'L STICK', type: 'stick', pos: [-1.9, -1.28, 0.12], target: [-0.27, 0.05, 0.28] },
   { key: 'rightStick', label: 'R STICK', type: 'stick', pos: [1.9, -1.28, 0.12], target: [0.27, 0.05, 0.28] },
 ]
 
-function LiveLabels({ stateRef }) {
+// One callout: a leader line from the label bubble to a pin (target) on the
+// controller, plus the drei Html label itself. In pin-edit mode the pin is a
+// big red draggable dot so the target can be placed by hand.
+function LabelNode({ item, target, editAnnot, onTargetMove, registerNode }) {
+  const bind = usePropDrag(item.key, target, onTargetMove)
+  return (
+    <group>
+      <Line points={[item.pos, target]} color="#151515" lineWidth={editAnnot ? 1.4 : 0.75} transparent opacity={editAnnot ? 0.75 : 0.55} />
+      <mesh position={target} {...(editAnnot ? bind : {})}>
+        <sphereGeometry args={[editAnnot ? 0.09 : 0.025, 14, 14]} />
+        <meshBasicMaterial color={editAnnot ? '#e5484d' : '#151515'} />
+      </mesh>
+      <Html position={item.pos} center className="scene-control-label" distanceFactor={8.5} zIndexRange={[2, 0]}>
+        <span ref={registerNode}>
+          <b>{item.label}</b><em>IDLE</em>
+          {item.type === 'dpad' && (
+            <i className="scene-dpad" aria-hidden="true">
+              <i className="scene-dpad-up" /><i className="scene-dpad-left" />
+              <i className="scene-dpad-center" /><i className="scene-dpad-right" />
+              <i className="scene-dpad-down" />
+            </i>
+          )}
+          {item.type === 'stick' && (
+            <i className="scene-joy-wrap" aria-hidden="true">
+              <i className="scene-joy"><i className="scene-joy-dot" /></i>
+            </i>
+          )}
+        </span>
+      </Html>
+    </group>
+  )
+}
+
+function LiveLabels({ stateRef, targets, editAnnot, onTargetMove }) {
   const nodes = useRef([])
   useFrame(() => {
     const input = stateRef.current || {}
@@ -117,34 +150,18 @@ function LiveLabels({ stateRef }) {
     }
   })
   return LIVE_LABELS.map((item, index) => (
-    <group key={item.key}>
-      <Line points={[item.pos, item.target]} color="#151515" lineWidth={0.75} transparent opacity={0.55} />
-      <mesh position={item.target}>
-        <sphereGeometry args={[0.025, 10, 10]} />
-        <meshBasicMaterial color="#151515" />
-      </mesh>
-      <Html position={item.pos} center className="scene-control-label" distanceFactor={8.5} zIndexRange={[2, 0]}>
-        <span ref={(node) => (nodes.current[index] = node)}>
-          <b>{item.label}</b><em>IDLE</em>
-          {item.type === 'dpad' && (
-            <i className="scene-dpad" aria-hidden="true">
-              <i className="scene-dpad-up" /><i className="scene-dpad-left" />
-              <i className="scene-dpad-center" /><i className="scene-dpad-right" />
-              <i className="scene-dpad-down" />
-            </i>
-          )}
-          {item.type === 'stick' && (
-            <i className="scene-joy-wrap" aria-hidden="true">
-              <i className="scene-joy"><i className="scene-joy-dot" /></i>
-            </i>
-          )}
-        </span>
-      </Html>
-    </group>
+    <LabelNode
+      key={item.key}
+      item={item}
+      target={targets?.[item.key] ?? item.target}
+      editAnnot={editAnnot}
+      onTargetMove={onTargetMove}
+      registerNode={(node) => (nodes.current[index] = node)}
+    />
   ))
 }
 
-function DualSense({ transform, stateRef, liveLabels }) {
+function DualSense({ transform, stateRef, liveLabels, targets, editAnnot, onTargetMove }) {
   const { scene } = useGLTF(MODEL_URL)
   const model = useMemo(() => {
     const clone = scene.clone(true)
@@ -193,6 +210,13 @@ function DualSense({ transform, stateRef, liveLabels }) {
   useFrame((state) => {
     const g = groupRef.current
     if (!g) return
+    // Freeze at the base transform while editing pins so the controller local
+    // frame == world frame and pin dragging maps 1:1.
+    if (editAnnot) {
+      g.position.set(transform.pos[0], transform.pos[1], transform.pos[2])
+      g.rotation.set(MODEL_ROT[0] + transform.rot[0], MODEL_ROT[1] + transform.rot[1], MODEL_ROT[2] + transform.rot[2])
+      return
+    }
     const t = state.clock.elapsedTime
     g.position.y = transform.pos[1] + Math.sin(t * 0.45) * 0.04
     g.rotation.x = MODEL_ROT[0] + transform.rot[0] + Math.sin(t * 0.5) * 0.012
@@ -210,7 +234,9 @@ function DualSense({ transform, stateRef, liveLabels }) {
       ]}
     >
       <primitive object={model} />
-      {liveLabels && <LiveLabels stateRef={stateRef} />}
+      {liveLabels && (
+        <LiveLabels stateRef={stateRef} targets={targets} editAnnot={editAnnot} onTargetMove={onTargetMove} />
+      )}
     </group>
   )
 }
@@ -516,6 +542,52 @@ function SceneEditor({ items, setItems }) {
   </>)
 }
 
+// Serialize the (possibly hand-placed) callout pins into a ready-to-paste
+// LIVE_LABELS array so the tuned positions can be baked back into source.
+function serializeLabels(targets) {
+  const r = (n) => Math.round(n * 100) / 100
+  const lines = LIVE_LABELS.map((l) => {
+    const t = (targets[l.key] || l.target).map(r)
+    const parts = [`key: '${l.key}'`, `label: '${l.label}'`]
+    if (l.type) parts.push(`type: '${l.type}'`)
+    parts.push(`pos: [${l.pos.map(r).join(', ')}]`)
+    parts.push(`target: [${t.join(', ')}]`)
+    return `  { ${parts.join(', ')} },`
+  })
+  return `const LIVE_LABELS = [\n${lines.join('\n')}\n]`
+}
+
+// Pin editor: toggle a mode where each callout target becomes a big red
+// draggable dot (see LabelNode). Drag them onto the right controls, then COPY.
+function PinEditor({ editAnnot, setEditAnnot, targets, setTargets }) {
+  const [copied, setCopied] = useState(false)
+  const copyPins = () => {
+    const text = serializeLabels(targets)
+    const done = () => { setCopied(true); window.setTimeout(() => setCopied(false), 1600) }
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(() => window.prompt('Pin values:', text))
+    } else {
+      window.prompt('Pin values:', text)
+    }
+  }
+  const resetPins = () => setTargets(Object.fromEntries(LIVE_LABELS.map((l) => [l.key, [...l.target]])))
+  return (<>
+    <button className="scene-editor-toggle pin-toggle" onClick={() => setEditAnnot((v) => !v)}>
+      {editAnnot ? 'DONE PINS' : 'EDIT PINS'}
+    </button>
+    {editAnnot && (
+      <aside className="scene-editor pin-panel">
+        <span className="scene-editor-title">DRAG THE PINS</span>
+        <p className="pin-hint">Grab a big dot and drop it on the right control. The controller and camera are held still while you edit, then COPY.</p>
+        <div className="scene-edit-actions">
+          <button onClick={copyPins}>{copied ? 'COPIED' : 'COPY PINS'}</button>
+          <button className="scene-edit-reset" onClick={resetPins}>RESET</button>
+        </div>
+      </aside>
+    )}
+  </>)
+}
+
 // Single manga ink pass over the WHOLE stage (world + controller + every prop).
 // The full scene reads as one continuous black-and-white manga panel.
 function MangaRender() {
@@ -565,7 +637,7 @@ function StageWorld() {
   )
 }
 
-function CameraRig({ stateRef, stage }) {
+function CameraRig({ stateRef, stage, frozen }) {
   const { camera } = useThree()
   const aim = useMemo(() => new THREE.Vector3(), [])
   // Smoothed stick values. Keyboard/on-screen input jumps 0<->target instantly,
@@ -573,6 +645,13 @@ function CameraRig({ stateRef, stage }) {
   // values. This removes the snap; a low lambda keeps it slow and floaty.
   const smooth = useRef({ lx: 0, ly: 0, rx: 0, ry: 0 })
   useFrame((_, dt) => {
+    if (frozen) {
+      // Hold the camera dead centre while editing pins (stable drag frame).
+      camera.position.set(0, 0, stage ? 7 : 4.2)
+      camera.lookAt(0, 0, 0)
+      smooth.current.lx = smooth.current.ly = smooth.current.rx = smooth.current.ry = 0
+      return
+    }
     const st = stateRef.current || {}
     const s = smooth.current
     const ease = 1.6
@@ -599,6 +678,9 @@ export default function ControllerModel({ stateRef, annotate = true, stage = fal
   const ref = stateRef || localRef
   const [items, setItems] = useState(() => DEFAULT_ITEMS.map((it) => ({ ...it, pos: [...it.pos], rot: [...it.rot] })))
   const moveItem = (id, pos) => setItems((prev) => prev.map((it) => (it.id === id ? { ...it, pos } : it)))
+  const [editAnnot, setEditAnnot] = useState(false)
+  const [targets, setTargets] = useState(() => Object.fromEntries(LIVE_LABELS.map((l) => [l.key, [...l.target]])))
+  const moveTarget = (key, pos) => setTargets((prev) => ({ ...prev, [key]: pos }))
   if (stage) {
     // One canvas, one manga pass over the whole scene (world + controller +
     // every prop) so everything reads as one black-and-white manga panel. The
@@ -617,7 +699,14 @@ export default function ControllerModel({ stateRef, annotate = true, stage = fal
             <color attach="background" args={['#e8e7df']} />
             <StageWorld />
             <Suspense fallback={null}>
-              <DualSense transform={CONTROLLER_TRANSFORM} stateRef={ref} liveLabels />
+              <DualSense
+                transform={CONTROLLER_TRANSFORM}
+                stateRef={ref}
+                liveLabels
+                targets={targets}
+                editAnnot={editAnnot}
+                onTargetMove={moveTarget}
+              />
             </Suspense>
             {items.map((item) => (
               <PropBoundary key={item.id}>
@@ -646,10 +735,11 @@ export default function ControllerModel({ stateRef, annotate = true, stage = fal
               </PropBoundary>
             ))}
             <MangaRender />
-            <CameraRig stateRef={ref} stage />
+            <CameraRig stateRef={ref} stage frozen={editAnnot} />
           </Canvas>
         </div>
         <SceneEditor items={items} setItems={setItems} />
+        <PinEditor editAnnot={editAnnot} setEditAnnot={setEditAnnot} targets={targets} setTargets={setTargets} />
       </div>
     )
   }

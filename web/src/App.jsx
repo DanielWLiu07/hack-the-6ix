@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRobot } from './lib/robot.jsx'
 import { passwordLogin } from './lib/ropg.js'
+import { useOperator, operatorLabel } from './lib/auth.jsx'
 import './App.css'
 
 // Landing ladder:
@@ -13,6 +14,9 @@ import './App.css'
 // return the app shell (200), so we verify the body is the real scene (its
 // <canvas id="gl">) and not the SPA (<div id="root">).
 const OrchardHero = lazy(() => import('./components/OrchardHero.jsx'))
+// The scanned rover (Gaussian splat) - a separate WebGL canvas whose camera is
+// slaved to the scene's live camera (ht6-cam feed) so it stays anchored in world.
+const RobotRollIn = lazy(() => import('./components/RobotRollIn.jsx'))
 const MonkeyStage = lazy(() => import('./pages/MonkeyStage.jsx'))
 const AUTH0_CONFIGURED = Boolean(
   import.meta.env.VITE_AUTH0_DOMAIN && import.meta.env.VITE_AUTH0_CLIENT_ID,
@@ -51,8 +55,8 @@ function useHeroStats() {
 function OrchardAccountControl({ operator, onFocusBoard, onMoveBoard, onLeaveBoard, onOpenBoard, onLogout }) {
   if (operator) {
     return (
-      <div className="landing-logout" title={operator.user.name}>
-        <span>{operator.user.name}</span>
+      <div className="landing-logout" title={operatorLabel(operator)}>
+        <span>{operatorLabel(operator)}</span>
         <button onClick={onLogout}>Sign out</button>
       </div>
     )
@@ -104,7 +108,7 @@ function AuthBoardPanel({ operator, onLogin, onLogout, onClose, onDemo }) {
       <h2>{operator ? 'Welcome back.' : 'Operator sign in'}</h2>
       {operator ? (
         <>
-          <p>Signed in as {operator.user.name}. Your commands are attributed to your orchard crew account.</p>
+          <p>Signed in as {operatorLabel(operator)}. Your commands are attributed to your orchard crew account.</p>
           <button className="signboard-action" onClick={onLogout}>Sign out</button>
         </>
       ) : (
@@ -158,21 +162,21 @@ function LandingAccountControl(props) {
 // Static fallback hero for browsers/GPUs without WebGL2.
 function ClassicHero() {
   const stats = useHeroStats()
-  const [operator, setOperator] = useState(null)
+  const { operator, login, logout } = useOperator()
   const [boardOpen, setBoardOpen] = useState(false)
   return (
     <main className="hero">
       <LandingAccountControl
         operator={operator}
         onOpenBoard={() => setBoardOpen(true)}
-        onLogout={() => setOperator(null)}
+        onLogout={logout}
       />
       {AUTH0_CONFIGURED && boardOpen && !operator && (
         <div className="scene-auth-overlay is-modal">
           <AuthBoardPanel
             operator={operator}
-            onLogin={(result) => { setOperator(result); setBoardOpen(false) }}
-            onLogout={() => setOperator(null)}
+            onLogin={(result) => { login(result); setBoardOpen(false) }}
+            onLogout={logout}
             onClose={() => setBoardOpen(false)}
           />
         </div>
@@ -204,8 +208,14 @@ function ClassicHero() {
         <Link className="cta" to="/lidar">
           Lidar Map
         </Link>
+        <Link className="cta" to="/swarm">
+          Swarm
+        </Link>
         <Link className="cta" to="/analytics">
           Analytics
+        </Link>
+        <Link className="cta" to="/info">
+          How it works
         </Link>
       </nav>
       <p className="note">
@@ -224,7 +234,8 @@ function Landing() {
   const [authBoardPinned, setAuthBoardPinned] = useState(false)
   const [stageActive, setStageActive] = useState(false)
   const [loginRevealed, setLoginRevealed] = useState(false)
-  const [operator, setOperator] = useState(null)
+  // Global, persistent session (survives navigation + refresh): see lib/auth.jsx.
+  const { operator, login, logout: handleLogout } = useOperator()
   // Keep the board in the DOM through its exit animation instead of yanking it
   // the instant it closes: boardShown = mounted, boardClosing = playing exit.
   const [boardShown, setBoardShown] = useState(false)
@@ -238,10 +249,9 @@ function Landing() {
     relaySceneFocus(null, false, false)
   }
   const handleLogin = (result) => {
-    setOperator(result)
+    login(result)
     closeBoard()
   }
-  const handleLogout = () => setOperator(null)
   // Demo mode: drop the login, return to the orchard, and kick off the apple
   // grab (which plays through to the stage handoff).
   const handleDemo = () => {
@@ -393,12 +403,17 @@ function Landing() {
           WebGL canvas, and mascot never remount. The apple ascent cross-fades to
           it (a plain opacity fade, see .landing-stage-layer) at its settled pose. */}
       <div className={`landing-stage-layer ${stageActive ? 'is-active' : ''}`}>
-        <Suspense fallback={null}>
-          {/* During the landing the stage painting stays a light poster; its live
-              scene loads only once the stage takes over, so two heavy scenes
-              never run together (that combo crashes Chrome's GPU process). */}
-          <MonkeyStage showNav={stageActive} playIntro={stageActive} liveScene={stageActive} />
-        </Suspense>
+        {/* The stage's WebGL canvas is NOT mounted during the landing. Keeping it
+            alive next to the painterly scene iframe and the robot splat meant
+            three heavy WebGL contexts at once, which crashed the GPU and left the
+            stage black after the handoff. Mount it only when the stage takes over
+            (the same fresh-mount path as a direct /stage visit, which is stable);
+            the fuzz intro covers the brief load. */}
+        {stageActive && (
+          <Suspense fallback={null}>
+            <MonkeyStage showNav playIntro liveScene />
+          </Suspense>
+        )}
       </div>
       {mode === 'scene' ? (
         <>
@@ -444,6 +459,11 @@ function Landing() {
               />
             ) : null}
           />
+        </Suspense>
+      )}
+      {!stageActive && (
+        <Suspense fallback={null}>
+          <RobotRollIn />
         </Suspense>
       )}
       {!stageActive && (

@@ -83,6 +83,34 @@ let lastRobotMode = null; // { autostart: boolean }
 // The demo panic switch uses this to know if the real robot has died.
 const realRobots = new Set();
 
+// Fleet roster for the /swarm page. Keyed by robot socket id; each entry merges
+// that robot's latest telemetry (state/battery/drive) and slam_pose (x/y/theta).
+// The hub SNAPSHOTS this to uis at ~1 Hz as the `fleet` event (schema addendum
+// in root CLAUDE.md). This does not touch the robot->server telemetry contract.
+const fleet = new Map();
+let roverSeq = 0;
+
+function fleetUpsert(id, label, isSim, patch) {
+  const prev = fleet.get(id) || { id: label, sim: isSim };
+  fleet.set(id, { ...prev, id: label, sim: isSim, ...patch, last_ts: Date.now() });
+}
+
+function fleetSnapshot() {
+  const robots = [...fleet.values()]
+    .map((r) => ({
+      id: r.id,
+      sim: !!r.sim,
+      state: r.state ?? 'IDLE',
+      battery_v: typeof r.battery_v === 'number' ? r.battery_v : null,
+      pos: typeof r.x === 'number' && typeof r.y === 'number' ? [r.x, r.y] : null,
+      theta: typeof r.theta === 'number' ? r.theta : 0,
+      drive: r.drive ?? { l: 0, r: 0 },
+      last_ts: r.last_ts,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return { ts: Date.now(), robots };
+}
+
 // Demo panic switch: spawns/kills sim.js as a fallback data source if the real
 // robot dies mid-judging. Boot mode from FORCE_SIM env (off|on|auto|1|0).
 const panic = createPanicSwitch({
@@ -125,6 +153,7 @@ io.on('connection', (socket) => {
     if (lastTelemetry) socket.emit('telemetry', lastTelemetry);
     if (lastSlamMap) socket.emit('slam_map', lastSlamMap);
     if (lastSlamPose) socket.emit('slam_pose', lastSlamPose);
+    socket.emit('fleet', fleetSnapshot()); // roster now, don't wait for the 1 Hz tick
   }
   // a robot that (re)connects inherits the current demo autonomy mode
   if (role === 'robot' && lastRobotMode) socket.emit('set_mode', lastRobotMode);
@@ -135,7 +164,32 @@ io.on('connection', (socket) => {
       if (!validators[event](payload)) return dropInvalid(event, payload);
       // Attribute the pick to whoever is currently in control (Atlas audit trail).
       if (event === 'pick_event' && lastOperator) payload = { ...payload, operator: lastOperator };
-      io.to('uis').emit(event, payload);
+      // Droppable display streams go out volatile so a slow client (venue WiFi)
+      // drops stale frames instead of backing up an unbounded send buffer.
+      // detection / pick_event / slam_map stay reliable (they must not be lost).
+      if (event === 'telemetry' || event === 'lidar_scan' || event === 'slam_pose') {
+        io.to('uis').volatile.emit(event, payload);
+      } else {
+        io.to('uis').emit(event, payload);
+      }
+      // Fleet roster: label this robot socket once, then fold its telemetry /
+      // slam_pose into the per-robot entry the swarm page consumes.
+      if (event === 'telemetry' || event === 'slam_pose') {
+        if (!socket.data.rover) socket.data.rover = `rover-${String(++roverSeq).padStart(2, '0')}`;
+        if (event === 'telemetry') {
+          fleetUpsert(socket.id, socket.data.rover, isSim, {
+            state: payload.state,
+            battery_v: payload.battery_v,
+            drive: payload.drive,
+          });
+        } else {
+          fleetUpsert(socket.id, socket.data.rover, isSim, {
+            x: payload.x,
+            y: payload.y,
+            theta: payload.theta,
+          });
+        }
+      }
       if (event === 'telemetry') {
         lastTelemetry = payload;
         store.recordTelemetry(payload).catch(logStoreErr); // store self-downsamples to <=1 Hz
@@ -208,10 +262,16 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     counts[role]--;
     realRobots.delete(socket.id);
+    fleet.delete(socket.id); // drop it from the swarm roster
     if (panic.mode === 'auto') panic.reconcile('robot disconnect');
     console.log(`[hub] ${role} disconnected (${socket.id})`);
   });
 });
+
+// Broadcast the fleet roster to dashboards at ~1 Hz (the swarm page's source).
+setInterval(() => {
+  if (counts.ui > 0 && fleet.size > 0) io.to('uis').emit('fleet', fleetSnapshot());
+}, 1000).unref();
 
 // Keep the realRobots set in sync with a socket's current role. A robot without
 // the panic-sim tag counts as "the real robot" for auto-failover.
