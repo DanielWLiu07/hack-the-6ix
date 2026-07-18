@@ -35,6 +35,23 @@ class MockCamera(Camera):
     # degrees of joint error that maps to half a frame of image offset
     DEG_PER_HALF_FRAME = 20.0
 
+    # --- sim-only range model (so APPROACH's drive commands do something) ------
+    # A real eye-in-hand camera grows the fruit's bbox as the rover drives up to
+    # it; MockCamera otherwise has no notion of distance, so we fake it here.
+    # `range` shrinks with forward drive (bigger bbox) and `base_heading` yaws
+    # with differential drive (pans the fruit toward center) - closing exactly
+    # the loop navigation.approach_step() steers. Reset on every spawn_fruit().
+    # Advanced PER camera read() (tick-based, NOT wall-clock) so it behaves the
+    # same in the 20 Hz node and in fast no-sleep test loops. At APPROACH_FWD=0.5
+    # the range closes ~0.03/tick -> ~70 ticks (~3.5 s at 20 Hz) to reach in-reach.
+    FAR_RANGE = 3.0          # spawn distance (arbitrary units)
+    NEAR_RANGE = 0.5         # can't get closer than this
+    SIZE_K = 150.0           # bbox side px = SIZE_K / range (closer -> bigger)
+    SIZE_MIN_PX = 40
+    SIZE_MAX_PX = 260
+    RANGE_STEP = 0.06        # range units closed per read() per unit forward drive
+    TURN_STEP = 0.5          # base yaw deg per read() per unit of (l - r) differential
+
     FRUITS = [
         ("apple", "ripe", (0, 0, 200)),      # red   (BGR)
         ("apple", "unripe", (0, 180, 0)),    # green
@@ -47,6 +64,8 @@ class MockCamera(Camera):
         self.w, self.h = w, h
         self.rng = random.Random(seed)
         self.fruit = None  # (fruit, ripeness, color, base_deg, shoulder_deg)
+        self.range = self.FAR_RANGE      # sim distance to fruit
+        self.base_heading = 0.0          # sim rover yaw from differential drive
         self.spawn_fruit()
 
     def spawn_fruit(self, fruit=None, ripeness=None, near_joints=None):
@@ -64,6 +83,9 @@ class MockCamera(Camera):
         base = joints[0] + self.rng.uniform(-15, 15)
         shoulder = joints[1] + self.rng.uniform(-12, 12)
         self.fruit = (*kind, base, shoulder)
+        # new fruit starts far away and dead ahead; APPROACH must drive up to it
+        self.range = self.FAR_RANGE
+        self.base_heading = 0.0
 
     def remove_fruit(self):
         self.fruit = None
@@ -73,13 +95,29 @@ class MockCamera(Camera):
             return None
         return self.fruit[0], self.fruit[1]
 
+    def _sim_step(self):
+        """Advance the sim world one camera read() by the latest drive command.
+
+        Sim-only: lets APPROACH's set_drive() commands actually move the world
+        (forward closes range -> bbox grows; turning yaws heading -> fruit pans
+        toward center). Tick-based (one step per read), so it's deterministic and
+        behaves the same in the 20 Hz node and in fast no-sleep test loops.
+        """
+        drive = self.bridge.get_drive()
+        fwd = (drive["l"] + drive["r"]) / 2.0
+        diff = drive["l"] - drive["r"]
+        self.range = max(self.NEAR_RANGE,
+                         min(self.FAR_RANGE, self.range - self.RANGE_STEP * fwd))
+        self.base_heading += self.TURN_STEP * diff
+
     def _fruit_center_px(self):
-        """Where the fruit lands in the frame given current joints."""
+        """Where the fruit lands in the frame given current joints + rover yaw."""
         if not self.fruit:
             return None
         joints = self.bridge.get_joints()
         _, _, _, base, shoulder = self.fruit
-        ex = (base - joints[0]) / self.DEG_PER_HALF_FRAME    # -1..1-ish
+        # base_heading (rover yaw from driving) pans the fruit just like arm yaw
+        ex = (base - joints[0] - self.base_heading) / self.DEG_PER_HALF_FRAME
         ey = (shoulder - joints[1]) / self.DEG_PER_HALF_FRAME
         cx = self.w / 2 + ex * (self.w / 2)
         cy = self.h / 2 + ey * (self.h / 2)
@@ -97,10 +135,12 @@ class MockCamera(Camera):
         if not self.visible():
             return None
         cx, cy = self._fruit_center_px()
-        size = 90
+        # bbox grows as the rover closes the range (sim proxy for getting closer)
+        size = int(max(self.SIZE_MIN_PX, min(self.SIZE_MAX_PX, self.SIZE_K / self.range)))
         return [int(cx - size / 2), int(cy - size / 2), size, size]
 
     def read(self):
+        self._sim_step()   # advance the sim world by the latest drive command
         frame = np.full((self.h, self.w, 3), 40, dtype=np.uint8)
         bbox = self.ground_truth_bbox()
         if bbox:
