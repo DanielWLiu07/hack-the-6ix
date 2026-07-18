@@ -288,7 +288,7 @@ function Landing() {
       }} />}
       <div className={`landing-stage-layer ${stageActive ? 'is-active' : ''}`}>
         <Suspense fallback={null}>
-          <MonkeyStage showNav={stageActive} />
+          <MonkeyStage showNav={stageActive} playIntro={stageActive} />
         </Suspense>
       </div>
       {mode === 'scene' ? (

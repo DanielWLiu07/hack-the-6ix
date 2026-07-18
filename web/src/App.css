@@ -292,31 +292,31 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
 }
 
 /* Prepared as soon as the landing mounts. The apple ascent only reveals this
-   live stage layer — the route, WebGL canvas, and mascot never remount. */
+   live stage layer — the route, WebGL canvas, and mascot never remount. The
+   zoom-out is driven by the stage's own r3f camera (CameraIntro), so this layer
+   only fades in; no CSS scale, or the two would compound into a double zoom. */
 .landing-stage-layer {
   position: absolute;
   inset: 0;
   z-index: 1;
   opacity: 0;
-  transform: scale(1.24);
-  transform-origin: 58% 52%;
   pointer-events: none;
-  transition: opacity 0.2s ease-out, transform 1.35s cubic-bezier(.18,.78,.2,1);
+  transition: opacity 0.55s ease-out;
 }
 .landing-stage-layer.is-active {
   z-index: 3;
   opacity: 1;
-  transform: scale(1);
   pointer-events: auto;
 }
 
-/* The outgoing orchard recedes as the already-running stage camera settles,
-   so the claw ascent reads as one continuous pull-back instead of a cut. */
+/* The outgoing fullscreen orchard fades under the stage's now-fullscreen splash
+   (the camera starts framing it head-on), so the same painterly image carries
+   through the handoff and the stage camera pulls back from there — one
+   continuous zoom-out instead of a cut. */
 .landing-stage-layer.is-active ~ .hero-embed,
 .landing-stage-layer.is-active ~ .orchard-canvas {
   opacity: 0;
-  transform: scale(.94);
-  transition: opacity .42s ease-out, transform 1.2s cubic-bezier(.18,.78,.2,1);
+  transition: opacity 0.55s ease-out;
 }
 
 .stage-editor {

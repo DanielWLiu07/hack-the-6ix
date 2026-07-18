@@ -7,7 +7,7 @@
   --ink: #2f4227; /* deep green text */
   --ink-2: #4f5c3d; /* muted */
   --ink-3: #6f7a58; /* faint */
-  --card: rgba(233, 227, 210, 0.82); /* frosted paper */
+  --card: rgba(236, 231, 217, 0.92); /* frosted paper, opaque enough to read */
   --card-solid: #e7e1cf;
   --card-2: rgba(51, 69, 43, 0.1); /* tracks */
   --leaf: #52803a;

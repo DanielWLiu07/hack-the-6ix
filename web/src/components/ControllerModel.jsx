@@ -11,7 +11,7 @@
 // Input ref shape (all optional):
 //   { lx, ly, rx, ry, btn: { cross, circle, square, triangle, up, down, left, right, ... } }
 
-import { Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Component, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Html, Line, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -21,9 +21,12 @@ import { PainterlyPipeline } from '../vendor/painterly.js'
 // Freshly generated Meshy controller model; kept as a local GLB so the scene
 // remains self-contained in production and never depends on the generation API.
 const MODEL_URL = '/assets/dualsense-manga.glb'
+// Only real GLBs here (public/assets). A tint gives the paint shader clean
+// colour regions to work from. There is no valid banana model in the repo, so
+// a second apple stands in as the right-hand fruit.
 const STAGE_PROPS = [
   { id: 'apple', label: 'Apple', url: '/assets/apple.glb', pos: [-3.8, 1.15, -0.9], rot: [0.3, -0.55, 0.2], size: 0.72, tint: '#c4382f' },
-  { id: 'banana', label: 'Banana', url: '/assets/banana.glb', pos: [3.7, 1.4, -1.0], rot: [0.2, 0.65, -0.35], size: 1.05, tint: '#e6bf2e' },
+  { id: 'apple2', label: 'Apple (r)', url: '/assets/apple.glb', pos: [3.7, 1.4, -1.0], rot: [0.2, 0.65, -0.35], size: 0.66, tint: '#d0632c' },
   { id: 'crate', label: 'Crate', url: '/assets/crate.min.glb', pos: [-4.1, -1.8, -1.1], rot: [0.1, 0.55, 0], size: 1.2, tint: '#a9763f' },
   { id: 'tree', label: 'Tree', url: '/assets/tree.glb', pos: [4.2, -1.75, -1.5], rot: [0, -0.55, 0], size: 1.9, tint: '#5c8a3f' },
 ]
@@ -217,6 +220,18 @@ function StageProp({ url, pos, rot, size, tint, transform }) {
   return <primitive object={model} position={transform?.pos ?? pos} rotation={transform?.rot ?? rot} />
 }
 
+// One broken/missing prop asset must never take the whole scene (and the
+// controller layered above it) down. Drop just that prop and keep going.
+class PropBoundary extends Component {
+  state = { dead: false }
+  static getDerivedStateFromError() {
+    return { dead: true }
+  }
+  render() {
+    return this.state.dead ? null : this.props.children
+  }
+}
+
 function SceneEditor({ transforms, setTransforms }) {
   const [selected, setSelected] = useState('controller')
   const [open, setOpen] = useState(false)
@@ -378,12 +393,14 @@ export default function ControllerModel({ stateRef, annotate = true, stage = fal
             camera={{ position: [0, 0, 7], fov: 40 }}
           >
             <StageWorld />
-            <Suspense fallback={null}>
-              {STAGE_PROPS.map((prop) => (
-                <StageProp key={prop.id} {...prop} transform={transforms[prop.id]} />
-              ))}
-            </Suspense>
-            <PainterlyRender />
+            {STAGE_PROPS.map((prop) => (
+              <PropBoundary key={prop.id}>
+                <Suspense fallback={null}>
+                  <StageProp {...prop} transform={transforms[prop.id]} />
+                </Suspense>
+              </PropBoundary>
+            ))}
+            {/* <PainterlyRender /> */}
             <CameraRig stateRef={ref} stage />
           </Canvas>
           <Canvas
@@ -400,7 +417,7 @@ export default function ControllerModel({ stateRef, annotate = true, stage = fal
             <Suspense fallback={null}>
               <DualSense transform={transforms.controller} stateRef={ref} liveLabels />
             </Suspense>
-            <MangaRender />
+            {/* <MangaRender /> */}
             <CameraRig stateRef={ref} stage />
           </Canvas>
         </div>

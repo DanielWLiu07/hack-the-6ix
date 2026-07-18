@@ -33,9 +33,10 @@ export default function LidarView() {
         </label>
       </div>
       <p className="subval" style={{ marginTop: '0.6rem' }}>
-        Live 360° C1 scan (green) overlaid on the iPhone-lidar reconstruction of
-        the scene. Robot frame: red marker = rover, nose → forward. Points fade
-        over {LIDAR_DECAY_MS / 1000}s. Drag to orbit, scroll to zoom.
+        Persistent SLAM map: occupied cells (green) accumulate and stay as the
+        rover drives, with the live 360° C1 sweep on top and the amber marker
+        tracking the robot pose. The live sweep fades over {LIDAR_DECAY_MS / 1000}s;
+        the map does not. Drag to orbit, scroll to zoom.
       </p>
     </section>
   )

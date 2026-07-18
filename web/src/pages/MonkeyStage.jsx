@@ -189,6 +189,58 @@ function Monkey({ bind }) {
   )
 }
 
+// Arrival pull-back. When the apple heist hands off from the landing (the
+// painterly scene fills the screen there), the stage camera starts framing the
+// hanging Splash near-fullscreen and eases back to CAM_HOME - so the painterly
+// image the operator was just looking at zooms out and settles as a painting on
+// the wall, instead of cross-fading into a different shot. Direct /stage visits
+// pass playIntro=false and open in the settled pose.
+const easeOutCubic = (x) => 1 - Math.pow(1 - x, 3)
+
+function CameraIntro({ active }) {
+  const { camera, size } = useThree()
+  const started = useRef(false)
+  const done = useRef(false)
+  const t = useRef(0)
+  const DURATION = 1.6
+
+  const poses = useMemo(() => {
+    const center = new THREE.Vector3(...SPLASH.pos)
+    const normal = new THREE.Vector3(0, 0, 1)
+      .applyEuler(new THREE.Euler(...SPLASH.rot))
+      .normalize()
+    const fovY = THREE.MathUtils.degToRad(32)
+    const aspect = (size.width || 1) / (size.height || 1)
+    const fitH = (SPLASH.h / 2) / Math.tan(fovY / 2)
+    const fitW = (SPLASH.w / 2) / (Math.tan(fovY / 2) * aspect)
+    // Overscan past a clean fit so the opaque center of the watercolor blob
+    // covers the viewport; the torn edges bleed in as the camera pulls back.
+    const dist = Math.max(fitH, fitW) * 0.55
+    const startPos = center.clone().add(normal.multiplyScalar(dist))
+    const homePos = new THREE.Vector3(...CAM_HOME)
+    // CAM_HOME with the default (look down -Z) orientation used by the settled
+    // stage, so the intro lands on exactly the direct-visit framing.
+    const homeTarget = new THREE.Vector3(CAM_HOME[0], CAM_HOME[1], 0)
+    return { center, startPos, homePos, homeTarget }
+  }, [size.width, size.height])
+
+  useFrame((_, delta) => {
+    if (!active || done.current) return
+    if (!started.current) {
+      started.current = true
+      t.current = 0
+    }
+    t.current = Math.min(t.current + delta / DURATION, 1)
+    const e = easeOutCubic(t.current)
+    camera.position.lerpVectors(poses.startPos, poses.homePos, e)
+    const target = new THREE.Vector3().lerpVectors(poses.center, poses.homeTarget, e)
+    camera.lookAt(target)
+    if (t.current >= 1) done.current = true
+  })
+
+  return null
+}
+
 function MangaRender() {
   const { gl, scene, camera, size } = useThree()
   const pass = useMemo(() => new MangaPass(gl, { grit: 0.75, ink: 0.04 }), [gl])
@@ -203,7 +255,7 @@ function MangaRender() {
   return null
 }
 
-export default function MonkeyStage({ showNav = true }) {
+export default function MonkeyStage({ showNav = true, playIntro = false }) {
   const spotTarget = useMemo(() => new THREE.Object3D(), [])
   const splash = useSplash()
   const [sceneAvailable, setSceneAvailable] = useState(false)
@@ -308,6 +360,7 @@ export default function MonkeyStage({ showNav = true }) {
         gl={{ antialias: true }}
       >
         <color attach="background" args={['#0d0e12']} />
+        <CameraIntro active={playIntro} />
         <ambientLight intensity={0.13} />
         <primitive object={spotTarget} position={[0, 1.1, 0.3]} />
         <group position={[2.4, 5.4, 3.6]}>
@@ -324,10 +377,6 @@ export default function MonkeyStage({ showNav = true }) {
             <meshBasicMaterial color="#cddcff" />
           </mesh>
         </group>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.35, 0]}>
-          <planeGeometry args={[60, 60]} />
-          <meshStandardMaterial color="#191a1f" roughness={1} />
-        </mesh>
         <Suspense fallback={null}>
           <Splash splash={splash} sceneAvailable={sceneAvailable} bind={bind} />
           <Monkey bind={bind} />

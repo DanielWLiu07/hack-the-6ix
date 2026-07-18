@@ -9,9 +9,10 @@ import {
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
 import '../analytics.css'
 
-// Reuse the landing's painterly orchard scene as the full-page backdrop (do not
-// reinvent it). Lazy so three/r3f stays out of the analytics data path.
-const OrchardHero = lazy(() => import('../components/OrchardHero.jsx'))
+// Full-page painterly orchard backdrop (same painterly pipeline + palette as the
+// landing, populated with fruit all around). Lazy so three/r3f stays out of the
+// analytics data path.
+const AnalyticsHero = lazy(() => import('../components/AnalyticsHero.jsx'))
 
 // Green painterly orchard palette.
 const C_LEAF = '#52803a'
@@ -246,11 +247,11 @@ export default function Analytics() {
 
   return (
     <div className="az">
-      {/* entire page = the landing's painterly orchard scene */}
+      {/* entire page = painterly orchard scene (landing pipeline + palette) */}
       <div className="az-scene" aria-hidden>
         <HeroBoundary>
           <Suspense fallback={null}>
-            <OrchardHero />
+            <AnalyticsHero />
           </Suspense>
         </HeroBoundary>
       </div>
