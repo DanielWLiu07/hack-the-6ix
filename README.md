@@ -4,7 +4,7 @@
 
 A custom rover + 5-DOF robotic arm with an **eye-in-hand camera** that finds 3D-printed **apples and bananas**, classifies type + ripeness with on-device edge AI, picks them, and **sorts them into the correct bin** — with PlayStation-controller teleop and everything (lidar map, camera, pick stats, ripeness analytics) streaming to a live web dashboard.
 
-🌐 **Live**: https://hack-the-6ix-3uawu061s-daniel-w-lius-projects.vercel.app · **Repo**: https://github.com/danielwliuhosa/hack-the-6ix
+🌐 **Live**: https://hack-the-6ix-3uawu061s-daniel-w-lius-projects.vercel.app · **Repo**: https://github.com/DanielWLiu07/hack-the-6ix
 
 ## Why this wins
 

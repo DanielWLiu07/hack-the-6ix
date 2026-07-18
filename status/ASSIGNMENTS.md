@@ -16,7 +16,7 @@ You are one of 14 Claude workers in tmux panes. The master Claude (pane `master.
 
 ## Environment facts
 
-- Repo root: `/Users/danielwliu/Dev/projects/2026/hack-the-6ix` (public: github.com/danielwliuhosa/hack-the-6ix)
+- Repo root: `/Users/danielwliu/Dev/projects/2026/hack-the-6ix` (public: github.com/DanielWLiu07/hack-the-6ix)
 - Vite dev server already running in pane web.1 (port 5173). Express server target port: **3001**.
 - Node 22, Python 3 available. Vercel project `hack-the-6ix` linked in `web/`. Atlas CLI installed, NOT logged in yet.
 
