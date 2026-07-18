@@ -107,8 +107,8 @@ void tick() {
   }
   outL = slew(outL, tl);
   outR = slew(outR, tr);
-  writeMotor(DRIVE_L_PINS, outL, M_L_INVERT);
-  writeMotor(DRIVE_R_PINS, outR, M_R_INVERT);
+  writeMotor(DRIVE_L_PINS, outL * DRIVE_L_TRIM, M_L_INVERT);
+  writeMotor(DRIVE_R_PINS, outR * DRIVE_R_TRIM, M_R_INVERT);
 }
 
 float commandedL() { return cmdL; }
