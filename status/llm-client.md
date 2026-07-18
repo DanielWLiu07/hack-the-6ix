@@ -160,3 +160,25 @@ Two integration findings for the owners:
 2. @fw-linux / @server-core: for the demo to SHOW that NL commands drive the robot, the robot needs a mode where a command visibly redirects it (or pauses autostart), else the autonomous cycle masks command causation. Consider an nl-command-triggered pick that interrupts/overrides autostart, or a demo toggle. This is the difference between "NL parses correctly" (proven, mine) and "NL visibly drives the robot on stage" (needs their behavior change).
 
 My side (parse -> validate -> nl_action -> hub forward) is complete + correct. Left the demo stack up (farmhand via demo.sh, agents:1). Stop with `scripts/demo.sh down`.
+
+## [freesolo-docs] DONE - training/README.md (reproducible pipeline for judges)
+Wrote training/README.md: the result table (baseline 93.3 -> SFT 93.3 -> GRPO 96.7), the honest augmentation-regression ablation, a file map, exact reproduce commands (convert -> env push -> SFT -> GRPO -> deploy -> eval), and key design decisions (0.8B edge model, train==serve, graded reward, zero-leakage held-out sets). Style-clean; all 13 referenced files verified present. Reproducibility is a "Best Model Trained" scoring criterion.
+My workstream is now COMPLETE end to end: dataset -> trained (SFT+GRPO 96.7%) -> deployed -> client (validate + fallback + punct-clean) -> service in demo.sh -> nl_action verified through hub -> writeups (DEVPOST + SUBMISSION + NOTES + training/README) + reproducible training dir. The ONE remaining integration item is NOT mine: making an NL command VISIBLY redirect the robot on stage (robot autostarts, masking causation) - flagged to @fw-linux + @server-core. Idle-ready.
+
+## [freesolo-tested] DONE - full workstream test pass, ALL GREEN
+Ran a comprehensive verification of the whole FarmHand NL workstream:
+1. Unit tests: 26/26 pass.
+2. Handler paths: mock mode -> action; endpoint (real model) -> validated action; endpoint clarification -> clean ASCII; dead endpoint -> graceful fallback (flagged). All pass.
+3. demo.sh: syntax ok + farmhand present in up/down/logs. Pass.
+4. Style: client/ + training/ fully clean (converted the _PUNCT map + its test to \u escapes so the normalizer keeps working without literal em dashes in source). Pass.
+5. Service+hub end-to-end: service connects; 3 nl_commands -> exactly 3 nl_action (no dupes); 2 actions + 1 clarification correct shapes for the web. Pass.
+6. Eval (real trained GRPO model, 30 held-out): 29/30 = 96.7%, over-clarify 1/30. Pass.
+Clean teardown (0 stray services). Workstream is trained, deployed, integrated (demo.sh), robust (fallback), style-clean, and fully tested. Run the demo via `scripts/demo.sh up`. Idle-ready.
+
+## [freesolo-fullstack] DONE - verified working WITH all other subsystems (demo.sh up)
+Brought up the full stack via demo.sh (hub + robot + lidar + web + farmhand). Verified interoperation:
+- All subsystem streams flowing simultaneously (6s sample): telemetry 31, detection 1, pick_event 1, lidar_scan 26, slam_map 7. Other systems healthy alongside FarmHand.
+- FarmHand path solid: UI nl_command -> hub -> farmhand -> nl_action echoed to UI + forwarded to robot (robot observer confirmed it receives nl_action + mapped pick). 4/4 commands answered, latency consistent ~700-900 ms (model inference; fine for demo).
+- Clarified an earlier false alarm: a "no nl_action" was just a 2s test window during a ~900ms call, not a broken path.
+Two findings for owners (not mine): (1) @server-core/@server-test: robot=2 connected (two robot clients) -> risk of duplicate telemetry/pick_events; likely two fleet panes. (2) NL->robot causation still masked by robot --autostart (@fw-linux) - command reaches the robot, visible redirect needs their behavior change.
+Stack left UP (farmhand via demo.sh, agent=1). Stop with `scripts/demo.sh down`. FarmHand integration with the other systems: WORKING + verified.

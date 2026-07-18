@@ -94,12 +94,24 @@ def _classify_contour(c, hsv):
     color = max(fruit_votes, key=fruit_votes.get)
     green_frac = fruit_votes["green"] / total_fruit
 
-    # shape FIRST: bananas are strongly elongated; apples are round-ish.
     (_, _), (rw, rh), _ = cv2.minAreaRect(c)
     aspect = max(rw, rh) / max(1.0, min(rw, rh))
-    fruit = "banana" if aspect > 2.2 else "apple"
-    # ripeness: green plurality -> unripe, otherwise ripe (red/yellow are ripe cues)
-    ripeness = "unripe" if (color == "green" or green_frac > 0.55) else "ripe"
+    elongated = aspect > 2.2
+
+    # COLOR-first: our 4 classes are color-coded, so color is a near-unique key.
+    #   red    -> apple_ripe   (props: apples are red/green, never yellow)
+    #   yellow -> banana_ripe  (yellow only exists for the banana prop)
+    #   green  -> shape breaks the tie (round apple vs elongated banana)
+    # This is tuned for the solid-color single props. Real-world edge cases it
+    # trades away: a yellow-dominant real apple (Pink Lady) reads as banana, and a
+    # round bunch of green bananas reads as apple - neither happens with the props.
+    if color == "red":
+        fruit, ripeness = "apple", "ripe"
+    elif color == "yellow":
+        fruit, ripeness = "banana", "ripe"
+    else:  # green
+        fruit = "banana" if elongated else "apple"
+        ripeness = "unripe"
 
     x, y, w, h = cv2.boundingRect(c)
     conf_color = fruit_votes[color] / total_fruit

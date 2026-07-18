@@ -13,6 +13,10 @@ import Harvest from './pages/Harvest.jsx'
 const LidarView = lazy(() => import('./pages/LidarView.jsx'))
 // Robot POV also pulls in three.js - lazy for the same reason
 const RobotPOV = lazy(() => import('./pages/RobotPOV.jsx'))
+// Bare SLAM viewport, embedded by the POV page in an isolated iframe so the
+// machine-fringe can overlay the SLAM tab without a second same-document WebGL
+// context vanishing the map.
+const SlamEmbed = lazy(() => import('./pages/SlamEmbed.jsx'))
 // monkey-page stage (TV + rising manga monkey) - heavy 3D, lazy-loaded
 const MonkeyStage = lazy(() => import('./pages/MonkeyStage.jsx'))
 import { RobotProvider } from './lib/robot.jsx'
@@ -98,6 +102,16 @@ createRoot(document.getElementById('root')).render(
                 </Suspense>
               }
             />
+            {/* TV-positioning editor: the nav TVs become draggable (no navigation)
+                so their placement can be dialled in; COPY THIS reads coordinates. */}
+            <Route
+              path="/stage/tv"
+              element={
+                <Suspense fallback={<p className="empty">Loading...</p>}>
+                  <MonkeyStage edit="tv" />
+                </Suspense>
+              }
+            />
             {/* Robot POV: real robot feed + manga machine-fringe overlay. The
                 painterly/apple scene is landing-only; do not embed it here. */}
             <Route
@@ -105,6 +119,15 @@ createRoot(document.getElementById('root')).render(
               element={
                 <Suspense fallback={<p className="empty">Loading POV...</p>}>
                   <RobotPOV />
+                </Suspense>
+              }
+            />
+            {/* Bare SLAM map for the POV page's iframe (no chrome, own context). */}
+            <Route
+              path="/pov-slam"
+              element={
+                <Suspense fallback={null}>
+                  <SlamEmbed />
                 </Suspense>
               }
             />

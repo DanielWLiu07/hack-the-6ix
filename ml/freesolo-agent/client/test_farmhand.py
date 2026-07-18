@@ -154,10 +154,10 @@ class TestNormalize(unittest.TestCase):
 
     def test_clarification_punct_normalized(self):
         # trained model emits em dashes / smart quotes; UI strings must be ASCII
-        kind, p = farmhand._normalize_model_output({"clarify": "Which fruit — apples…"})
+        kind, p = farmhand._normalize_model_output({"clarify": "Which fruit \u2014 apples\u2026"})
         self.assertEqual(kind, "clarification")
-        self.assertNotIn("—", p)
-        self.assertNotIn("…", p)
+        self.assertNotIn("\u2014", p)
+        self.assertNotIn("\u2026", p)
 
 
 class TestEndpointFallback(unittest.TestCase):

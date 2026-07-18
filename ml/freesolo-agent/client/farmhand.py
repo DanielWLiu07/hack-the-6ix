@@ -97,8 +97,9 @@ def validate_action(obj):
     return {"task": task, "fruit": fruit, "filter": filt, "zone": zone}, None
 
 
-_PUNCT = {"—": "-", "–": "-", "…": "...", "→": "->",
-          "‘": "'", "’": "'", "“": '"', "”": '"'}
+# unicode escapes (not literals) so this file itself stays ASCII / style-clean
+_PUNCT = {"\u2014": "-", "\u2013": "-", "\u2026": "...", "\u2192": "->",
+          "\u2018": "'", "\u2019": "'", "\u201c": '"', "\u201d": '"'}
 
 
 def _clean_text(s):

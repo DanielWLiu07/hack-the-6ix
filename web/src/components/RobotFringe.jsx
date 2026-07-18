@@ -11,7 +11,7 @@
 
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { GLTFLoader } from 'three-stdlib'
+import { GLTFLoader, MeshoptDecoder } from 'three-stdlib'
 import { MangaPass } from '../lib/mangaPass.js'
 
 const MODELS = '/scene/models/'
@@ -276,6 +276,12 @@ export default function RobotFringe() {
     const eyeHeadB = makeEyeMount(2.57, 5.56)
 
     const loader = new GLTFLoader()
+    // The fringe GLBs (roboeye, gears, props) are meshopt-compressed
+    // (EXT_meshopt_compression). Without this decoder the loader silently fails
+    // to build their geometry - which is why the eye/models never appeared.
+    // NOTE: three-stdlib exports MeshoptDecoder as a factory FUNCTION - it must
+    // be CALLED to get the actual decoder object (passing the function is a no-op).
+    loader.setMeshoptDecoder(MeshoptDecoder())
     const liftedMat = () => new THREE.MeshStandardMaterial({
       color: '#e6e8ec', roughness: 0.5, metalness: 0.1,
       emissive: '#63676d', emissiveIntensity: 0.85,

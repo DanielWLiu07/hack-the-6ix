@@ -17,5 +17,7 @@ ml/**/datasets/
 venv/
 *.log
 !ml/ripeness/export/*.onnx
-web/public/scene/
+web/public/scene/*
+# keep the POV machine-fringe GLB models tracked so they deploy (eye, gears, props)
+!web/public/scene/models/
 robot/lidar/phone/ios/

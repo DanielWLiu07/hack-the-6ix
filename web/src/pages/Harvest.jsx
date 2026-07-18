@@ -1,7 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
 import { detectFile, detectUrl, cachedDetection } from '../lib/ripeness.js'
 import '../harvest.css'
+
+// Self-contained r3f orchard used as the backdrop when the /scene/ folder is
+// absent (fresh clones - it is untracked, and the SPA rewrite 200s the app
+// shell at /scene/*, so a raw iframe would recursively load the whole app).
+const OrchardHero = lazy(() => import('../components/OrchardHero.jsx'))
 
 // Harvest Log - a gallery of the real apple/banana photos captured when the
 // robot picks each fruit (stored on Vercel Blob / hub /media). Every photo is
@@ -253,6 +258,28 @@ export default function Harvest() {
   const [active, setActive] = useState(null)
   const [activeModel, setActiveModel] = useState(undefined)
   const [samplePicks, setSamplePicks] = useState([])
+  // Backdrop mode: probe /scene/ before iframing it. The SPA rewrite returns the
+  // app shell (200) for a missing /scene/harvest-bg.html, which would recursively
+  // load the whole app - so verify the body is the real scene (canvas id="c")
+  // and not the SPA shell (id="root"); otherwise fall back to OrchardHero.
+  const [bgMode, setBgMode] = useState(null) // null (probing) | 'scene' | 'orchard'
+
+  useEffect(() => {
+    let alive = true
+    fetch('/scene/harvest-bg.html', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.text() : ''))
+      .then((html) => {
+        if (!alive) return
+        const isScene = html.includes('id="c"') && !html.includes('id="root"')
+        setBgMode(isScene ? 'scene' : 'orchard')
+      })
+      .catch(() => {
+        if (alive) setBgMode('orchard')
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const toggleSamples = () =>
     setSamplePicks((cur) =>
@@ -321,7 +348,23 @@ export default function Harvest() {
   })
 
   return (
-    <div className="harvest">
+    <>
+      {bgMode === 'scene' ? (
+        <iframe
+          className="hv-scene"
+          src="/scene/harvest-bg.html?grow=1"
+          title=""
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      ) : bgMode === 'orchard' ? (
+        <div className="hv-scene hv-scene--orchard" aria-hidden="true">
+          <Suspense fallback={null}>
+            <OrchardHero />
+          </Suspense>
+        </div>
+      ) : null}
+      <div className="harvest">
       <div className="hv-head">
         <div>
           <p className="hv-kicker">Pick + sort ledger</p>
@@ -456,6 +499,7 @@ export default function Harvest() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   )
 }

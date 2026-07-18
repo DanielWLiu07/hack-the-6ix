@@ -200,8 +200,20 @@ export default function RobotPOV() {
       <NotConnected sub={`no robot on ${SERVER_URL}`} />
     )
   } else if (tab === 'slam') {
-    // C1 live SLAM scan (grid + points, no reconstruction mesh)
-    view = feedsOn ? <LidarLayer world={false} /> : <NotConnected sub="no live scan" />
+    // C1 live SLAM map. Isolated in an iframe (its own document = its own WebGL
+    // context) so the machine-fringe can overlay this tab too without two heavy
+    // contexts in one document dropping the map. Same trick as the iPhone tab.
+    view = feedsOn ? (
+      <div className="pov-view">
+        <iframe
+          title="Live SLAM map"
+          src="/pov-slam"
+          style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+        />
+      </div>
+    ) : (
+      <NotConnected sub="no live scan" />
+    )
   } else {
     // iPhone-lidar reconstruction (static scan; renders even offline)
     view = <LidarLayer world />
@@ -214,14 +226,12 @@ export default function RobotPOV() {
       <div className="pov-vignette" />
 
       {/* Machine fringe (manga cutout overlay) - eyeball/gear/prop models hang
-          into the top of the view. It runs its own transparent WebGL canvas.
-          Safe on the camera tab (no other canvas) and the iPhone tab (its 3D
-          runs in an isolated iframe). NOT on the SLAM tab: that tab's
-          LidarViewport is a second in-document WebGL context, and two heavy
-          contexts make Chrome drop one - which would vanish the live map. To put
-          the fringe there too, the SLAM view needs to move into an iframe like
-          the iPhone tab (web-frontend). */}
-      {tab !== 'slam' && <RobotFringe />}
+          into the top of EVERY tab. It runs its own transparent WebGL canvas.
+          This is safe on all three tabs because none of them keeps a second
+          WebGL context in THIS document: the camera tab has no 3D canvas, and
+          both the SLAM and iPhone tabs render their 3D inside isolated iframes
+          (/pov-slam and phone.html), each with its own context. */}
+      <RobotFringe />
 
    {/* HUD */}
       <div className="pov-hud">

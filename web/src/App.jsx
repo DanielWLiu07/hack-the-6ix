@@ -341,11 +341,13 @@ function Landing() {
   }, [])
 
   // Reveal fallback: orchard mode never sends 'landed', and a scene message can
-  // be missed on a slow first paint. Orchard shows the login shortly after load;
-  // scene keeps a longer safety net in case the landing beat was dropped.
+  // be missed on a slow first paint. Orchard shows the login shortly after load.
+  // In scene mode the login is meant to drop in exactly when the apple slams the
+  // ground (the 'landed' message), so the fallback sits well AFTER the expected
+  // slam (~3-4s in) and only fires if that beat was somehow dropped.
   useEffect(() => {
     if (mode === null || loginRevealed) return
-    const delay = mode === 'orchard' ? 1200 : 3500
+    const delay = mode === 'orchard' ? 1200 : 7000
     const id = setTimeout(() => setLoginRevealed(true), delay)
     return () => clearTimeout(id)
   }, [mode, loginRevealed])
@@ -456,6 +458,11 @@ function Landing() {
             if (!authBoardPinned) setAuthBoardOpen(false)
           }}
           onOpenBoard={() => {
+            // Toggle: pressing LOGIN again while the board is up backs out of it.
+            if (authBoardPinned) {
+              closeBoard()
+              return
+            }
             setAuthBoardPinned(true)
             setAuthBoardOpen(true)
             relaySceneFocus(null, true, true)

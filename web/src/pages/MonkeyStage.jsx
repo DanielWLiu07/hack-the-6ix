@@ -24,7 +24,7 @@ import '../App.css'
 // Fresh Meshy-generated cartoon monkey, arms out in a T-pose (a clean static
 // mesh - no skinning weights to break). The rig/mimic code below no-ops when
 // there are no bones, so it just renders in this cheerful arms-up pose.
-const SUZANNE_FULLBODY_URL = '/assets/suzanne-rigged-tpose.glb'
+const SUZANNE_FULLBODY_URL = '/assets/suzanne-tpose.glb'
 // the painted splash: a wide floating plane, hung upper-left, facing the camera
 const SPLASH = { w: 2.95, h: 1.85, pos: [0.034, -1.037, 0.312], rot: [0, 0, 0], scale: [0.59, 0.58, 0.59] }
 const MONKEY_POS = [0.086, -1.731, 0.764]
@@ -166,6 +166,36 @@ function FuzzCanvas({ w, h, fuzzRef }) {
   return <canvas ref={ref} style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated' }} />
 }
 
+// A source image drawn into a small canvas then upscaled with nearest-neighbour,
+// so it reads as chunky pixels (same look as the fuzz). Used for the POMME screen
+// shown inside one of the nav monitors.
+function PixelScreen({ src, cols = 84 }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const canvas = ref.current
+    if (!canvas) return undefined
+    const img = new Image()
+    let live = true
+    img.onload = () => {
+      if (!live) return
+      const rows = Math.max(1, Math.round(cols * (img.naturalHeight / img.naturalWidth)))
+      canvas.width = cols
+      canvas.height = rows
+      const ctx = canvas.getContext('2d')
+      ctx.imageSmoothingEnabled = false
+      ctx.drawImage(img, 0, 0, cols, rows)
+    }
+    img.src = src
+    return () => { live = false }
+  }, [src, cols])
+  return (
+    <canvas
+      ref={ref}
+      style={{ width: '100%', height: '100%', display: 'block', imageRendering: 'pixelated', objectFit: 'cover' }}
+    />
+  )
+}
+
 // The POMME screen: a STATIC snapshot of the painterly scene shown as a color
 // DOM <img> (so the manga B&W pass leaves it alone), hung as a bare painting.
 // The CRT-TV body is removed for now. No live iframe/WebGL scene, so it is light
@@ -191,12 +221,7 @@ function Splash({ bind, fuzzRef }) {
         zIndexRange={[100, 100]}
         style={{ width: `${pixelWidth}px`, height: `${pixelHeight}px`, pointerEvents: 'none' }}
       >
-        <img
-          src="/assets/pomme-screen.jpg"
-          alt=""
-          draggable={false}
-          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
-        />
+        <PixelScreen src="/assets/pomme-screen.jpg" cols={120} />
       </Html>
       {/* screen fuzz - pinned ABOVE the screen so it is actually visible */}
       {fuzzRef && (
@@ -363,9 +388,7 @@ const SLIDER_ROWS = [
   ['rot x', 'rotation', 'x', -Math.PI, Math.PI, 0.005],
   ['rot y', 'rotation', 'y', -Math.PI, Math.PI, 0.005],
   ['rot z', 'rotation', 'z', -Math.PI, Math.PI, 0.005],
-  ['scale x', 'scale', 'x', 0.05, 5, 0.01],
-  ['scale y', 'scale', 'y', 0.05, 5, 0.01],
-  ['scale z', 'scale', 'z', 0.05, 5, 0.01],
+  ['scale', 'scale', 'uniform', 0.05, 5, 0.01],
 ]
 
 function TransformSliders({ selected, getAll }) {
@@ -379,7 +402,7 @@ function TransformSliders({ selected, getAll }) {
       if (selected && !editing.current) {
         for (let i = 0; i < SLIDER_ROWS.length; i++) {
           const [, prop, axis] = SLIDER_ROWS[i]
-          const v = selected[prop][axis]
+          const v = axis === 'uniform' ? selected[prop].x : selected[prop][axis]
           const inp = inputs.current[i]
           const out = outs.current[i]
           if (inp && document.activeElement !== inp) inp.value = String(v)
@@ -397,7 +420,8 @@ function TransformSliders({ selected, getAll }) {
   const onInput = (i) => (e) => {
     const [, prop, axis] = SLIDER_ROWS[i]
     const v = parseFloat(e.target.value)
-    selected[prop][axis] = v
+    if (prop === 'scale' && axis === 'uniform') selected.scale.set(v, v, v)
+    else selected[prop][axis] = v
     if (outs.current[i]) outs.current[i].textContent = v.toFixed(2)
   }
 
@@ -453,58 +477,149 @@ function TransformSliders({ selected, getAll }) {
   )
 }
 
-// Two spotlights aimed at the lab equipment behind the monkey. The back of the
-// room is otherwise unlit (ambient is deliberately low for the foreground), so
-// these carry the backdrop. They "power on": intensity ramps from black once
+// Backdrop spotlights aimed at the lab equipment behind the monkey. The back of
+// the room is otherwise unlit (ambient is deliberately low for the foreground),
+// so these carry the backdrop. They "power on": intensity ramps from black once
 // the stage is active (synced to the camera pull-back), then holds with a gentle
-// out-of-phase shimmer so the equipment reads as live/humming. Aimed back-down
-// from the camera side, so they light the props' faces without washing the
-// monkey.
-function BackdropLights({ active, gainRef }) {
-  const targetL = useMemo(() => new THREE.Object3D(), [])
-  const targetR = useMemo(() => new THREE.Object3D(), [])
-  const leftRef = useRef(null)
-  const rightRef = useRef(null)
+// out-of-phase shimmer so the equipment reads as live/humming.
+//
+// Config arrays are MODULE-STABLE references so r3f never re-applies the
+// position/target props on re-render - that is what lets a dragged/slider-moved
+// light KEEP its new spot (same trick the placed props use). Turn on the
+// "lights" toolbar toggle to reveal draggable handles and edit them like any
+// other stage object; the intensity is scaled live by the "bg light" slider.
+const BACKDROP_LIGHTS = [
+  { key: 'bl-L', name: 'back light L', pos: [-2.8, 3.8, 2.6], target: [-0.5, 0.1, -1.9], color: '#e7edff', max: 42, angle: 0.6, distance: 20, phase: 1 },
+  { key: 'bl-R', name: 'back light R', pos: [2.8, 3.8, 2.6], target: [0.5, 0.1, -1.9], color: '#fff0d6', max: 38, angle: 0.6, distance: 20, phase: -1 },
+]
+
+// Build the live, mutable light params from the static config. The lighting
+// panel writes into this each frame BackdropLights reads it, so every knob
+// (intensity / angle / penumbra / distance / aim) updates in real time with no
+// React re-render. Position is edited separately by dragging the handle.
+function makeLightState() {
+  return BACKDROP_LIGHTS.map((l) => ({
+    intensity: l.max,
+    angle: l.angle ?? 1.1,
+    penumbra: l.penumbra ?? 0.9,
+    distance: l.distance ?? 32,
+    target: [...l.target],
+  }))
+}
+
+function BackLight({ cfg, edit, bind, lightRef, target }) {
+  return (
+    <>
+      <primitive object={target} />
+      <group name={cfg.name} position={cfg.pos} {...(edit ? bind : {})}>
+        <spotLight ref={lightRef} target={target} intensity={0} decay={2} color={cfg.color} />
+        {/* Draggable handle - only shown/clickable while editing lights. */}
+        {edit && (
+          <mesh>
+            <sphereGeometry args={[0.17, 16, 16]} />
+            <meshBasicMaterial color={cfg.color} toneMapped={false} />
+          </mesh>
+        )}
+      </group>
+    </>
+  )
+}
+
+function BackdropLights({ active, gainRef, edit, bind, stateRef }) {
+  const lightRefs = useRef([])
+  const targets = useMemo(() => BACKDROP_LIGHTS.map(() => new THREE.Object3D()), [])
   const t = useRef(0)
   const DELAY = 0.5
   const DURATION = 1.8
-  const MAX_L = 180
-  const MAX_R = 150
   useFrame((state, delta) => {
     if (active) t.current = Math.min(t.current + delta, DELAY + DURATION + 1)
     const ramp = easeOutCubic(Math.min(Math.max(t.current - DELAY, 0) / DURATION, 1))
     const gain = gainRef?.current ?? 1
     const s = Math.sin(state.clock.elapsedTime * 4.5)
-    if (leftRef.current) leftRef.current.intensity = MAX_L * ramp * gain * (0.93 + 0.07 * s)
-    if (rightRef.current) rightRef.current.intensity = MAX_R * ramp * gain * (0.93 - 0.07 * s)
+    const params = stateRef.current
+    for (let i = 0; i < BACKDROP_LIGHTS.length; i++) {
+      const l = lightRefs.current[i]
+      const p = params[i]
+      if (l && p) {
+        l.intensity = p.intensity * ramp * gain * (0.93 + 0.07 * s * BACKDROP_LIGHTS[i].phase)
+        l.angle = p.angle
+        l.penumbra = p.penumbra
+        l.distance = p.distance
+      }
+      targets[i].position.set(p.target[0], p.target[1], p.target[2])
+    }
   })
+  return BACKDROP_LIGHTS.map((cfg, i) => (
+    <BackLight
+      key={cfg.key}
+      cfg={cfg}
+      edit={edit}
+      bind={bind}
+      target={targets[i]}
+      lightRef={(el) => { lightRefs.current[i] = el }}
+    />
+  ))
+}
+
+// Full manual control of the backdrop lights: per-light sliders for intensity,
+// cone angle, penumbra, distance, and aim (target x/y/z). Writes straight into
+// the shared params ref (no re-render). Position is set by dragging the handle.
+const LIGHT_ROWS = [
+  ['intensity', 'intensity', 0, 400, 1],
+  ['angle', 'angle', 0.1, 1.4, 0.01],
+  ['penumbra', 'penumbra', 0, 1, 0.01],
+  ['distance', 'distance', 4, 60, 0.5],
+]
+function LightPanel({ stateRef }) {
+  const setVal = (i, key, v) => { stateRef.current[i][key] = v }
+  const setAim = (i, axis, v) => { stateRef.current[i].target[axis] = v }
+  const copy = (e) => {
+    const r = (n) => Number(n.toFixed(3))
+    const text = stateRef.current
+      .map((p, i) => `${BACKDROP_LIGHTS[i].name}: intensity ${r(p.intensity)}, angle ${r(p.angle)}, penumbra ${r(p.penumbra)}, distance ${r(p.distance)}, aim [${p.target.map(r).join(', ')}]`)
+      .join('\n')
+    navigator.clipboard?.writeText(text).then(
+      () => { e.target.textContent = 'copied' },
+      () => { e.target.textContent = 'copy failed' },
+    )
+    setTimeout(() => { if (e.target) e.target.textContent = 'copy values' }, 1200)
+  }
   return (
-    <>
-      <primitive object={targetL} position={[-1.7, -0.5, -1.5]} />
-      <primitive object={targetR} position={[1.6, -0.5, -1.2]} />
-      <spotLight
-        ref={leftRef}
-        position={[-3.6, 3.7, 2.3]}
-        target={targetL}
-        angle={0.9}
-        penumbra={0.75}
-        intensity={0}
-        distance={28}
-        decay={2}
-        color="#e7edff"
-      />
-      <spotLight
-        ref={rightRef}
-        position={[3.7, 3.5, 2.1]}
-        target={targetR}
-        angle={0.9}
-        penumbra={0.75}
-        intensity={0}
-        distance={28}
-        decay={2}
-        color="#fff0d6"
-      />
-    </>
+    <div className="stage-lights">
+      <div className="stage-lights-title">Backdrop lights</div>
+      {BACKDROP_LIGHTS.map((cfg, i) => (
+        <div className="stage-lights-group" key={cfg.key}>
+          <div className="stage-lights-head">{cfg.name}</div>
+          {LIGHT_ROWS.map(([label, key, min, max, step]) => (
+            <label className="slider-row" key={label}>
+              <span className="slider-label">{label}</span>
+              <input
+                type="range"
+                min={min}
+                max={max}
+                step={step}
+                defaultValue={stateRef.current[i][key]}
+                onInput={(e) => setVal(i, key, parseFloat(e.target.value))}
+              />
+            </label>
+          ))}
+          {['x', 'y', 'z'].map((axis, ai) => (
+            <label className="slider-row" key={`aim-${axis}`}>
+              <span className="slider-label">aim {axis}</span>
+              <input
+                type="range"
+                min={-6}
+                max={6}
+                step={0.05}
+                defaultValue={stateRef.current[i].target[ai]}
+                onInput={(e) => setAim(i, ai, parseFloat(e.target.value))}
+              />
+            </label>
+          ))}
+        </div>
+      ))}
+      <button className="stage-sliders-copy" onClick={copy}>copy values</button>
+    </div>
   )
 }
 
@@ -527,9 +642,9 @@ function MangaRender() {
 // styles them like everything else. They fan on an arc above the monkey; the
 // colour-coded page label is a DOM billboard (drei Html) so it stays legible and
 // coloured on top of the B&W manga TV body. All placement is tunable here.
-const TV_URL = '/assets/tv.glb'
+const TV_URL = '/assets/tv-monitor.glb' // tv.glb with the stand geometry removed
 const NAV_TVS = [
-  { to: '/stage', label: 'Stage', color: '#ffcf3f' },
+  { to: '/stage', label: 'Stage', color: '#ffcf3f', screen: '/assets/pomme-screen.jpg' },
   { to: '/pov', label: 'Robot POV', color: '#7cd4ff' },
   { to: '/teleop', label: 'Teleop', color: '#ff8fbf' },
   { to: '/lidar', label: 'Lidar', color: '#86e6a0' },
@@ -547,35 +662,19 @@ const TV_ARC = {
   faceY: 0, // base yaw; flip by Math.PI if the TVs show their backs
   labelZ: 0.28, // label offset out from the TV centre toward the screen
   labelScale: 5, // drei Html distanceFactor (smaller = smaller label)
-  standCut: -0.55, // local Y below which the stand is deleted (screen starts at -0.534)
+  screenZ: 0.11, // POMME screen offset onto the monitor face (local units)
+  screenScale: 3.4, // drei Html distanceFactor for the on-monitor screen
+  screenPx: [200, 128], // screen DOM size (px) - aspect roughly matches the panel
 }
 
-function StageTV({ label, color, to, position, rotation, scale, labelZ, bind, navigate }) {
+function StageTV({ label, color, to, screen, position, rotation, scale, labelZ, bind, navigate, edit }) {
   const { scene } = useGLTF(TV_URL)
   const model = useMemo(() => {
     const clone = scene.clone(true)
-    // The stand (base foot + thin neck) is all geometry below local y = -0.534,
-    // where the full-width screen panel begins. Delete those triangles so only the
-    // monitor remains - a hard geometry edit, not a render-time clip.
-    const CUT = TV_ARC.standCut
+    // tv-monitor.glb is already stand-free; just brighten it so the monitor reads
+    // white through the manga pass (its own texture is dark = pitch black otherwise).
     clone.traverse((o) => {
-      if (!o.isMesh || !o.geometry) return
-      const geo = o.geometry.clone()
-      const pos = geo.attributes.position
-      const idx = geo.index
-      const triCount = idx ? idx.count / 3 : pos.count / 3
-      const kept = []
-      for (let t = 0; t < triCount; t++) {
-        const a = idx ? idx.getX(t * 3) : t * 3
-        const b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1
-        const c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2
-        if (Math.min(pos.getY(a), pos.getY(b), pos.getY(c)) > CUT) kept.push(a, b, c)
-      }
-      geo.setIndex(kept)
-      geo.computeVertexNormals()
-      o.geometry = geo
-      // Bright uniform self-illumination so the monitor reads white through the
-      // manga pass (its own texture is dark, which rendered it pitch black).
+      if (!o.isMesh || !o.material) return
       const mats = Array.isArray(o.material) ? o.material : [o.material]
       mats.forEach((m) => {
         m.emissive = new THREE.Color(0xcfcfcf)
@@ -585,7 +684,7 @@ function StageTV({ label, color, to, position, rotation, scale, labelZ, bind, na
         m.needsUpdate = true
       })
     })
-    // Recentre the trimmed monitor on the group origin.
+    // Recentre the monitor on the group origin.
     const box = new THREE.Box3().setFromObject(clone)
     const centre = new THREE.Vector3()
     box.getCenter(centre)
@@ -605,28 +704,46 @@ function StageTV({ label, color, to, position, rotation, scale, labelZ, bind, na
     g.scale.setScalar(scale)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  // In edit mode the TV is a draggable/selectable object (bind, no navigation) so
+  // you can position it; otherwise it is a nav button (click = go to the page).
+  const handlers = edit
+    ? { ...bind }
+    : { onClick: (event) => { event.stopPropagation(); navigate(to) } }
   return (
     <group
       ref={groupRef}
-      {...bind}
-      onClick={(event) => { event.stopPropagation(); navigate(to) }}
+      {...handlers}
       onPointerOver={(event) => { event.stopPropagation(); setHover(true) }}
       onPointerOut={() => setHover(false)}
     >
       <primitive object={model} scale={hover ? 1.06 : 1} />
-      <Html center position={[0, 0, labelZ]} distanceFactor={TV_ARC.labelScale} pointerEvents="none">
-        <span
-          className="tv3d-label"
-          style={{ color, textShadow: `0 0 12px ${color}, 0 0 4px ${color}` }}
+      {screen ? (
+        // Pixelated POMME on this monitor's screen face (DOM so it keeps colour).
+        <Html
+          center
+          transform
+          position={[0, 0, TV_ARC.screenZ]}
+          distanceFactor={TV_ARC.screenScale}
+          pointerEvents="none"
+          style={{ width: `${TV_ARC.screenPx[0]}px`, height: `${TV_ARC.screenPx[1]}px`, pointerEvents: 'none' }}
         >
-          {label}
-        </span>
-      </Html>
+          <PixelScreen src={screen} />
+        </Html>
+      ) : (
+        <Html center position={[0, 0, labelZ]} distanceFactor={TV_ARC.labelScale} pointerEvents="none">
+          <span
+            className="tv3d-label"
+            style={{ color, textShadow: `0 0 12px ${color}, 0 0 4px ${color}` }}
+          >
+            {label}
+          </span>
+        </Html>
+      )}
     </group>
   )
 }
 
-function StageTVNav({ bind, navigate }) {
+function StageTVNav({ bind, navigate, edit }) {
   const { scene } = useGLTF(TV_URL)
   const fit = useMemo(() => {
     const box = new THREE.Box3().setFromObject(scene)
@@ -654,13 +771,16 @@ function StageTVNav({ bind, navigate }) {
           or the manga pass renders them near-black on the black ceiling. */}
       <pointLight position={[0, TV_ARC.center[1] + 0.6, TV_ARC.center[2] + 2.4]} intensity={38} distance={9} decay={2} />
       {items.map((it) => (
-        <StageTV key={it.to} {...it} scale={fit} labelZ={TV_ARC.labelZ} bind={bind} navigate={navigate} />
+        <StageTV key={it.to} {...it} scale={fit} labelZ={TV_ARC.labelZ} bind={bind} navigate={navigate} edit={edit} />
       ))}
     </group>
   )
 }
 
-export default function MonkeyStage({ showNav = true, playIntro = false, liveScene = true }) {
+// edit: false = clean stage (TVs are nav buttons, no editor UI). 'tv' = position
+// the nav TVs (they become draggable/selectable, props stay locked).
+export default function MonkeyStage({ showNav = true, playIntro = false, liveScene = true, edit = false }) {
+  const editTV = edit === 'tv'
   // Router context does not cross into the r3f Canvas, so resolve navigate here
   // (outside the Canvas) and hand it to the in-scene TV nav.
   const navigate = useNavigate()
@@ -670,6 +790,11 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
   // Live multiplier on the backdrop-spot intensity (the toolbar slider writes
   // here; BackdropLights reads it each frame, so no re-render while dragging).
   const bgGain = useRef(1)
+  // When on, the backdrop lights show draggable handles + the lighting panel.
+  const [lightsEdit, setLightsEdit] = useState(false)
+  // Live, mutable per-light params (intensity/angle/penumbra/distance/aim) the
+  // panel writes and BackdropLights reads each frame.
+  const lightState = useRef(makeLightState())
   const splash = useSplash()
   const [sceneAvailable, setSceneAvailable] = useState(false)
   const [selected, setSelected] = useState(null)
@@ -872,7 +997,7 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
             <meshBasicMaterial color="#cddcff" />
           </mesh>
         </group>
-        <BackdropLights active={playIntro} gainRef={bgGain} />
+        <BackdropLights active={playIntro} gainRef={bgGain} edit={editTV && lightsEdit} bind={bind} stateRef={lightState} />
         {/* Room backdrop: a wall behind everything so the void is a lit surface,
             not a flat black clear. A light matte material catches the ambient +
             backdrop spots; the manga pass then shades it into paper / tone bands
@@ -885,7 +1010,7 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
         <Suspense fallback={null}>
           <Splash bind={bind} fuzzRef={fuzzRef} />
           <Monkey bind={bind} poseRef={poseRef} mimic={mimic} mirror={mirror} />
-          {showNav && <StageTVNav bind={bind} navigate={navigate} />}
+          {showNav && <StageTVNav bind={bind} navigate={navigate} edit={editTV} />}
         </Suspense>
         {placed.map((inst) => {
           const catalog = CATALOG_BY_ID[inst.catalogId]
@@ -893,25 +1018,42 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
           return (
             <PropBoundary key={inst.id}>
               <Suspense fallback={null}>
-                <StageProp inst={inst} catalog={catalog} bind={bind} onReady={onPropReady} />
+                {/* Props are locked scenery here - only the TVs are positionable. */}
+                <StageProp inst={inst} catalog={catalog} bind={undefined} onReady={onPropReady} />
               </Suspense>
             </PropBoundary>
           )
         })}
         <MangaRender />
       </Canvas>
-      <div className="stage-editor" role="toolbar" aria-label="Stage transforms">
-        <span>Drag to move · W/E/R + arrows to fine-tune · Del to remove</span>
-        {['translate', 'rotate', 'scale'].map((m) => (
-          <button key={m} className={transformMode === m ? 'is-active' : ''} onClick={() => setTransformMode(m)}>
-            {m}
+      {/* Editor UI only in the TV-positioning route; the plain /stage is clean. */}
+      {editTV && (
+        <div className="stage-editor" role="toolbar" aria-label="Position the TVs">
+          <span>Drag a TV to move · W/E/R + arrows to fine-tune · COPY THIS for its coords</span>
+          {['translate', 'rotate', 'scale'].map((m) => (
+            <button key={m} className={transformMode === m ? 'is-active' : ''} onClick={() => setTransformMode(m)}>
+              {m}
+            </button>
+          ))}
+          <label className="stage-editor-slider" title="Backdrop light intensity (global)">
+            bg light
+            <input
+              type="range"
+              min="0"
+              max="3"
+              step="0.05"
+              defaultValue="1"
+              onInput={(e) => { bgGain.current = parseFloat(e.target.value) }}
+            />
+          </label>
+          <button className={lightsEdit ? 'is-active' : ''} onClick={() => setLightsEdit((v) => !v)}>
+            lights
           </button>
-        ))}
-        <button className={paletteOpen ? 'is-active' : ''} onClick={() => setPaletteOpen((v) => !v)}>
-          add prop
-        </button>
-        <button onClick={duplicateSelected} disabled={!isProp}>duplicate</button>
-        <button onClick={deleteSelected} disabled={!isProp}>delete</button>
+        </div>
+      )}
+      {editTV && lightsEdit && <LightPanel stateRef={lightState} />}
+      {/* Mimic control stays on the clean stage - it is a feature, not editing. */}
+      <div className="stage-editor stage-editor--mimic">
         <button className={mimic ? 'is-active' : ''} onClick={() => setMimic((v) => !v)}>
           {mimic ? 'stop mimic' : 'mimic me'}
         </button>
@@ -920,37 +1062,13 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
             mirror
           </button>
         )}
-        <label className="stage-editor-slider" title="Backdrop light intensity">
-          bg light
-          <input
-            type="range"
-            min="0"
-            max="3"
-            step="0.05"
-            defaultValue="1"
-            onInput={(e) => { bgGain.current = parseFloat(e.target.value) }}
-          />
-        </label>
       </div>
-      {paletteOpen && (
-        <div className="stage-palette" role="menu" aria-label="Place a prop">
-          <div className="stage-palette-head">Place a prop</div>
-          <div className="stage-palette-grid">
-            {PROP_CATALOG.map((p) => (
-              <button key={p.id} onClick={() => addProp(p.id)} title={`Add ${p.label}`}>
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <div className="stage-palette-note">Drops in front of the monkey - drag it into place.</div>
-        </div>
-      )}
       {mimic && (
         <Suspense fallback={null}>
           <MimicCam poseRef={poseRef} mirror={mirror} />
         </Suspense>
       )}
-      <TransformSliders selected={selected} getAll={serializeAll} />
+      {editTV && <TransformSliders selected={selected} />}
     </div>
   )
 }

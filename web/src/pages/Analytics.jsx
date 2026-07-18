@@ -2,9 +2,9 @@ import { Component, Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
 import '../analytics.css'
 
-// Manga-shader crust texture for the page background only. Lazy so three/r3f
-// stays out of the analytics data path.
-const MangaBackdrop = lazy(() => import('../components/MangaBackdrop.jsx'))
+// Manga-shaded decoration scene + editor (background). Lazy so three/r3f stays
+// out of the analytics data path.
+const Deco = lazy(() => import('../components/Deco.jsx'))
 
 // Ink for the data marks.
 const C_INK = '#171914'
@@ -238,10 +238,10 @@ export default function Analytics() {
 
   return (
     <div className="az">
-      {/* manga-shader crust behind the UI (background only) */}
+      {/* manga-shaded deco scene + editor (background) */}
       <HeroBoundary>
         <Suspense fallback={null}>
-          <MangaBackdrop />
+          <Deco />
         </Suspense>
       </HeroBoundary>
 
