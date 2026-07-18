@@ -6,15 +6,25 @@
 
 #include <Arduino.h>
 
-#define FW_VERSION "0.3"
+#define FW_VERSION "0.4"
 
 // ---------------------------------------------------------------- drive base
-// Two DC motors via L298/TB6612-style drivers: IN1/IN2 direction + EN(PWM).
-// If your driver is PHASE/ENABLE style, set DRIVE_PHASE_ENABLE to 1 (IN1
-// becomes PHASE, IN2 unused).
-// Pin numbers + names track firmware/PINOUT.md (owner: fw-tools) exactly.
+// Driver mode. The rover's actual drivers are BTS7960 / IBT-2 (dual-PWM), so
+// DRIVE_BTS7960 defaults ON. See firmware/DRIVE_BTS7960.md.
+//   DRIVE_BTS7960 1 -> RPWM/LPWM per motor; R_EN/L_EN tied HIGH in hardware.
+//   DRIVE_BTS7960 0 -> L298/TB6612 IN1/IN2 direction + EN(PWM); set
+//                      DRIVE_PHASE_ENABLE 1 for PHASE/ENABLE (IN1=PHASE) drivers.
+// All pins below are hardware-PWM on the Uno Q (firmware/DRIVE_BTS7960.md).
+#define DRIVE_BTS7960 1
 #define DRIVE_PHASE_ENABLE 0
 
+// BTS7960 dual-PWM pins (used when DRIVE_BTS7960 == 1).
+#define PIN_M_L_RPWM 5   // LEFT  forward PWM
+#define PIN_M_L_LPWM 7   // LEFT  reverse PWM
+#define PIN_M_R_RPWM 6   // RIGHT forward PWM
+#define PIN_M_R_LPWM 8   // RIGHT reverse PWM
+
+// L298/TB6612 pins (used when DRIVE_BTS7960 == 0).
 #define PIN_M_L_IN1 4
 #define PIN_M_L_IN2 7
 #define PIN_M_L_PWM 5
