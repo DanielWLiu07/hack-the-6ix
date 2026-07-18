@@ -3,6 +3,7 @@ import { useRobot, useRobotEvent, SERVER_URL } from '../lib/robot.jsx'
 import RobotFringe from '../components/RobotFringe.jsx'
 import LidarViewport from '../components/LidarViewport.jsx'
 import BackToStage from '../components/BackToStage.jsx'
+import PovFleetPanel from '../components/PovFleetPanel.jsx'
 import ArrivalFuzz from '../components/ArrivalFuzz.jsx'
 import '../pov.css'
 
@@ -93,20 +94,28 @@ function LidarLayer({ world }) {
 
 // Optical layer (arm camera + detection boxes) 
 function CameraLayer({ detections, label }) {
-  const [noStream, setNoStream] = useState(false)
+  // connecting | live | off. Show NOT CONNECTED (same placeholder as the other
+  // tabs) until a real frame actually loads; a stream that errors or never
+  // arrives falls to 'off' - never a blank/broken-image state.
+  const [status, setStatus] = useState('connecting')
+  useEffect(() => {
+    const t = setTimeout(() => setStatus((s) => (s === 'connecting' ? 'off' : s)), 4000)
+    return () => clearTimeout(t)
+  }, [])
   return (
     <div className="pov-view pov-cam">
-      {!noStream ? (
+      {status !== 'off' && (
         <img
           className="pov-cam-img"
           src={`${SERVER_URL}/stream`}
           alt=""
-          onError={() => setNoStream(true)}
+          style={{ display: status === 'live' ? 'block' : 'none' }}
+          onLoad={() => setStatus('live')}
+          onError={() => setStatus('off')}
         />
-      ) : (
-        <NotConnected sub="arm camera offline" />
       )}
-      {label && <span className="pov-cam-tag">{label} · ARM CAM</span>}
+      {status !== 'live' && <NotConnected sub="arm camera offline" />}
+      {status === 'live' && label && <span className="pov-cam-tag">{label} · ARM CAM</span>}
       {/* bbox overlay - viewBox matches the detector's frame; "slice" mirrors
           object-fit: cover on the feed so boxes stay registered. */}
       <svg
@@ -187,6 +196,7 @@ export default function RobotPOV() {
     () => new URLSearchParams(window.location.search).get('robot') || null,
   )
   useRobotEvent('fleet', (f) => { if (Array.isArray(f?.robots)) setFleet(f.robots) })
+  const [fleetOpen, setFleetOpen] = useState(true) // mission-control sidebar open
   // Resolve the active robot: the picked one if still in the roster, else the
   // first rover. null when no roster yet (fall back to merged telemetry).
   const activeRobot = (selRobot && fleet.find((r) => r.id === selRobot)) || fleet[0] || null
@@ -272,26 +282,25 @@ export default function RobotPOV() {
         <span className="pov-tick br" />
         <div className="pov-scanline" />
 
-        {/* fleet picker - which rover this cockpit is inside (swarm-aware POV).
-            Shown whenever the roster has a robot; a single chip still tells the
-            operator which unit they are viewing. */}
-        {feedsOn && fleet.length > 0 && (
-          <div className="pov-fleet">
-            <span className="pov-fleet-lab">FLEET</span>
-            {fleet.map((r) => (
-              <button
-                key={r.id}
-                className={`pov-fleet-chip ${r.state || 'IDLE'} ${activeRobot?.id === r.id ? 'on' : ''}`}
-                onClick={() => pickRobot(r.id)}
-                title={`${r.id} · ${r.state || 'IDLE'}${r.sim ? ' · sim' : ''}`}
-              >
-                <i className="dot" />
-                {r.id}
-                {r.sim && <span className="sim">sim</span>}
-              </button>
-            ))}
-            <a className="pov-fleet-all" href="/swarm" title="Fleet swarm map">SWARM ›</a>
-          </div>
+        {/* Mission-control sidebar: live fleet roster (click a rover to enter it)
+            + FarmHand NL command console. Collapsible so the cockpit stays clean.
+            Commands broadcast to the fleet; the real robot executes for real. */}
+        {feedsOn && (
+          <aside className={`pov-fleetbar ${fleetOpen ? 'open' : ''}`}>
+            <button
+              className="pov-fleetbar-tab"
+              onClick={() => setFleetOpen((v) => !v)}
+              title={fleetOpen ? 'Hide fleet + command' : 'Fleet + command'}
+            >
+              <span className="chev">{fleetOpen ? '‹' : '›'}</span>
+              <span className="lab">FLEET</span>
+            </button>
+            {fleetOpen && (
+              <div className="pov-fleetbar-body">
+                <PovFleetPanel fleet={fleet} activeId={activeRobot?.id} onPick={pickRobot} />
+              </div>
+            )}
+          </aside>
         )}
 
         {/* center reticle (camera view only) */}

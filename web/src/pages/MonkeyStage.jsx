@@ -1199,7 +1199,9 @@ let pendingTvOut = null
 // edit: false = clean stage (TVs are nav buttons, no editor UI). 'tv' = position
 // the nav TVs (they become draggable/selectable, props stay locked).
 export default function MonkeyStage({ showNav = true, playIntro = false, liveScene = true, edit = false }) {
-  const editTV = edit === 'tv'
+  // Stage editing disabled: no editor toolbar, prop palette, transform tools, or
+  // draggable TVs/props on the stage. (Was: edit === 'tv' via the /stage/tv route.)
+  const editTV = false
   // Clicking a monitor "changes the channel": the clicked monitor's screen fills
   // with static, the camera pushes IN until that screen fills the viewport, then
   // tvNavigate swaps the route and clears the static over the new page (reveal).
@@ -1228,6 +1230,15 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
   // clear when the pull-back finishes - so the exit fuzz is on the TV screen
   // (shrinking into the stage), not a full-screen overlay.
   const [exitStatic, setExitStatic] = useState(tvOut)
+  // Warm the TV-destination page chunks while on the stage, so clicking a monitor
+  // has little/nothing left to load (reduces the black-square loading gap between
+  // the fuzz fades). Deferred so it does not compete with the stage's own load.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      ['/pov', '/analytics', '/teleop', '/lidar', '/harvest', '/swarm'].forEach(preloadRoute)
+    }, 900)
+    return () => clearTimeout(id)
+  }, [])
   const spotTarget = useMemo(() => new THREE.Object3D(), [])
   // Shared handle so the camera intro drives the on-screen fuzz opacity.
   const fuzzRef = useRef({ opacity: 0 })

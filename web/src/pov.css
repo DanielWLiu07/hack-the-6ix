@@ -457,7 +457,7 @@
 /* active-rover tag on the camera feed */
 .pov-cam-tag {
   position: absolute;
-  top: 10px;
+  top: 52px;
   left: 12px;
   z-index: 5;
   padding: 3px 8px;
@@ -466,4 +466,90 @@
   color: #12130f;
   background: rgba(246, 245, 240, 0.82);
   border-radius: 4px;
+}
+
+/* mission-control sidebar: fleet roster + FarmHand command console.
+   Uses the page's manga paper/ink/glass vocabulary so it reads as the same
+   HUD system as the bottom chips (frosted glass, ink text), over any tab. */
+.pov-fleetbar {
+  position: absolute;
+  left: 0;
+  top: 64px;
+  bottom: 108px;
+  z-index: 9;
+  display: flex;
+  align-items: stretch;
+  max-width: 92vw;
+}
+.pov-fleetbar-tab {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 5px;
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur);
+  color: var(--dim);
+  cursor: pointer;
+}
+.pov-fleetbar-tab .lab { writing-mode: vertical-rl; font: 700 10px/1 var(--ui-mono); letter-spacing: 0.18em; }
+.pov-fleetbar-tab .chev { font-size: 14px; line-height: 1; color: var(--txt); }
+.pov-fleetbar-tab:hover { color: var(--txt); border-color: rgba(17, 16, 13, 0.26); }
+.pov-fleetbar-body {
+  width: 300px;
+  max-width: 84vw;
+  display: flex;
+  padding: 12px;
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  border-left: 0;
+  border-radius: 0 12px 12px 0;
+  box-shadow: var(--glass-hi), 8px 0 28px rgba(17, 16, 13, 0.12);
+  backdrop-filter: var(--blur);
+}
+
+.povf { display: flex; flex-direction: column; width: 100%; min-height: 0; gap: 8px; color: var(--txt); }
+.povf-sec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font: 700 9px/1 var(--ui-mono); letter-spacing: 0.14em; color: var(--faint);
+  text-transform: uppercase;
+}
+.povf-swarm { color: var(--dim); text-decoration: none; letter-spacing: 0.08em; font-weight: 700; }
+.povf-swarm:hover { color: var(--txt); }
+.povf-roster { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1 1 auto; min-height: 60px; }
+.povf-empty { color: var(--faint); font-size: 11px; text-align: center; padding: 12px 0; }
+
+.povf-card {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 8px 9px; text-align: left;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  color: var(--txt); font: 500 11px/1.2 var(--ui-mono); cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.povf-card:hover { border-color: rgba(17, 16, 13, 0.3); background: rgba(255, 255, 255, 0.7); }
+.povf-card.on { border-color: var(--ink); background: rgba(17, 16, 13, 0.06); }
+.povf-card-top { display: flex; align-items: center; gap: 6px; }
+.povf-led { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 5px currentColor; flex: none; }
+.povf-id { font-weight: 700; letter-spacing: 0.03em; }
+.povf-sim { font-size: 8px; color: #2f7db0; letter-spacing: 0.08em; }
+.povf-state { margin-left: auto; font-size: 9px; font-weight: 700; padding: 1px 6px; border: 1px solid; border-radius: 4px; letter-spacing: 0.06em; }
+.povf-batt { display: flex; align-items: center; gap: 7px; }
+.povf-batt .track { flex: 1; height: 6px; border-radius: 3px; background: rgba(17, 16, 13, 0.12); overflow: hidden; }
+.povf-batt .track > span { display: block; height: 100%; background: #2f9d54; border-radius: 3px; }
+.povf-batt .track > span.warn { background: #d98a2b; }
+.povf-batt .track > span.crit { background: #d4483a; }
+.povf-batt-v { font-size: 10px; color: var(--dim); min-width: 36px; text-align: right; }
+.povf-drive { font-size: 9px; color: var(--faint); letter-spacing: 0.02em; }
+
+.povf-cmd { flex: 0 0 auto; height: 268px; display: flex; }
+
+@media (max-height: 620px) {
+  .povf-cmd { height: 200px; }
 }

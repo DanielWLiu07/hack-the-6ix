@@ -14,7 +14,13 @@ export default function ArrivalFuzz({ hold = 480, fade = 820 }) {
   // can clear its static now - the page-side fuzz below takes over seamlessly,
   // with no clean/black gap between them.
   const { arrived } = useTvTransition()
-  useEffect(() => { arrived() }, [arrived])
+  // Signal AFTER two frames, not on mount: the page shell mounts before its
+  // heavy 3D/images paint, and clearing the static on mount can expose an
+  // unpainted (black) element. Two rAFs let the first real frame land first.
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => { raf = requestAnimationFrame(() => arrived()) })
+    return () => cancelAnimationFrame(raf)
+  }, [arrived])
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return undefined

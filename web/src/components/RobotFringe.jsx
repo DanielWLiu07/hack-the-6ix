@@ -594,7 +594,8 @@ export default function RobotFringe({ edit = false }) {
     const loop = () => {
       if (disposed) return
       const t = clock.getElapsedTime()
-      for (const sp of spinners) sp.rotation.z = t * sp.userData.v
+      // bounded sway instead of full 360 rotations (sp.userData.v = per-object rate)
+      for (const sp of spinners) sp.rotation.z = Math.sin(t * sp.userData.v) * 0.4
       chain.rotation.z = Math.sin(t * 0.9) * 0.1
       chain2.rotation.z = Math.sin(t * 0.9 + 1.7) * 0.12
       for (const e of eyes) {
@@ -624,7 +625,7 @@ export default function RobotFringe({ edit = false }) {
           case 'bob': h.position.y = b.py + w * a.amp; break
           case 'sway': h.rotation.z = b.rz + w * a.amp; break
           case 'nod': h.rotation.x = b.rx + w * a.amp; break
-          case 'spin': h.rotation.y = b.ry + t * a.spd; break
+          case 'spin': h.rotation.y = b.ry + w * 0.42; break  // gentle yaw wobble, not a full 360 spin
           case 'pulse': h.scale.setScalar(b.sc * (1 + w * a.amp)); break
           default: break
         }
