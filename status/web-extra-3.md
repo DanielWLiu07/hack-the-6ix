@@ -134,3 +134,30 @@ Human: build a deco editor (all transform edit, scale = ONE slider), a bunch of 
 - Meshy pipeline: generated ~12 props; they land at 18-40MB (super high-poly). `scripts/opt-deco.sh` (aggressive geometry decimation via --simplify-error + 512 webp + quantize) crushes them to 40KB-1.4MB (e.g. monitor 18MB->226KB). Dropped `database` (wouldn't decimate below 8.8MB).
 - Cleanup: deleted ~325MB of raw Meshy .glb intermediates from public/assets (406M->72M); only .min versions ship.
 `npm run build` ✓, `oxlint` ✓, all data live. NOTE: other workers also dropped lab/data props in public/assets (server-rack, robot-arm-lab, oscilloscope, lab-bench, storage-shelf, control-console) - could add those to the palette too if wanted.
+
+## [09:20] DONE — deco editor upgrades + drag + motion polish
+Deco editor upgrades (`components/Deco.jsx`): "Edit in scene" mode brings the canvas forward (pointer-events auto) so you can DRAG props (manual raycast to z=0 plane via window pointer events) and CLICK empty to place the armed type; plus Duplicate, snap-to-grid, Clear all, and localStorage layout persistence (auto save/load). Single uniform-scale slider kept.
+Motion polish (`pages/Analytics.jsx`): count-up numbers (Num component, rAF ease), Total Picks tile flashes on each new pick, live/sim stream dot pulses (prefers-reduced-motion respected). Removed now-unused `fmt`.
+`npm run build` ✓, `oxlint` ✓ clean, all data live, no emoji/em dash. Verified in real browser (drag needs interaction). Offered the human the impact-numbers add (CO2e/$/labor-hrs/kg-per-hr) as the next high-value improvement.
+
+## [10:55] DONE — removed deco localStorage auto-restore (was re-placing a prop)
+Human saw a leftover battery prop in the scene and did not want anything pre-placed. Root cause: my localStorage save/restore restored the saved layout on load, which read as pre-placing. Removed persistence entirely (loadObjects/STORE_KEY/save-effect gone); Deco now ALWAYS starts empty (`useState([])`), nothing restored. Props are added only via the editor per session. `npm run build` ✓, `oxlint` ✓.
+
+## [11:10] DONE — drag placement made reliable
+Drag was finicky (had to precisely grab a tiny model). Reworked: in Edit mode, pointer-down ANYWHERE drags the currently-selected prop (DragPlane behind props grabs the selection; clicking a prop selects+drags it). Dragger raycasts pointer to z=0 plane via window pointermove, ends on pointerup. "+ Add" now drops the prop at center, selects it, and auto-enters Edit mode so it's immediately draggable. Removed click-to-place (confusing vs drag). `npm run build` ✓, `oxlint` ✓.
+
+## [11:20] DONE — fixed "super black" models (metallic PBR, no env map)
+Human: models render super black. Cause: Meshy models are metallic PBR; with no environment map, metal surfaces reflect nothing = pure black on a real GPU (swiftshader headless masked it, so my screenshots looked fine). Fix in `Prop`: traverse the cloned model, clone each material (so the useGLTF cache isn't mutated) and set metalness=0 + roughness>=0.5, so the scene lights shade them and mangaPass produces real halftone/ink tone. Kept ALL features (drag/add/duplicate/snap/clear/sliders/motion). `npm run build` ✓, `oxlint` ✓.
+
+## [11:35] DONE — fixed data disappearing when adding a prop
+Cause: edit mode brought the opaque `.az-crust` canvas to z-index 3 (in front of the data), hiding the panels. Fix: the 3D canvas now stays behind the data (z0, pointer-events none) always; edit input is handled by a transparent full-screen `.deco-catcher` div (z2, above data z1, below editor z6) whose pointerDown = grabSelected -> the window-listening Dragger moves the selected prop. Data stays visible while editing. `npm run build` ✓, `oxlint` ✓, nothing removed.
+
+## [12:30] DONE — major DATA overhaul (impact + history + trends + live feed)
+Human: massively improve the data + graphs + UI. Added (all live-derived, no hardcoded data):
+- IMPACT/ROI strip (env + Deloitte ammo): waste avoided kg, CO2e avoided, $ recovered, labor-hours saved, kg/hr vs manual. Uses documented factors (CO2E_PER_KG 2.5, USD_PER_KG 2.2, MANUAL_SEC 18) over live picks/waste.
+- Metrics refreshed: Total picks, Sort success, Avg pick time (Nx-manual), Vision confidence (from detection stream).
+- TRENDS chart (TrendChart): throughput bars + rolling sort-success line + peak, replacing the tiny sparkline.
+- Live LAST PICKS feed (time / fruit ripeness -> bin / OK-FAIL / cycle) from the pick stream.
+- Vision/All-time panel: avg detection confidence + count + last-seen; swaps to server all-time totals when live (not sim).
+- Count-up bug clamped (k=max(0,...)); consumes detections from useRobot.
+`npm run build` ✓, `oxlint` ✓ clean, render-verified. Note: impact factors should be reconciled with @db's docs/IMPACT.md when it lands.

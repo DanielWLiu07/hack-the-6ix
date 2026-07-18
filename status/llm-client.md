@@ -200,3 +200,13 @@ Comprehensive verification of the FarmHand NL workstream:
 - ACCURACY: canonical 29/30 = 96.7%; stress set (26 hard typos/slang) 22/26 = 84.6%, ~787ms latency.
 - FALLBACK: dead endpoint -> mock, flagged; disable-able.
 Nothing broke that needed a fix beyond the earlier style/punct cleanups (done). Workstream is trained, deployed, integrated, robust, and exhaustively tested. Stack left up via demo.sh. Idle-ready.
+
+## [freesolo-winmore] going through all win-worthy levers
+- Expanded held-out stress set 26 -> 58 cases (0 leakage verified). Re-ran baseline vs trained: regex 27/58 (46.6%) vs SFT+GRPO 47/58 (81.0%) = +34pt, more statistically credible than the small-sample number. Updated DEVPOST + training/README + PITCH to lead with 46.6->81.0 (honest > dramatic).
+- Fired OPD distillation (flash-1784381972-c9e21472, GLM-5.2 teacher, warm-start from SFT) for the 3rd algorithm / SFT->RL->distillation sweep. ~$0.33 GPU + ~$5.54 teacher API. Monitor bxy2de5zc running; on done -> deploy + eval + add the OPD row.
+- Pitch now leads FarmHand beat with the 46.6->81.0 stat + "schema-checked before it touches the arm".
+
+## [freesolo-opd] DONE - OPD trained/evaled; three-algorithm sweep complete; GRPO shipped
+OPD flash-1784381972-c9e21472 done ($0.33 GPU + teacher API). Deployed + evaled: canonical 28/30 (93.3%), stress 47/58 (81.0%). Did NOT beat GRPO (96.7%/81.0%) - tied on stress, slightly below on clean. GRPO stays the shipped/live model; OPD undeployed (only GRPO serving now). Live model verified working, 32 tests pass.
+Recorded honestly: DEVPOST eval table now shows all 3 algorithms (SFT/GRPO/OPD) with GRPO marked shipped; DEVPOST_SUBMISSION what's-next updated (all 3 ran, GRPO won). We report the full sweep, not just the winner.
+WIN posture: trained via SFT+GRPO+OPD (all 3 Freesolo algorithms), +34pt over baseline on realistic input (46.6->81.0, 58-case held-out), rigorous multi-metric eval + honest ablation, drives a real robot with a validated safety gate, tiny 0.8B edge model, fully reproducible (training/README). Idle-ready.

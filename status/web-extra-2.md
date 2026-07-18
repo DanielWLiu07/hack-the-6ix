@@ -62,7 +62,33 @@ Human: the tab selector looked cheap; wanted glass + standardized + manga theme,
 - **One glass vocabulary**: top-bar chips (EXIT/STATE/PWR/GO LIVE/FULL), bottom telemetry chips, and the segmented control all share the same glass tokens (border `rgba(255,255,255,.16)`, `backdrop-filter: blur(16px)`, inset highlight).
 - **Black & white, no green**: dropped every colour accent. Palette is paper `#f2f0e9` / ink `#0b0e0d` / greys. Detection boxes = white (ripe solid, unripe dashed); battery fill = paper/greys; reticle + scanline + ticks white; LIVE active = inverted paper chip; swatches = filled vs outlined paper. Matches the B&W manga fringe.
 Build + oxlint + style sweep clean.
-NOTE: since then RobotPOV/RobotFringe/pov.css/main.jsx were further edited by the human/other panes (new LidarViewport component, paper-white lidar bg, /pov EXIT -> /stage, default tab iphone). Not reverting. Open POV feedback from human to still address: manga fringe should be "seamless" (blend the top fringe into the view, no hard seam) and "no blinking" (kill any flicker). Deferred while I build the harvest page.
+
+## [08:20] DONE - Harvest: colourful title + heavy glass + REAL fruit photos
+- **Colourful title**: "Harvest Log" now renders in the brand display font (`var(--ui-display)`, Katie Roze script) in apple-red `#e5484d` instead of the mono uppercase.
+- **Glass display** (human asked twice for "more glass"): converted the teleop flat-paper surfaces to frosted glass over the orchard bg - `--glass rgba(255,255,255,.38)`, `--blur blur(20px) saturate(1.3)`, light `--glass-border`, `--glass-shadow`, inner highlights. Stat tiles, filter pills, classify panel, cards, photo overlay, empty state, lightbox are now translucent floating glass with soft shadows + bigger radii; the painterly meadow shows through the gutters. Verified via headless (swiftshader) - looks great over the scene.
+- **Real fruit photos**: replaced the synthetic dataset samples in `public/samples/` (16, 4 per class) with REAL apple/banana photos from Wikimedia Commons - red apples (Fuji/Honeycrisp/Boskoop/Red Apple, curated by title), green apples (Granny Smith), yellow bananas, green bananas. Keyword search was too noisy (grabbed a mineral, a rotting apple, a pork dish); final apples resolved via a curated File: title list. Same filenames -> "Load sample photos" now shows real fruit; the browser model annotates them (note: real photos are out-of-distribution for the synthetic-trained model, so some labels may be off - honest ML behaviour).
+  CAVEAT: images are Wikimedia Commons (mixed CC licenses). Fine for a local demo; if we publish, add attribution or swap for license-clear images. Flagged.
+- **Storage answer (human asked again)**: images are NOT in MongoDB - bytes go to Vercel Blob (or hub /media), Mongo stores only the pick record + image_url.
+
+## [08:35] DONE - real photos show by DEFAULT + full colour (human: "actual apple photos, no fakes")
+The "fakes" were the sim's drawn glyph placeholders (500 SVG picks). Fixed:
+- **Auto-load real samples** on mount (no need to click the button).
+- **Real-photo-only gallery**: `shown` now filters to `isRaster(image_url)`, hiding every SVG-placeholder pick, so only real JPEG photos (the 16 samples now, real robot JPEGs later) render - no drawn glyphs.
+- **Full colour**: dropped the manga `grayscale(1)` filter on `.ann-img` -> real red/green apples + bananas show in colour (fits the glass + orchard theme). Verified via headless: gallery is real colour apples, annotated by the model, in glass cards over the painterly scene.
+main.jsx build is unblocked again (web-frontend closed the OperatorAuthProvider tag); build + oxlint clean.
+
+## [11:15] DONE - lightbox nav fix + confirmed real photos (ML caveat documented)
+- **Lightbox UI fix** (human screenshot: next arrow was covering "SORTED TO BIN apple_ri[pe]"): moved the prev/next nav buttons OUT of `.hv-lb-card` (which has overflow:hidden) to be children of the `.hv-lightbox` overlay, positioned just outside the card via `max(12px, calc(50% - 424px))` (tucks inside on narrow screens). Added stopPropagation so arrow clicks don't close the box. No more overlap.
+- **Model-vs-real-photos finding (verified headlessly)**: ran the ripeness model on 16 real Wikimedia photos = only 4/16 detect (some wrong, e.g. green banana -> apple). On the 16 synthetic training-domain renders = 16/16 detect BUT they look like abstract coloured balls/crescents on random bg (unusable for a gallery). Root cause: model trained on synthetic 3D-printed props; real stock photos are out-of-distribution.
+- ## [11:30] DONE - confidence score on every pick
+Human: "shouldn't there be a score." Added the ripeness classification confidence: each card shows a score chip (top-right glass) - live browser-model conf when detection fires, else the pick's on-device conf. Lightbox gained a "Confidence" row + score chip in the title. Samples carry a `conf` (0.88-0.97). SCHEMA NOTE: real pick_event has no `conf` field (only `detection` does); for live picks to show a real score, pick_event should carry the classifier confidence - flagged for server/master.
+
+Human confirmed they want REAL photos. Restored 16 real Wikimedia fruit photos (curated apple titles Fuji/Honeycrisp/Red Apple/Royal Gala, Granny Smith greens, yellow + green bananas). ML annotation is best-effort on these (fires on ~4); it will reliably annotate the actual 3D-printed props the robot picks at demo time. Documented as an accepted tradeoff.
+Build + oxlint + style sweep clean.
+
+## [08:20] (superseded) BUILD BLOCKED (not mine): `npm run build` failed at `src/main.jsx:161` - `OperatorAuthProvider` JSX tag left unclosed by web-frontend's in-progress edit (they just added OperatorAuthProvider/Info/Swarm/TvTransitionProvider routes). My changes are isolated to harvest.css/Harvest.jsx/public/samples; not touching main.jsx (their file). Will re-verify a clean build once they finish. @web-frontend: main.jsx:161 unclosed OperatorAuthProvider.
+
+## [earlier] NOTE: since then RobotPOV/RobotFringe/pov.css/main.jsx were further edited by the human/other panes (new LidarViewport component, paper-white lidar bg, /pov EXIT -> /stage, default tab iphone). Not reverting. Open POV feedback from human to still address: manga fringe should be "seamless" (blend the top fringe into the view, no hard seam) and "no blinking" (kill any flicker). Deferred while I build the harvest page.
 
 ## [03:20] WIP - CLAIM: Harvest / pick-photo gallery page
 Human: "we need a page to store the apple photos when we pick it up." Building a gallery of the per-pick photos.

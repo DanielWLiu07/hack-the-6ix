@@ -71,8 +71,8 @@ def main():
     g.add_argument("--image", help="single photo")
     g.add_argument("--dir", help="folder of photos")
     ap.add_argument("--model", default=str(ROOT / "export/model.onnx"))
-    ap.add_argument("--detector", default="onnx", choices=["onnx", "color"],
-                    help="onnx = trained net (best on props); color = robust on real fruit")
+    ap.add_argument("--detector", default="color", choices=["color", "onnx"],
+                    help="color = robust on real fruit incl clutter (default); onnx = trained net (best on synthetic props)")
     ap.add_argument("--conf", type=float, default=0.35)
     ap.add_argument("--emit", action="store_true", help="push events to the live hub")
     ap.add_argument("--server", default=os.environ.get("SERVER_URL", "http://localhost:3001"))

@@ -127,3 +127,27 @@ Per human (too much focus on apples). banana.glb in the repo is a 357-byte HTML 
 - FIXED annotation resize: locked camera Z to baseZ (removed the input-driven zoom). The drei Html callouts use distanceFactor, so only Z-distance changes their scale; with Z fixed they no longer grow/shrink when panning. Verified: labels identical size neutral vs driving.
 - Smoother: lowered pan damping (4 -> 2.4) so the camera eases gently.
 - Applied the human's latest DEFAULT_ITEMS layout values.
+
+## [05:40] DONE, annotation fixes: no press-resize, no overlap, all present
+- Buttons changed size on press because the state text goes IDLE(4)->PRESSED(7), widening the badge. Fixed: `.scene-control-label em` is now fixed-width (min-width 4.6em, centered) so IDLE and PRESSED render at the same size - the badge no longer grows/shrinks on press.
+- That press-widening was also pushing badges into neighbours (overlap) and hiding some (the "missing"). With constant width + more generous spacing, they no longer collide.
+- Re-spaced all 9 callouts (bigger vertical gaps in the right cluster; sticks pushed lower) and verified at 1024/1400/2000 wide: all 9 present (D-PAD, L1/L2, R1/R2, triangle, circle, cross, square, L STICK, R STICK), none overlapping. Lint clean.
+Note: the pending public deploy needs Vercel auth (CLI present + project linked, but `vercel whoami` hangs -> not logged in here); that is @deploy's task / needs an interactive `vercel login`.
+
+## [05:50] DONE, deployed to Vercel production
+Vercel CLI was authenticated (danielwliu07) and the project is linked. Ran `vercel --prod --yes`; it built on Vercel (production build passes) and is live:
+- Main: https://hack-the-6ix-chi.vercel.app
+- Deployment: https://hack-the-6ix-8uy6ir0lz-daniel-w-lius-projects.vercel.app (READY)
+Verified 200 on /, /teleop (SPA rewrite), and /assets/dualsense-manga.glb. Note: VITE_SERVER_URL still points at the placeholder (localhost:3001) per @deploy's deferred-until-venue note - live robot data needs that env var set + redeploy at the venue.
+
+## [06:05] DONE, hand-placeable annotation pins (EDIT PINS mode)
+Per human ("annotations aren't in the right place... let me move them myself, the ball pointing to the part"). Added a pin editor:
+- Refactored LiveLabels into per-label LabelNode; callout targets are now runtime state (init from LIVE_LABELS).
+- "EDIT PINS" toggle (top-left, opposite EDIT SCENE). In pin mode each callout target becomes a big draggable dot; drag it onto the right control and the leader line follows.
+- While editing, the controller idle float AND the camera pan are frozen so the controller local frame == world frame and pin drag maps 1:1 (reuses usePropDrag).
+- COPY PINS serializes a paste-ready LIVE_LABELS array (with the tuned targets) to the clipboard; RESET restores defaults.
+- Verified via CDP: clicking EDIT PINS shows big grabbable dots, dragging a pin moves it and its line follows. Lint clean.
+
+## [06:15] DONE, baked hand-tuned pin positions
+Human dragged the pins in EDIT PINS mode and pasted back the LIVE_LABELS. Applied their tuned `target` values (pos unchanged - the earlier spread-out pos had been reverted to compact by a concurrent edit, and the human tuned on the compact layout). Rendered: all 9 callout lines now land accurately on their controls (shoulders, face buttons, d-pad, sticks), no overlap. Lint clean.
+Note: prod (hack-the-6ix-chi.vercel.app) is from an earlier deploy; a redeploy would pick up the pin editor + tuned pins + voice/drag/animation work.

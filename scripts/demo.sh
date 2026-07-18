@@ -7,13 +7,14 @@
 #   scripts/demo.sh status     what's up / down right now (reads reality, not pidfiles)
 #   scripts/demo.sh down       stop everything demo.sh started (leaves pre-existing procs)
 #   scripts/demo.sh restart    down, then up
-#   scripts/demo.sh logs <svc> tail a service log (svc = hub|robot|lidar|web)
+#   scripts/demo.sh logs <svc> tail a service log (svc = hub|farmhand|robot|lidar|web)
 #
-# Boots 4 pieces, IN ORDER, each skipped if already listening/running:
-#   1. hub    web/server        Socket.IO + REST relay hub          :3001
-#   2. robot  firmware/linux    robot node, MOCK mode (real SEEK->PICK->SORT state machine)
-#   3. lidar  robot/lidar/sim   synthetic 360deg lidar_scan source  (Socket.IO client)
-#   4. web    web/              Vite dashboard dev server (self-contained r3f hero)  :5173
+# Boots 5 pieces, IN ORDER, each skipped if already listening/running:
+#   1. hub      web/server              Socket.IO + REST relay hub          :3001
+#   2. farmhand ml/freesolo-agent/client  FarmHand NL responder (nl_command) (Socket.IO client)
+#   3. robot    firmware/linux          robot node, MOCK mode (real SEEK->PICK->SORT state machine)
+#   4. lidar    robot/lidar/sim         synthetic 360deg lidar_scan source  (Socket.IO client)
+#   5. web      web/                    Vite dashboard dev server (self-contained r3f hero)  :5173
 #
 # Env overrides:
 #   SERVER_URL       hub URL robot+lidar dial (default http://localhost:3001)
@@ -152,11 +153,12 @@ cmd_up() {
   # FarmHand NL service (llm-client): answers nl_command via the trained Freesolo
   # model (ml/freesolo-agent/client/.env FARMHAND_URL) or built-in rules if unset,
   # with graceful fallback. Needs only the hub. Without it the NL box has no responder.
-  if have_venv "$ROOT/ml/freesolo-agent/client"; then
+  # Client deps are light (python-socketio) so we bootstrap the venv on a fresh clone.
+  if ensure_venv "$ROOT/ml/freesolo-agent/client" farmhand; then
     start farmhand proc:"freesolo-agent/client/service\.py" "$ROOT/ml/freesolo-agent/client" -- \
       .venv/bin/python -u "$ROOT/ml/freesolo-agent/client/service.py"
   else
-    skip "farmhand: ml/freesolo-agent/client/.venv absent, NL command box will have no responder"
+    skip "farmhand: ml/freesolo-agent/client venv unavailable, NL command box will have no responder"
   fi
 
   # Robot: prefer the real fw-linux node when its venv exists; otherwise (fresh
@@ -197,7 +199,7 @@ summary() {
   printf '  %-13s %s\n' "Dashboard"  "http://localhost:5173"
   printf '  %-13s %s\n' "Hub health" "$SERVER_URL/api/health"
   printf '  %-13s %s\n' "Stats API"  "$SERVER_URL/api/stats"
-  printf '  %-13s %s\n' "Logs"       "$DEMO_DIR/<svc>.log   (svc: hub robot lidar web)"
+  printf '  %-13s %s\n' "Logs"       "$DEMO_DIR/<svc>.log   (svc: hub farmhand robot lidar web)"
   printf '  %-13s %s\n' "Stop all"   "scripts/demo.sh down"
   echo
   echo "  Open the dashboard, then drive/pick from the Teleop page or watch the"
@@ -214,6 +216,8 @@ cmd_status() {
 
   proc_up "robot_linux\.robot_node" && ok "robot  fw-linux node (mock) running" \
     || { proc_up "sim\.js" && ok "robot  server sim.js running" || bad "robot  not running"; }
+  proc_up "freesolo-agent/client/service\.py" && ok "farmhand NL responder running" \
+    || bad "farmhand NL responder not running (nl_command has no answer)"
   if proc_up "sim\.py"; then ok "lidar  python sim running"
   elif proc_up "sim\.js"; then ok "lidar  via sim.js (built-in emitter)"
   else bad "lidar  not running"; fi

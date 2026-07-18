@@ -72,7 +72,8 @@ def connect_hub(server):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", default="camera", choices=["camera", "synth"])
-    ap.add_argument("--detector", default="onnx", choices=["onnx", "color"])
+    ap.add_argument("--detector", default="color", choices=["color", "onnx"],
+                    help="color = robust on real fruit incl clutter (default); onnx = trained net")
     ap.add_argument("--model", default=str(ROOT / "export/model.onnx"))
     ap.add_argument("--conf", type=float, default=0.35)
     ap.add_argument("--emit", action="store_true", help="stream detections to the hub")

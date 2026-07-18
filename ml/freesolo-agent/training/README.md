@@ -6,13 +6,16 @@ deliberately tiny edge-sized model. This directory is fully reproducible.
 
 ## Result
 
-Same 30 held-out commands, scored the same way at every stage:
+Scored the same way at every stage, on two held-out sets (both zero-leakage):
 
-| Model | Exact match | Over-clarify | Valid-JSON |
-|---|---|---|---|
-| Regex baseline | 28/30 (93.3%) | - | - |
-| Freesolo SFT (Qwen3.5-0.8B) | 28/30 (93.3%) | 2/30 | 100% |
-| **Freesolo SFT + GRPO** | **29/30 (96.7%)** | **1/30** | 100% |
+| Model | Clean (30) | Realistic typos/slang (58) |
+|---|---|---|
+| Regex baseline | 28/30 (93.3%) | 27/58 (46.6%) |
+| Freesolo SFT (Qwen3.5-0.8B) | 28/30 (93.3%) | - |
+| **Freesolo SFT + GRPO** | **29/30 (96.7%)** | **47/58 (81.0%)** |
+
+The clean set is saturated (regex already handles tidy input); the stress set is
+where training shows: **46.6% -> 81.0%, a +34-point jump.**
 
 **What moved the number was the reward, not the data.** SFT matched the regex
 baseline but generalized better. Its only failures were over-clarification (on
