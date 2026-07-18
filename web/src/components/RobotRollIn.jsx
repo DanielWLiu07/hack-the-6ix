@@ -92,6 +92,7 @@ function RollingRobot({ fixRef, startRef }) {
   const rig = useRef(null) // engine shake + drive bounce
   const fix = useRef(null) // splat orientation (SPLAT_FIX / tune)
   const t0 = useRef(null)
+  const clock = useRef(0) // clamped-delta clock so a backgrounded tab can't jump the drive-in
   // turnP 0 = facing the travel direction (driving away into the scene);
   // turnP 1 = U-turned to point back at the live camera.
   const place = (g, x, y, z, turnP, camPos) => {
@@ -102,7 +103,7 @@ function RollingRobot({ fixRef, startRef }) {
     g.rotation.set(0, TRAVEL_YAW + delta * turnP, 0)
     g.scale.setScalar(WORLD_SCALE)
   }
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const camPos = state.camera.position
     const f = fix.current
     if (f) {
@@ -118,7 +119,12 @@ function RollingRobot({ fixRef, startRef }) {
     }
     const g = outer.current
     const b = rig.current
-    const now = state.clock.elapsedTime
+    // Advance a clamped clock, not the raw scene clock: leaving the tab pauses
+    // the loop, and the first frame back carries a multi-second delta that would
+    // jump the drive-in straight to "arrived" (the robot coming in early). Clamp
+    // it so the drive-in pauses with the rest of the scene and resumes in sync.
+    clock.current += Math.min(delta, 0.05)
+    const now = clock.current
     if (!startRef.current) { // idling in the foreground, waiting for the apple slam
       if (g) place(g, START[0], START[1], START[2], 0, camPos)
       t0.current = null

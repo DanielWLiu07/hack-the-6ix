@@ -344,7 +344,7 @@ export default function Analytics() {
       {/* manga-shaded deco scene + editor (background) */}
       <HeroBoundary>
         <Suspense fallback={null}>
-          <Deco />
+          <Deco editor={false} />
         </Suspense>
       </HeroBoundary>
 

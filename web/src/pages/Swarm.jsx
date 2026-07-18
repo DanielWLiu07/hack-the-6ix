@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useRobot, useRobotEvent, SERVER_URL } from '../lib/robot.jsx'
 import '../swarm.css'
 
@@ -36,6 +36,7 @@ function ageLabel(ms) {
 
 export default function Swarm() {
   const { connected } = useRobot()
+  const navigate = useNavigate()
   const [snapshot, setSnapshot] = useState({ ts: 0, robots: [] })
   // now ticks once a second so "last seen" ages and stale dimming stay live
   // even when no fleet frame arrives.
@@ -167,7 +168,8 @@ export default function Swarm() {
                 <g
                   key={`r-${r.id}`}
                   className="swarm-dot"
-                  style={{ transform: `translate(${s.x}px, ${s.y}px)`, opacity: stale ? 0.4 : 1 }}
+                  style={{ transform: `translate(${s.x}px, ${s.y}px)`, opacity: stale ? 0.4 : 1, cursor: 'pointer' }}
+                  onClick={() => navigate(`/pov?robot=${encodeURIComponent(r.id)}&tab=cam`)}
                 >
                   <circle r="16" fill={col} fillOpacity="0.15" />
                   <line x1="0" y1="0" x2={hx} y2={hy} stroke={col} strokeWidth="3" strokeLinecap="round" />
@@ -199,7 +201,12 @@ export default function Swarm() {
             const pct = battPct(r.battery_v)
             const stale = now - r.last_ts > STALE_MS
             return (
-              <div key={r.id} className={`swarm-card ${stale ? 'stale' : ''}`}>
+              <Link
+                key={r.id}
+                to={`/pov?robot=${encodeURIComponent(r.id)}&tab=cam`}
+                className={`swarm-card ${stale ? 'stale' : ''}`}
+                title={`Open ${r.id} POV`}
+              >
                 <div className="swarm-card-top">
                   <span className="swarm-card-id">
                     <i className="swarm-led" style={{ background: col }} />
@@ -223,7 +230,7 @@ export default function Swarm() {
                   <span>DRIVE L {(r.drive?.l ?? 0).toFixed(2)} · R {(r.drive?.r ?? 0).toFixed(2)}</span>
                   <span>{r.pos ? `x ${r.pos[0].toFixed(1)} y ${r.pos[1].toFixed(1)}` : 'no fix'} · {ageLabel(now - r.last_ts)}</span>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>

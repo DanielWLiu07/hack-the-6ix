@@ -348,7 +348,7 @@ function DecoEditor(props) {
   )
 }
 
-export default function Deco() {
+export default function Deco({ editor = true }) {
   const [objects, setObjects] = useState(presetObjects) // load the saved arrangement
   const [selId, setSelId] = useState(null)
   const [pick, setPick] = useState(PALETTE[0].key)
@@ -445,9 +445,8 @@ export default function Deco() {
         patchRef={patchRef}
         setDragId={setDragId}
       />
-      {/* transparent input layer while editing: drags the selected prop without
-          hiding the data (the 3D canvas stays behind at z0) */}
-      {placing && (
+      {/* editor is optional; when off, the saved layout still renders */}
+      {editor && placing && (
         <div
           className="deco-catcher"
           onPointerDown={(e) => {
@@ -457,24 +456,26 @@ export default function Deco() {
           aria-hidden
         />
       )}
-      <DecoEditor
-        objects={objects}
-        selId={selId}
-        setSelId={setSelId}
-        pick={pick}
-        setPick={setPick}
-        addObject={addObject}
-        duplicate={duplicate}
-        removeSelected={removeSelected}
-        clearAll={clearAll}
-        copyAll={copyAll}
-        exportLayout={exportLayout}
-        patch={patch}
-        placing={placing}
-        setPlacing={setPlacing}
-        snap={snap}
-        setSnap={setSnap}
-      />
+      {editor && (
+        <DecoEditor
+          objects={objects}
+          selId={selId}
+          setSelId={setSelId}
+          pick={pick}
+          setPick={setPick}
+          addObject={addObject}
+          duplicate={duplicate}
+          removeSelected={removeSelected}
+          clearAll={clearAll}
+          copyAll={copyAll}
+          exportLayout={exportLayout}
+          patch={patch}
+          placing={placing}
+          setPlacing={setPlacing}
+          snap={snap}
+          setSnap={setSnap}
+        />
+      )}
     </>
   )
 }

@@ -48,8 +48,8 @@ export default function TvTransitionProvider({ children }) {
     let h = 2
     const resize = () => {
       // low-res canvas stretched to fill => chunky pixelated static
-      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 16))
-      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 16))
+      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 7))
+      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 7))
     }
     resize()
     window.addEventListener('resize', resize)
@@ -89,7 +89,7 @@ export default function TvTransitionProvider({ children }) {
         const img = ctx.createImageData(w, h)
         const d = img.data
         for (let i = 0; i < d.length; i += 4) {
-          const v = (55 + Math.random() * 150) | 0
+          const v = (Math.random() * 255) | 0
           d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
         }
         ctx.putImageData(img, 0, 0)

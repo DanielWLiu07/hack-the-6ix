@@ -90,7 +90,11 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
+.swarm-card:hover { border-color: rgba(242, 160, 60, 0.6); background: rgba(246, 245, 240, 0.09); }
 .swarm-card.stale { opacity: 0.55; }
 .swarm-card-top { display: flex; align-items: center; justify-content: space-between; }
 .swarm-card-id { display: flex; align-items: center; gap: 7px; font-weight: 700; }

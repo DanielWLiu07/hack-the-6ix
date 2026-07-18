@@ -409,3 +409,61 @@
 }
 .fringe-edit-anim.on { border-color: #86e6a0; color: #86e6a0; }
 .fringe-edit-anim:hover { background: rgba(246, 245, 240, 0.18); }
+
+/* fleet picker - swarm-aware POV: which rover this cockpit is inside */
+.pov-fleet {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  max-width: 92vw;
+  overflow-x: auto;
+  background: rgba(18, 19, 15, 0.72);
+  border: 1px solid rgba(246, 245, 240, 0.18);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+  z-index: 8;
+}
+.pov-fleet-lab { font-size: 9px; letter-spacing: 0.14em; color: #8a857b; padding: 0 2px; }
+.pov-fleet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 1px solid rgba(246, 245, 240, 0.22);
+  border-radius: 6px;
+  background: rgba(246, 245, 240, 0.06);
+  color: #d8d5cd;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pov-fleet-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #8a857b; box-shadow: 0 0 6px currentColor; }
+.pov-fleet-chip.SEEK .dot { background: #7cd4ff; }
+.pov-fleet-chip.PICK .dot { background: #f2a03c; }
+.pov-fleet-chip.SORT .dot { background: #86e6a0; }
+.pov-fleet-chip.ESTOP .dot { background: #ff5b5b; }
+.pov-fleet-chip .sim { font-size: 8px; color: #7cd4ff; letter-spacing: 0.08em; }
+.pov-fleet-chip:hover { border-color: rgba(246, 245, 240, 0.5); }
+.pov-fleet-chip.on { border-color: #f2a03c; color: #fff; background: rgba(242, 160, 60, 0.16); }
+.pov-fleet-all { font-size: 10px; letter-spacing: 0.08em; color: #7cd4ff; text-decoration: none; padding: 0 4px; white-space: nowrap; }
+.pov-fleet-all:hover { color: #a9e2ff; }
+
+/* active-rover tag on the camera feed */
+.pov-cam-tag {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 5;
+  padding: 3px 8px;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+  color: #12130f;
+  background: rgba(246, 245, 240, 0.82);
+  border-radius: 4px;
+}

@@ -92,7 +92,7 @@ function LidarLayer({ world }) {
 }
 
 // Optical layer (arm camera + detection boxes) 
-function CameraLayer({ detections }) {
+function CameraLayer({ detections, label }) {
   const [noStream, setNoStream] = useState(false)
   return (
     <div className="pov-view pov-cam">
@@ -106,6 +106,7 @@ function CameraLayer({ detections }) {
       ) : (
         <NotConnected sub="arm camera offline" />
       )}
+      {label && <span className="pov-cam-tag">{label} · ARM CAM</span>}
       {/* bbox overlay - viewBox matches the detector's frame; "slice" mirrors
           object-fit: cover on the feed so boxes stay registered. */}
       <svg
@@ -177,13 +178,35 @@ export default function RobotPOV() {
     setTimeout(() => setBoxes((prev) => prev.filter((b) => b.id !== id)), DET_TTL)
   })
 
+  // Swarm-aware POV: this cockpit is "inside" ONE robot. The fleet roster (live
+  // `fleet` event) drives a robot picker; the selected rover's state/battery/
+  // arm/drive bind to the HUD. Camera + SLAM are the single physical sensors,
+  // labeled with the active rover. Deep-linkable via ?robot=rover-NN.
+  const [fleet, setFleet] = useState([])
+  const [selRobot, setSelRobot] = useState(
+    () => new URLSearchParams(window.location.search).get('robot') || null,
+  )
+  useRobotEvent('fleet', (f) => { if (Array.isArray(f?.robots)) setFleet(f.robots) })
+  // Resolve the active robot: the picked one if still in the roster, else the
+  // first rover. null when no roster yet (fall back to merged telemetry).
+  const activeRobot = (selRobot && fleet.find((r) => r.id === selRobot)) || fleet[0] || null
+  const pickRobot = (id) => {
+    setSelRobot(id)
+    const u = new URL(window.location.href)
+    u.searchParams.set('robot', id)
+    window.history.replaceState(null, '', u) // keep the deep-link in sync
+  }
+
   const feedsOn = connected // live data shows whenever the hub is connected (no GO LIVE gate)
-  const hasTele = feedsOn && telemetry
-  const state = feedsOn ? (telemetry?.state ?? 'IDLE') : 'OFFLINE'
-  const batt = hasTele ? telemetry.battery_v : null
+  // Prefer the active rover's live fleet entry; fall back to merged telemetry
+  // (single-robot demos, or before the first fleet frame arrives).
+  const src = feedsOn ? (activeRobot || telemetry) : null
+  const hasTele = Boolean(src)
+  const state = feedsOn ? (src?.state ?? 'IDLE') : 'OFFLINE'
+  const batt = hasTele && typeof src.battery_v === 'number' ? src.battery_v : null
   const battPct = batt != null ? Math.max(0, Math.min(1, (batt - 9.9) / 2.7)) : 0
-  const arm = hasTele ? telemetry.arm : null
-  const drive = hasTele ? telemetry.drive : null
+  const arm = hasTele && Array.isArray(src.arm) ? src.arm : null
+  const drive = hasTele ? src.drive : null
   const locked = tab === 'cam' && feedsOn && boxes.length > 0
   const last = feedsOn ? detLog[0] : null
   const activeTab = Math.max(0, TABS.findIndex((t) => t.id === tab))
@@ -201,7 +224,7 @@ export default function RobotPOV() {
   let view
   if (tab === 'cam') {
     view = feedsOn ? (
-      <CameraLayer detections={boxes} />
+      <CameraLayer detections={boxes} label={activeRobot?.id} />
     ) : (
       <NotConnected sub={`no robot on ${SERVER_URL}`} />
     )
@@ -249,7 +272,28 @@ export default function RobotPOV() {
         <span className="pov-tick br" />
         <div className="pov-scanline" />
 
-        {/* top bar */}
+        {/* fleet picker - which rover this cockpit is inside (swarm-aware POV).
+            Shown whenever the roster has a robot; a single chip still tells the
+            operator which unit they are viewing. */}
+        {feedsOn && fleet.length > 0 && (
+          <div className="pov-fleet">
+            <span className="pov-fleet-lab">FLEET</span>
+            {fleet.map((r) => (
+              <button
+                key={r.id}
+                className={`pov-fleet-chip ${r.state || 'IDLE'} ${activeRobot?.id === r.id ? 'on' : ''}`}
+                onClick={() => pickRobot(r.id)}
+                title={`${r.id} · ${r.state || 'IDLE'}${r.sim ? ' · sim' : ''}`}
+              >
+                <i className="dot" />
+                {r.id}
+                {r.sim && <span className="sim">sim</span>}
+              </button>
+            ))}
+            <a className="pov-fleet-all" href="/swarm" title="Fleet swarm map">SWARM ›</a>
+          </div>
+        )}
+
         {/* center reticle (camera view only) */}
         {tab === 'cam' && feedsOn && (
           <div className={`pov-reticle ${locked ? 'lock' : ''}`}>

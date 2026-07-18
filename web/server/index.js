@@ -105,6 +105,7 @@ function fleetSnapshot() {
       pos: typeof r.x === 'number' && typeof r.y === 'number' ? [r.x, r.y] : null,
       theta: typeof r.theta === 'number' ? r.theta : 0,
       drive: r.drive ?? { l: 0, r: 0 },
+      arm: Array.isArray(r.arm) ? r.arm : null,
       last_ts: r.last_ts,
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -181,6 +182,7 @@ io.on('connection', (socket) => {
             state: payload.state,
             battery_v: payload.battery_v,
             drive: payload.drive,
+            arm: payload.arm,
           });
         } else {
           fleetUpsert(socket.id, socket.data.rover, isSim, {

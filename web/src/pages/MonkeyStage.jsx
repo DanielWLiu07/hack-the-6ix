@@ -148,8 +148,8 @@ function FuzzCanvas({ w, h, fuzzRef }) {
     const canvas = ref.current
     if (!canvas) return undefined
     const ctx = canvas.getContext('2d')
-    const lw = Math.max(2, Math.floor(w / 16))
-    const lh = Math.max(2, Math.floor(h / 16))
+    const lw = Math.max(2, Math.floor(w / 8))
+    const lh = Math.max(2, Math.floor(h / 8))
     canvas.width = lw
     canvas.height = lh
     let raf = 0
@@ -161,7 +161,7 @@ function FuzzCanvas({ w, h, fuzzRef }) {
         const img = ctx.createImageData(lw, lh)
         const d = img.data
         for (let i = 0; i < d.length; i += 4) {
-          const v = (55 + Math.random() * 150) | 0
+          const v = (Math.random() * 255) | 0
           d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
         }
         ctx.putImageData(img, 0, 0)
@@ -190,8 +190,8 @@ function StageFuzz({ fuzzRef }) {
     let h = 2
     const resize = () => {
       // low-res canvas stretched to fill => chunky pixelated static
-      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 16))
-      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 16))
+      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 7))
+      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 7))
     }
     resize()
     window.addEventListener('resize', resize)
@@ -202,7 +202,7 @@ function StageFuzz({ fuzzRef }) {
         const img = ctx.createImageData(w, h)
         const d = img.data
         for (let i = 0; i < d.length; i += 4) {
-          const v = (55 + Math.random() * 150) | 0
+          const v = (Math.random() * 255) | 0
           d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
         }
         ctx.putImageData(img, 0, 0)
@@ -845,7 +845,7 @@ const NAV_TVS = [
   { to: '/pov', label: 'Robot', color: '#7cd4ff', pos: [-1.908, 0.953, 0.322], rot: [0, 0.688, 0.068], scale: 0.67 },
   { to: '/analytics', label: 'Data', color: '#c3a2ff', pos: [-0.616, 1.046, 0.365], rot: [0, 0.065, 0], scale: 0.6 },
   { to: '/teleop', label: 'TeleOp', color: '#ff8fbf', pos: [0.604, 1.045, 0.365], rot: [0, -0.065, 0], scale: 0.6 },
-  { to: '/lidar', label: 'Extra', color: '#86e6a0', pos: [1.891, 0.948, 0.323], rot: [0, -0.688, -0.068], scale: 0.66 },
+  { to: '/harvest', label: 'Harvest', color: '#86e6a0', pos: [1.891, 0.948, 0.323], rot: [0, -0.688, -0.068], scale: 0.66 },
   {
     // POMME monitor - a text TV like the others, hand-placed.
     to: '/', label: 'Pomme', color: '#ffcf3f',
@@ -878,8 +878,11 @@ const TV_ARC = {
 function TvStaticMesh() {
   const tex = useMemo(() => {
     const c = document.createElement('canvas')
-    c.width = 64
-    c.height = 40
+    // Match the full-screen overlay's static density (~window/7): when the camera
+    // zooms this monitor to fill the viewport, its pixels are the same size as the
+    // overlay/landing static, so the in-scene -> overlay handoff is one same fuzz.
+    c.width = 183
+    c.height = 117
     const t = new THREE.CanvasTexture(c)
     t.magFilter = THREE.NearestFilter
     t.minFilter = THREE.NearestFilter
@@ -890,7 +893,7 @@ function TvStaticMesh() {
     const img = ctx.createImageData(tex.c.width, tex.c.height)
     const d = img.data
     for (let i = 0; i < d.length; i += 4) {
-      const v = (55 + Math.random() * 150) | 0
+      const v = (Math.random() * 255) | 0
       d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
     }
     ctx.putImageData(img, 0, 0)
@@ -1496,8 +1499,8 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
         </>
         )}
       </Canvas>
-      {/* Fullscreen tune-in static for the landing->stage arrival. */}
-      <StageFuzz fuzzRef={fuzzRef} />
+      {/* Tune-in static now lives on the painting screen (see Splash), not a
+          full-screen overlay. */}
       {/* Editor UI only in the TV-positioning route; the plain /stage is clean. */}
       {editTV && (
         <div className="stage-editor" role="toolbar" aria-label="Edit the stage">
