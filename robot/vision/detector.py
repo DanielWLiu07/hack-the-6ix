@@ -1,4 +1,4 @@
-"""Unified detector loader — THE import surface for fw-linux.
+"""Unified detector loader - THE import surface for fw-linux.
 
 Usage (from firmware/linux, with robot/vision on sys.path):
 

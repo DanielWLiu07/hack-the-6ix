@@ -1,5 +1,5 @@
 // Load/robustness probing of the hub. Findings get FILED (status/server-test.md),
-// not fixed — server-core owns the code.
+// not fixed - server-core owns the code.
 //
 // What "pass" means here:
 //  - reconnect storm: hub survives and still serves a fresh client afterwards
@@ -13,7 +13,7 @@ import {
 import { validators } from "./schemas.js";
 
 const up = await serverUp();
-const skip = !up && `server not reachable at ${SERVER_URL} — start web/server first`;
+const skip = !up && `server not reachable at ${SERVER_URL} - start web/server first`;
 
 test("survives a connect/disconnect storm", { skip, timeout: 30000 }, async () => {
   // 3 waves of 15 clients that connect, emit a burst, and drop with no goodbye.
@@ -72,8 +72,8 @@ test("malformed payloads are not relayed to other clients", { skip, timeout: 200
   for (const name of Object.keys(validators)) {
     listener.on(name, (p) => {
       const errs = validators[name](p);
-      // sim also emits valid traffic on these events — only invalid payloads count
-      if (errs.length) relayedGarbage.push(`${name}: ${errs.join("; ")} — ${JSON.stringify(p)?.slice(0, 120)}`);
+      // sim also emits valid traffic on these events - only invalid payloads count
+      if (errs.length) relayedGarbage.push(`${name}: ${errs.join("; ")} - ${JSON.stringify(p)?.slice(0, 120)}`);
     });
   }
   await sleep(200);
@@ -92,7 +92,7 @@ test("malformed payloads are not relayed to other clients", { skip, timeout: 200
 test("oversized payload doesn't wedge the hub", { skip, timeout: 25000 }, async () => {
   const evil = connect("robot");
   await connected(evil);
-  // ~5 MB lidar scan (socket.io default maxHttpBufferSize is 1 MB — server
+  // ~5 MB lidar scan (socket.io default maxHttpBufferSize is 1 MB - server
   // should drop the message or the connection, never die)
   const huge = { ts: 0, points: Array.from({ length: 300000 }, () => [1.23456789, 2.3456789]) };
   evil.emit("lidar_scan", huge);

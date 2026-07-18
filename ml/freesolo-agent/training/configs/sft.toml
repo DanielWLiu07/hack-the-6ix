@@ -1,0 +1,15 @@
+# FarmHand SFT run.
+# Small base model on purpose: cheap, fast, and it makes the "distilled a small
+# on-the-edge command model" story real for the Freesolo "Best Model Trained" track.
+model = "Qwen/Qwen3.5-0.8B"
+algorithm = "sft"
+seed = 42
+
+# Filled in after `flash env push --name farmhand .`
+[environment]
+id = "hackthe6ixbanana/farmhand"
+
+[train]
+epochs = 3
+max_examples = 2349  # our full converted train split (data/farmhand_train.jsonl)
+lora_rank = 32

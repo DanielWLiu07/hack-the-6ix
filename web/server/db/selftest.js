@@ -24,10 +24,11 @@ async function exercise(db, label) {
   await db.recordDetection({ ts: t0 + 1, fruit: 'banana', ripeness: 'unripe', conf: 0.81, bbox: [5, 5, 60, 25] });
 
   const picks = [
-    { ts: t0, fruit: 'apple', ripeness: 'ripe', bin: 'apple_ripe', success: true, duration_ms: 8000 },
-    { ts: t0 + 1, fruit: 'apple', ripeness: 'unripe', bin: 'apple_unripe', success: true, duration_ms: 9000 },
+    // operator = Auth0-attributed identity (optional field, passes through verbatim)
+    { ts: t0, fruit: 'apple', ripeness: 'ripe', bin: 'apple_ripe', success: true, duration_ms: 8000, operator: 'auth0|op1' },
+    { ts: t0 + 1, fruit: 'apple', ripeness: 'unripe', bin: 'apple_unripe', success: true, duration_ms: 9000, operator: 'auth0|op1' },
     { ts: t0 + 2, fruit: 'banana', ripeness: 'ripe', bin: 'banana_ripe', success: false, duration_ms: 12000 },
-    // carries an optional image_url (photo-per-pickup) — must round-trip verbatim.
+    // carries an optional image_url (photo-per-pickup) - must round-trip verbatim.
     { ts: t0 + 3, fruit: 'banana', ripeness: 'ripe', bin: 'banana_ripe', success: true, duration_ms: 7000, image_url: '/media/pick_test.jpg' },
   ];
   for (const p of picks) await db.recordPickEvent(p);
@@ -57,6 +58,11 @@ async function exercise(db, label) {
 
   const apples = await db.getPicks({ fruit: 'apple' });
   assert.equal(apples.length, 2);
+
+  // operator attribution (Auth0 ↔ Mongo): filter picks by the authenticated operator
+  const byOp = await db.getPicks({ operator: 'auth0|op1' });
+  assert.equal(byOp.length, 2, 'getPicks filters by operator');
+  assert.equal((await db.getPicks({ operator: 'auth0|nobody' })).length, 0);
 
   const dets = await db.getDetections({ limit: 10 });
   assert.equal(dets.length, 2);
@@ -123,20 +129,24 @@ async function exercise(db, label) {
   assert.ok(!('_id' in latest), 'no _id leakage');
 
   // --- commands: NL-command audit log (Freesolo LLM track) ---
-  await db.recordCommand({ ts: t0, text: 'pick all ripe apples', action: { task: 'pick', fruit: 'apple', filter: 'ripe' }, accepted: true });
-  await db.recordCommand({ ts: t0 + 1, text: 'stop', action: { task: 'stop' }, accepted: true });
+  await db.recordCommand({ ts: t0, text: 'pick all ripe apples', action: { task: 'pick', fruit: 'apple', filter: 'ripe' }, accepted: true, operator: 'auth0|op1' });
+  await db.recordCommand({ ts: t0 + 1, text: 'stop', action: { task: 'stop' }, accepted: true, operator: 'auth0|op2' });
   const cmds = await db.getCommands({ limit: 10 });
   assert.equal(cmds.length, 2);
   assert.equal(cmds[0].text, 'stop', 'getCommands newest first');
   assert.equal(cmds[0].action.task, 'stop');
   assert.ok(!('_id' in cmds[0]), 'no _id leakage');
+  // operator-scoped command history (Auth0 audit trail)
+  const op1cmds = await db.getCommands({ operator: 'auth0|op1' });
+  assert.equal(op1cmds.length, 1, 'getCommands filters by operator');
+  assert.equal(op1cmds[0].action.task, 'pick');
 
   await db.close();
-  console.log(`✓ ${label} backend passed`);
+  console.log(`OK ${label} backend passed`);
 }
 
 // Memory backend (always). Force it independent of ambient env: passing
-// `uri: undefined` is NOT enough — destructuring defaults fire on undefined, so
+// `uri: undefined` is NOT enough - destructuring defaults fire on undefined, so
 // createDb would fall back to process.env.MONGODB_URI and silently hit Mongo
 // (writing to the default `ht6` db). Clear the env for this call, then restore.
 const savedUri = process.env.MONGODB_URI;
@@ -151,7 +161,7 @@ if (process.env.MONGODB_URI) {
   const dbName = process.env.MONGODB_DB || `ht6_selftest_${Date.now()}`;
   // Start from a clean slate so the exact-count assertions hold even if this DB
   // name was used by a prior run. Clear via deleteMany (a readWrite privilege)
-  // rather than dropDatabase — Atlas least-privilege users (readWriteAnyDatabase,
+  // rather than dropDatabase - Atlas least-privilege users (readWriteAnyDatabase,
   // like our app's) can't dropDatabase, and it's the app's own role we test with.
   // Only pick_events + detections need clearing; the assertions never depend on
   // stored telemetry counts (and telemetry is capped, so deleteMany is illegal).
@@ -162,7 +172,7 @@ if (process.env.MONGODB_URI) {
   await cleanDb.collection('pick_events').deleteMany({});
   await cleanDb.collection('detections').deleteMany({});
   await cleanDb.collection('commands').deleteMany({});
-  // telemetry is a capped collection (deleteMany is illegal on it) — the
+  // telemetry is a capped collection (deleteMany is illegal on it) - the
   // activity assertions below scope their query with `since: t0` instead so
   // leftover telemetry from a prior run against this db name can't skew them.
   await client.close();
@@ -174,6 +184,21 @@ if (process.env.MONGODB_URI) {
   });
   assert.equal(db.backend, 'mongo', 'expected mongo backend when MONGODB_URI set');
   await exercise(db, 'mongo');
+
+  // Confirm telemetry is a native Atlas Time Series collection (MongoDB track).
+  // Hard-assert on the canonical fresh unique-db run; soft on fixed-name reruns
+  // where telemetry may already exist as the capped fallback.
+  const verify = new MongoClient(process.env.MONGODB_URI);
+  await verify.connect();
+  const [tInfo] = await verify.db(dbName).listCollections({ name: 'telemetry' }).toArray();
+  await verify.close();
+  const freshRun = /^ht6_selftest_\d+$/.test(dbName);
+  if (freshRun) {
+    assert.equal(tInfo?.type, 'timeseries', 'telemetry is an Atlas Time Series collection');
+    console.log('OK telemetry is an Atlas Time Series collection');
+  } else {
+    console.log(`- telemetry collection type: ${tInfo?.type} (fixed-name run; timeseries on fresh dbs)`);
+  }
 } else {
   console.log('- mongo backend skipped (MONGODB_URI not set)');
 }

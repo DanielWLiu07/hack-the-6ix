@@ -40,7 +40,7 @@ def connect():
 
 @sio.event
 def disconnect():
-    log.info("disconnected — will auto-reconnect")
+    log.info("disconnected - will auto-reconnect")
 
 
 @sio.on("nl_command")
@@ -60,7 +60,7 @@ def main():
         sio.connect(SERVER_URL)
         sio.wait()
     except socketio.exceptions.ConnectionError as e:
-        log.error("cannot reach %s (%s) — is server-core up?", SERVER_URL, e)
+        log.error("cannot reach %s (%s) - is server-core up?", SERVER_URL, e)
         sys.exit(1)
     except KeyboardInterrupt:
         sio.disconnect()

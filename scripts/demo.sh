@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# demo.sh — ONE command to boot the whole "Battery, not Blood" demo stack.
-# (owner: fw-tools — phase-4 demo readiness)
+# demo.sh - ONE command to boot the whole "Battery, not Blood" demo stack.
+# (owner: fw-tools - phase-4 demo readiness)
 #
-#   scripts/demo.sh            bring the whole stack up (idempotent — safe to re-run)
+#   scripts/demo.sh            bring the whole stack up (idempotent - safe to re-run)
 #   scripts/demo.sh up         ... same as no arg
 #   scripts/demo.sh status     what's up / down right now (reads reality, not pidfiles)
 #   scripts/demo.sh down       stop everything demo.sh started (leaves pre-existing procs)
@@ -75,7 +75,7 @@ start() {
 
   if { [ "$kind" = port ] && port_up "$val"; } || { [ "$kind" = proc ] && proc_up "$val"; }; then
     echo external > "$pidf"                 # marker: we did NOT start it -> down leaves it
-    skip "$name already running — leaving it as-is"
+    skip "$name already running - leaving it as-is"
     return 0
   fi
 
@@ -87,7 +87,7 @@ start() {
   if kill -0 "$pid" 2>/dev/null; then
     ok "$name started (pid $pid) -> $log"
   else
-    bad "$name FAILED to start — last log lines:"
+    bad "$name FAILED to start - last log lines:"
     tail -n 8 "$log" 2>/dev/null | sed 's/^/         /'
     return 1
   fi
@@ -108,13 +108,13 @@ cmd_up() {
   hdr "HT6 demo bring-up  (hub=$SERVER_URL)"
 
   start hub port:3001 "$ROOT/web/server" -- node index.js || true
-  wait_hub || { bad "aborting — the hub is the spine; nothing else works without it"; exit 1; }
+  wait_hub || { bad "aborting - the hub is the spine; nothing else works without it"; exit 1; }
 
   if [ "${HT6_ROBOT_SIM:-0}" = 1 ]; then
     # panic fallback: server-core's self-contained fake robot (also emits lidar_scan)
     start robot proc:"web/server/sim.js" "$ROOT/web/server" -- node "$ROOT/web/server/sim.js"
     SKIP="$SKIP lidar "
-    skip "lidar sim not needed — sim.js already emits lidar_scan"
+    skip "lidar sim not needed - sim.js already emits lidar_scan"
   else
     # Skip if ANY robot data-source is already feeding the hub (our node, or a
     # bare server sim.js) so we never stack two robots onto one dashboard.
@@ -122,7 +122,7 @@ cmd_up() {
       .venv/bin/python -u -m robot_linux.robot_node --sim --autostart --server "$SERVER_URL"
   fi
 
-  # `sim\.py` is the lidar sim (only one in the repo) — matches it whether it was
+  # `sim\.py` is the lidar sim (only one in the repo) - matches it whether it was
   # launched by absolute path (us) or relative path (the tmux fleet pane).
   start lidar proc:"sim\.py" "$ROOT/robot/lidar/sim" -- \
     ./.venv/bin/python -u "$ROOT/robot/lidar/sim/sim.py" --server "$SERVER_URL"
@@ -165,7 +165,7 @@ stop_svc() {
   local pid; pid="$(cat "$pidf")"
   rm -f "$pidf"
   if [ "$pid" = external ]; then
-    skip "$name: was already running before demo.sh — leaving it"
+    skip "$name: was already running before demo.sh - leaving it"
     return
   fi
   if kill -0 "$pid" 2>/dev/null; then

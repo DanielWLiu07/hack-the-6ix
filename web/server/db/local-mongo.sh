@@ -20,7 +20,7 @@ case "${1:-}" in
     if ping_ok; then
       echo "already running on port $PORT"
     else
-      # NB: mongod --fork is unsupported on macOS builds — nohup instead.
+      # NB: mongod --fork is unsupported on macOS builds - nohup instead.
       nohup mongod --dbpath "$DATA_DIR" --port "$PORT" --bind_ip 127.0.0.1 \
         --logpath "$LOG" >/dev/null 2>&1 &
       for _ in $(seq 1 15); do ping_ok && break; sleep 1; done

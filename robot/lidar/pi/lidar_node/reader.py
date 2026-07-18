@@ -1,8 +1,8 @@
 """Lidar scan source: yields full revolutions as (angle_deg, distance_m) lists.
 
 Backends (lazy-imported, first available wins):
-  1. pyrplidar          — measurement stream with start_flag per revolution
-  2. rplidar-roboticia  — iter_scans() yields whole revolutions
+  1. pyrplidar          - measurement stream with start_flag per revolution
+  2. rplidar-roboticia  - iter_scans() yields whole revolutions
 
 Both cover RPLIDAR A1/A2-style serial protocols. All hardware imports stay
 inside methods so unit tests run without any lidar libs installed.
@@ -24,7 +24,7 @@ class MockLidarReader:
     """
 
     def connect(self) -> str:
-        log.warning("MOCK lidar active — synthesizing scans")
+        log.warning("MOCK lidar active - synthesizing scans")
         return "mock://room4x4"
 
     def disconnect(self):
@@ -116,7 +116,7 @@ class LidarReader:
                 self._dev.stop_motor()
                 self._dev.disconnect()
         except Exception:
-            pass  # already gone — we're tearing down anyway
+            pass  # already gone - we're tearing down anyway
         self._dev = None
         self._backend = None
 

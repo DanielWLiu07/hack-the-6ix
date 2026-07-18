@@ -14,6 +14,7 @@ machine and pose replay behave realistically without hardware.
 
 import time
 import threading
+from collections import deque
 from abc import ABC, abstractmethod
 
 from . import config
@@ -65,7 +66,9 @@ class MockBridge(Bridge):
         self._estopped = False
         self.last_heartbeat = 0.0
         self._battery_mv = 12200.0   # freshly charged 3S pack; drains on heartbeat
-        self.calls = []  # (name, args) log for tests
+        # recent (name, args) call log for tests/debug; bounded so a long
+        # sim/demo run (hours of judging) never grows without limit.
+        self.calls = deque(maxlen=4096)
 
     def _log(self, name, *args):
         self.calls.append((name, args))

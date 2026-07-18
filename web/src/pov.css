@@ -1,0 +1,329 @@
+/* Robot POV - self-contained fullscreen styles (owned by web-extra-2, imported
+   only by pages/RobotPOV.jsx). Monochrome MANGA + GLASS theme: paper / ink /
+   frosted glass, no colour accents. Uses ui.css font var only; defines no
+   ui.css classes. The /pov route renders OUTSIDE Layout, so this page owns the
+   whole viewport. */
+
+.pov-root {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background:
+    radial-gradient(140% 120% at 50% -10%, rgba(255, 255, 255, 0.82), transparent 48%),
+    radial-gradient(circle at 14% 18%, rgba(0, 0, 0, 0.022) 0 1px, transparent 1.2px 100%),
+    radial-gradient(circle at 76% 64%, rgba(0, 0, 0, 0.016) 0 1px, transparent 1.2px 100%),
+    linear-gradient(180deg, #fffefa 0%, #f7f4ed 100%);
+  background-size: auto, 18px 18px, 24px 24px, auto;
+  color: #191713;
+  font-family: var(--ui-mono, ui-monospace, Menlo, monospace);
+  overflow: hidden;
+  user-select: none;
+
+  /* manga palette */
+  --ink: #11100d;
+  --paper: #fffdfa;
+  --paper-soft: rgba(255, 253, 250, 0.92);
+  --txt: #191713;
+  --dim: rgba(25, 23, 19, 0.68);
+  --faint: rgba(25, 23, 19, 0.42);
+  --edge: rgba(17, 16, 13, 0.16);
+  --edge-soft: rgba(17, 16, 13, 0.08);
+  --glass: rgba(255, 255, 255, 0.78);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  --blur: blur(12px) saturate(1.02);
+}
+
+/* ── active sensor view fills the viewport ── */
+.pov-main { position: absolute; inset: 0; }
+.pov-view { position: absolute; inset: 0; }
+.pov-main canvas { display: block; width: 100% !important; height: 100% !important; }
+
+.pov-cam { overflow: hidden; background: #fffdfa; }
+.pov-cam-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: contrast(1.04);
+}
+
+/* NOT CONNECTED / offline placeholder */
+.pov-notconn {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  background: #fffdfa;
+  text-align: center;
+}
+.nc-title { font-size: 1.05rem; letter-spacing: 0.3em; color: var(--dim); }
+.nc-sub { font-size: 0.66rem; letter-spacing: 0.1em; color: var(--faint); }
+
+/* cinematic vignette so HUD text lifts off the feed */
+.pov-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: none;
+  z-index: 2;
+}
+
+/* machine fringe: transparent manga-cutout canvas hanging from the top edge */
+.pov-fringe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.9;
+  mix-blend-mode: multiply;
+  filter: contrast(1.08);
+}
+
+/* ── detection boxes (ink on the feed; ripe = solid, unripe = dashed) ── */
+.pov-boxes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.pov-box { animation: pov-box-life var(--ttl) ease-out forwards; }
+.pov-box rect {
+  fill: none;
+  stroke: #f6f5f0;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  rx: 2;
+  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.9));
+}
+.pov-box rect.unripe { stroke-dasharray: 7 5; }
+.pov-box text {
+  fill: #f6f5f0;
+  font: 600 14px var(--ui-mono);
+  letter-spacing: 0.04em;
+  paint-order: stroke;
+  stroke: #000;
+  stroke-width: 3px;
+}
+@keyframes pov-box-life {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── HUD layer ── */
+.pov-hud { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+.pov-hud button, .pov-hud a { pointer-events: auto; }
+
+/* faint corner ticks */
+.pov-tick { position: absolute; width: 18px; height: 18px; border: 1.5px solid var(--edge); opacity: 0.45; }
+.pov-tick.tl { top: 58px; left: 20px; border-right: 0; border-bottom: 0; }
+.pov-tick.tr { top: 58px; right: 20px; border-left: 0; border-bottom: 0; }
+.pov-tick.bl { bottom: 128px; left: 20px; border-right: 0; border-top: 0; }
+.pov-tick.br { bottom: 128px; right: 20px; border-left: 0; border-top: 0; }
+
+.pov-scanline {
+  position: absolute;
+  left: 0; right: 0;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(17, 16, 13, 0.22), transparent);
+  animation: pov-sweep 5s ease-in-out infinite;
+}
+@keyframes pov-sweep {
+  0%, 100% { top: 12%; opacity: 0.04; }
+  50% { top: 78%; opacity: 0.12; }
+}
+
+/* ── glass primitives (shared vocabulary) ── */
+.pov-glass {
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  box-shadow: var(--glass-hi);
+}
+
+/* ── top bar ── */
+.pov-top {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: transparent;
+}
+.pov-top-l { display: flex; align-items: center; gap: 10px; }
+.pov-top-r { display: flex; align-items: center; gap: 10px; }
+
+.pov-exit, .pov-state, .pov-batt, .pov-fs, .pov-live {
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  box-shadow: var(--glass-hi);
+  border-radius: 8px;
+}
+
+.pov-exit {
+  font: 600 0.7rem var(--ui-mono);
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  text-decoration: none;
+  padding: 6px 10px;
+}
+.pov-exit:hover { color: var(--txt); border-color: rgba(255, 255, 255, 0.3); }
+
+.pov-title {
+  font: 600 0.72rem var(--ui-mono);
+  letter-spacing: 0.34em;
+  color: var(--faint);
+}
+
+.pov-state {
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--txt);
+  padding: 6px 11px;
+}
+.pov-state.OFFLINE, .pov-state.ESTOP { color: var(--faint); }
+
+.pov-batt {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  font-size: 0.7rem;
+}
+.pov-batt .lab { color: var(--faint); font-size: 0.58rem; letter-spacing: 0.14em; }
+.pov-batt .track { width: 42px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
+.pov-batt .track > span { display: block; height: 100%; background: var(--paper); }
+.pov-batt .track > span.warn { background: rgba(242, 240, 233, 0.65); }
+.pov-batt .track > span.crit { background: rgba(242, 240, 233, 0.4); }
+.pov-batt .v { color: var(--txt); }
+
+.pov-fs, .pov-live {
+  font: 600 0.66rem var(--ui-mono);
+  letter-spacing: 0.1em;
+  line-height: 1;
+  color: var(--dim);
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.pov-fs:hover, .pov-live:hover { color: var(--txt); border-color: rgba(17, 16, 13, 0.26); }
+/* LIVE active = inverted paper chip (ink on paper) */
+.pov-live.on {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+/* ── center reticle ── */
+.pov-reticle {
+  position: absolute;
+  top: 46%; left: 50%;
+  width: 108px; height: 108px;
+  transform: translate(-50%, -50%);
+  color: rgba(18, 17, 14, 0.32);
+}
+.pov-reticle .ret-h, .pov-reticle .ret-v { position: absolute; background: currentColor; }
+.pov-reticle .ret-h { top: 50%; left: 34%; right: 34%; height: 1.5px; transform: translateY(-50%); }
+.pov-reticle .ret-v { left: 50%; top: 34%; bottom: 34%; width: 1.5px; transform: translateX(-50%); }
+.pov-reticle .ret-ring { position: absolute; inset: 28px; border: 1.5px solid currentColor; border-radius: 50%; opacity: 0.5; }
+.pov-reticle.lock { color: var(--ink); animation: pov-lock 0.9s ease-in-out infinite; }
+.pov-reticle.lock .ret-ring { inset: 18px; opacity: 1; }
+.pov-reticle .ret-tag {
+  position: absolute;
+  top: -22px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.58rem;
+  letter-spacing: 0.2em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+@keyframes pov-lock {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.07); }
+}
+
+/* ── bottom: uniform glass chips + glass segmented control ── */
+.pov-bottom {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 30px 16px 20px;
+  background: linear-gradient(0deg, rgba(255, 255, 255, 0.96) 28%, rgba(255, 255, 255, 0.06) 100%);
+}
+
+.pov-tele { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--edge);
+  border-radius: 9px;
+  background: var(--glass);
+  box-shadow: var(--glass-hi);
+}
+.chip .k { color: var(--faint); font-size: 0.56rem; letter-spacing: 0.16em; }
+.chip .val {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--txt);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+.swatch { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.swatch.ripe { background: var(--paper); }
+.swatch.unripe { background: transparent; border: 1.5px solid var(--ink); }
+
+/* glass segmented control with a sliding paper thumb (manga panel) */
+.pov-seg {
+  position: relative;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  padding: 4px;
+  border-radius: 13px;
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5), var(--glass-hi);
+}
+.pov-seg-thumb {
+  position: absolute;
+  top: 4px; bottom: 4px; left: 4px;
+  width: calc((100% - 8px) / var(--n));
+  transform: translateX(calc(var(--i) * 100%));
+  border-radius: 9px;
+  background: linear-gradient(180deg, #1b1915, #0e0d0b);
+  box-shadow: 0 2px 9px rgba(17, 16, 13, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pov-seg-btn {
+  position: relative;
+  z-index: 1;
+  font: 700 0.72rem var(--ui-mono);
+  letter-spacing: 0.12em;
+  color: rgba(25, 23, 19, 0.58);
+  background: transparent;
+  border: 0;
+  padding: 0 22px;
+  height: 40px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.25s;
+}
+.pov-seg-btn:hover { color: rgba(25, 23, 19, 0.9); }
+.pov-seg-btn.on { color: var(--paper); }
+
+/* phones */
+@media (max-width: 760px) {
+  .pov-title { display: none; }
+  .pov-tele { gap: 6px; }
+  .pov-seg-btn { padding: 0 14px; }
+  .pov-tick { display: none; }
+}

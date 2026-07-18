@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""make_sample.py — generate a synthetic colored "world" GLB.
+"""make_sample.py - generate a synthetic colored "world" GLB.
 
 This exists so web-frontend can build & test the 3D lidar view BEFORE a real
 iPhone lidar scan exists. It emits a small, vertex-colored room (floor, four
@@ -27,7 +27,7 @@ import numpy as np
 try:
     import trimesh
 except ImportError:
-    sys.exit("trimesh not installed — run: pip install -r requirements.txt")
+    sys.exit("trimesh not installed - run: pip install -r requirements.txt")
 
 # repo-root-relative default output (matches web-frontend's loader path)
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -100,7 +100,7 @@ def main():
     print(f"wrote {args.out}  ({size/1024:.1f} KB, {len(mesh.vertices)} verts, "
           f"{len(mesh.faces)} faces)")
     if size > 15 * 1024 * 1024:
-        print("WARNING: >15 MB — unexpected for the synthetic sample", file=sys.stderr)
+        print("WARNING: >15 MB - unexpected for the synthetic sample", file=sys.stderr)
 
 
 if __name__ == "__main__":

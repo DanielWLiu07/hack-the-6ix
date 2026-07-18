@@ -6,12 +6,12 @@ native format is standard chat-JSONL ({"messages":[...]}) which most platforms
 accept directly. This script converts to the other two common shapes on demand:
 
   chat               native passthrough: {"messages":[{role,content},...]}
-  prompt-completion  {"prompt": "...", "completion": "..."} — multi-turn dialogs
+  prompt-completion  {"prompt": "...", "completion": "..."} - multi-turn dialogs
                      are flattened; the prompt contains the system text plus the
                      conversation so far, the completion is the final assistant JSON
   alpaca             {"instruction": ..., "input": ..., "output": ...}
   dpo-flat           preference pairs only: {"prompt": "...", "chosen": "...",
-                     "rejected": "..."} — flattens farmhand_prefs.jsonl for
+                     "rejected": "..."} - flattens farmhand_prefs.jsonl for
                      trainers that want plain-string DPO fields (drops `reason`)
 
 Usage:
@@ -68,7 +68,7 @@ def export_dpo_flat(out_dir):
     """Flatten the preference set to plain-string {prompt,chosen,rejected}."""
     src = HERE / PREFS_FILE
     if not src.exists():
-        raise SystemExit(f"{PREFS_FILE} not found — run generate_prefs.py first")
+        raise SystemExit(f"{PREFS_FILE} not found - run generate_prefs.py first")
     rows = [json.loads(l) for l in src.read_text().splitlines() if l.strip()]
     out = out_dir / "farmhand_prefs.dpo-flat.jsonl"
     with open(out, "w") as f:

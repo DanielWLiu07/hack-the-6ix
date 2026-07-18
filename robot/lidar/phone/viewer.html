@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-  viewer.html — standalone 3D lidar viewer (executable conventions).
+  viewer.html - standalone 3D lidar viewer (executable conventions).
 
   Loads the phone-scanned colored world (world.glb) AND overlays the live
   RPLIDAR C1 `lidar_scan` ring in the SAME frame, with decay. This is the
@@ -14,7 +14,7 @@
   Query params (all optional):
     ?server=http://localhost:3001     hub Socket.IO URL (live C1 scans)
     ?world=http://localhost:5173/world.glb   the phone-scanned GLB (Vite serves web/public)
-    ?height=0.15                      C1 sensor mount height (m) — where the ring floats
+    ?height=0.15                      C1 sensor mount height (m) - where the ring floats
     ?demo=1                           force synthetic rotating ring (no hub needed)
 
   If no live scan arrives within 3 s it auto-falls back to a synthetic ring so
@@ -22,7 +22,7 @@
 -->
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>C1 + phone lidar — 3D viewer</title>
+<title>C1 + phone lidar - 3D viewer</title>
 <style>
   html, body { margin: 0; height: 100%; background: #0b0e14; overflow: hidden; }
   #hud {
@@ -83,13 +83,26 @@ const grid = new THREE.GridHelper(10, 20, 0x2a3348, 0x1a2030); scene.add(grid);
 // robot origin marker (forward = -Z)
 const axes = new THREE.AxesHelper(0.4); scene.add(axes);
 
-// ---- phone world (GLB) ---------------------------------------------------
+// ---- phone world (GLB) - auto-reloads so a live scan grows on screen ------
 let worldOk = false;
-new GLTFLoader().load(WORLD,
-  (gltf) => { scene.add(gltf.scene); worldOk = true; },
-  undefined,
-  (err) => { console.warn('world.glb load failed', err); worldOk = false; }
-);
+let worldObj = null;
+const loader = new GLTFLoader();
+const LIVE_RELOAD = q.get('live') !== '0';   // reload world.glb every few seconds
+function loadWorld() {
+  const url = WORLD + (WORLD.includes('?') ? '&' : '?') + 't=' + Date.now();  // cache-bust
+  loader.load(url,
+    (gltf) => {
+      if (worldObj) scene.remove(worldObj);
+      worldObj = gltf.scene;
+      scene.add(worldObj);
+      worldOk = true;
+    },
+    undefined,
+    (err) => { if (!worldOk) console.warn('world.glb load failed', err); }
+  );
+}
+loadWorld();
+if (LIVE_RELOAD) setInterval(loadWorld, 3000);
 
 // ---- live C1 ring (points with decay) ------------------------------------
 // robot frame (x_fwd, y_left, meters) -> three.js (X,Y,Z) = (-y, SENSOR_H, -x)
@@ -238,7 +251,7 @@ function tick(now) {
             : `<span class="dot ${connected ? 'on' : 'off'}"></span>${connected ? 'live hub' : 'connecting…'}`;
   hud.innerHTML =
     `<b>3D lidar viewer</b>\n` +
-    `world.glb : ${worldOk ? 'loaded' : '—'}\n` +
+    `world.glb : ${worldOk ? 'loaded' : '-'}\n` +
     `C1 source : ${src}\n` +
     `scans     : ${demoMode ? '∞' : scanCount}   pts/scan: ${demoMode ? 180 : lastPts}\n` +
     `slam map  : ${slamCells ? slamCells + ' occupied cells' : 'waiting for slam_update'}\n` +

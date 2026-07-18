@@ -13,7 +13,7 @@ B) Live burst (arm camera in front of one fruit at a time):
     → captures 80 frames (move the fruit/camera during the burst).
 
 Both write YOLO images+labels into data/real/ and an annotated preview per frame
-in data/real/preview/ — flip through previews, delete bad pairs, done.
+in data/real/preview/ - flip through previews, delete bad pairs, done.
 
 Then merge into the training set and finetune (~30 min total loop):
     python3 capture.py --merge          # copies data/real → data/dataset (90/10 split)
@@ -38,7 +38,7 @@ RAW = ROOT / "raw"
 CLASSES = ["apple_ripe", "apple_unripe", "banana_ripe", "banana_unripe"]
 IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
-# HSV ranges (OpenCV H:0-179) for the printed prop colors — tune at venue if
+# HSV ranges (OpenCV H:0-179) for the printed prop colors - tune at venue if
 # needed by running with --debug-mask and watching the mask window.
 HSV_RANGES = {
     "apple_ripe":    [((0, 90, 60), (12, 255, 255)), ((165, 90, 60), (179, 255, 255))],
@@ -69,14 +69,14 @@ def auto_box(frame, label, min_area=800):
 def burst(label, n, delay, debug_mask):
     cls = CLASSES.index(label)
     cam = cv2.VideoCapture(int(os.environ.get("CAM_INDEX", 0)))
-    assert cam.isOpened(), "camera not found — set CAM_INDEX"
+    assert cam.isOpened(), "camera not found - set CAM_INDEX"
     (REAL / "images").mkdir(parents=True, exist_ok=True)
     (REAL / "labels").mkdir(parents=True, exist_ok=True)
     (REAL / "preview").mkdir(parents=True, exist_ok=True)
 
     saved = skipped = 0
     t_start = int(time.time())
-    print(f"capturing {n} frames of {label} — move the fruit around! Ctrl-C to stop early")
+    print(f"capturing {n} frames of {label} - move the fruit around! Ctrl-C to stop early")
     while saved < n:
         ok, frame = cam.read()
         if not ok:
@@ -106,7 +106,7 @@ def burst(label, n, delay, debug_mask):
             print(f"  {saved}/{n} (skipped {skipped} no-detection frames)")
         time.sleep(delay)
     cam.release()
-    print(f"done: {saved} labeled frames in {REAL} — review data/real/preview/, "
+    print(f"done: {saved} labeled frames in {REAL} - review data/real/preview/, "
           f"delete bad pairs from images/+labels/, then --merge")
 
 
@@ -115,7 +115,7 @@ def ingest():
 
     Humans sort phone/camera photos into raw/apple_ripe/, raw/banana_unripe/, ...
     (one fruit per photo, see raw/README.md). This HSV-boxes each by its class
-    color — no live camera needed. Photos where no blob is found are reported so
+    color - no live camera needed. Photos where no blob is found are reported so
     a human can re-shoot or hand-label them; nothing is silently dropped.
     """
     (REAL / "images").mkdir(parents=True, exist_ok=True)

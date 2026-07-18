@@ -34,7 +34,7 @@ function makeBus() {
   }
 }
 
-export function RobotProvider({ children }) {
+export function RobotProvider({ children, authToken = null, authReady = true }) {
   const busRef = useRef(null)
   if (!busRef.current) busRef.current = makeBus()
   const bus = busRef.current
@@ -57,19 +57,30 @@ export function RobotProvider({ children }) {
   }, [bus])
 
   useEffect(() => {
+    if (!authReady) return undefined
     if (SIM) {
       setConnected(true)
       return startSim(bus)
     }
-    const socket = io(SERVER_URL, { transports: ['websocket', 'polling'] })
+    const socket = io(SERVER_URL, {
+      transports: ['websocket', 'polling'],
+      auth: { role: 'ui', ...(authToken ? { token: authToken } : {}) },
+    })
     socketRef.current = socket
     socket.on('connect', () => setConnected(true))
     socket.on('disconnect', () => setConnected(false))
-    for (const ev of ['telemetry', 'detection', 'pick_event', 'lidar_scan']) {
+    for (const ev of [
+      'telemetry',
+      'detection',
+      'pick_event',
+      'lidar_scan',
+      'slam_map',
+      'slam_pose',
+    ]) {
       socket.on(ev, (payload) => bus.push(ev, payload))
     }
     return () => socket.disconnect()
-  }, [bus])
+  }, [bus, authReady, authToken])
 
   const emit = useCallback((event, payload = {}) => {
     if (SIM) bus.onCommand?.(event, payload)

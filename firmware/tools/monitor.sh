@@ -13,7 +13,7 @@ if [ -z "${PORT:-}" ]; then
   # fall back to first usb serial device (macOS then Linux naming)
   [ -n "${PORT:-}" ] || PORT="$(ls /dev/cu.usbmodem* /dev/cu.usbserial* /dev/ttyACM* /dev/ttyUSB* 2>/dev/null | head -1 || true)"
 fi
-[ -n "${PORT:-}" ] || { echo "[monitor] no serial device found — plug the board in or set PORT=..." >&2; exit 1; }
+[ -n "${PORT:-}" ] || { echo "[monitor] no serial device found - plug the board in or set PORT=..." >&2; exit 1; }
 
 echo "[monitor] $PORT @ $BAUD (exit: ctrl-c / ctrl-a k / ctrl-])"
 if command -v arduino-cli >/dev/null 2>&1; then

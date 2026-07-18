@@ -1,4 +1,4 @@
-# Lidar node — Raspberry Pi setup
+# Lidar node - Raspberry Pi setup
 
 Reads an RPLIDAR-style 360° lidar over USB serial and streams `lidar_scan`
 Socket.IO events (`{"ts":…,"points":[[x,y],…]}`, meters, robot frame,
@@ -76,7 +76,7 @@ verify at the venue and update with
 
 ## Troubleshooting
 
-- **`NO_DEVICE`**: `ls /dev/ttyUSB* /dev/ttyACM*` — nothing? bad cable/port.
+- **`NO_DEVICE`**: `ls /dev/ttyUSB* /dev/ttyACM*` - nothing? bad cable/port.
   Something? set `LIDAR_PORT` explicitly.
 - **Handshake failed but port exists**: wrong baud (try `LIDAR_BAUD=256000`),
   or another process holds the port (`sudo lsof /dev/ttyUSB0`).

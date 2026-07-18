@@ -32,7 +32,7 @@ int heartbeat() {
 int estop() {
   safety::triggerEstop();
   drive::stop();
-  arm::hold();  // freeze with torque — never limp (BRIDGE.md §2)
+  arm::hold();  // freeze with torque - never limp (BRIDGE.md §2)
   return (int)safety::state();
 }
 

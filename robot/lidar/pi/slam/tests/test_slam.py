@@ -20,7 +20,7 @@ import synth                                               # noqa: E402
 def test_icp_recovers_known_transform():
     # Realistic input: a room scan (not a random/gridded cloud, which alias under
     # nearest-neighbour matching). Point-to-point ICP on discretely-sampled beams
-    # nails translation and recovers rotation within a couple degrees — the small
+    # nails translation and recovers rotation within a couple degrees - the small
     # residual bias is corrected in SLAM by map accumulation (see drift test).
     scan = synth.cast_scan((0, 0, 0), synth.room_segments(), beams=180)
     T_true = make_T(0.3, 0.2, math.radians(12))
@@ -103,7 +103,7 @@ def test_slam_tracks_loop_with_bounded_drift():
         est.append((x, y))
     est = np.array(est)
     gt = np.array([(p[0], p[1]) for p in poses])
-    # SLAM bootstraps its own gauge frame (robot at origin, heading 0) — the map is
+    # SLAM bootstraps its own gauge frame (robot at origin, heading 0) - the map is
     # correct up to a global rigid transform. Map the estimate into the GT world
     # frame using the known initial pose (R(theta0), gt[0]) before measuring drift.
     th0 = poses[0][2]
@@ -122,8 +122,30 @@ def test_slam_map_is_coherent():
     p = s.grid.prob()
     occ = (p >= 0.7).sum()
     free = (p <= 0.3).sum()
-    assert occ > 100, "map has too few occupied cells — walls not captured"
+    assert occ > 100, "map has too few occupied cells - walls not captured"
     assert free > occ, "map should have more free space than walls"
     payload = s.slam_update_payload(ts=123)
     assert payload["ts"] == 123 and len(payload["pose"]) == 3
     assert len(payload["cells"]) > 0
+
+
+def test_slam_map_payload_matches_schema():
+    """The master-approved slam_map wire payload: <=128x128, base64 grid of
+    exactly width*height bytes (0/100/255), origin/resolution present."""
+    import base64
+
+    _, scans = synth.dataset(steps=100, beams=180, seed=1)
+    s = Slam()
+    for sc in scans:
+        s.update(sc)
+    x, y, _ = s.pose
+    p = s.grid.slam_map_payload(ts=999, center_xy=(x, y))
+    assert p["ts"] == 999
+    assert 1 <= p["width"] <= 128 and 1 <= p["height"] <= 128
+    assert p["resolution"] > 0
+    assert len(p["origin"]) == 2
+    raw = base64.b64decode(p["data"])
+    assert len(raw) == p["width"] * p["height"]
+    assert set(raw) <= {0, 100, 255}
+    # the window is centered on the robot, so it must contain real observations
+    assert any(v != 255 for v in raw), "map window is entirely unknown"

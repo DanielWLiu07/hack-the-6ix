@@ -1,4 +1,8 @@
+import { Suspense, lazy } from 'react'
+import { Link } from 'react-router-dom'
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
+
+const LidarViewport = lazy(() => import('../components/LidarViewport.jsx'))
 
 const JOINT_NAMES = ['BASE', 'SHLD', 'ELBW', 'WRST', 'GRIP']
 
@@ -91,8 +95,32 @@ export default function Dashboard() {
                 }}
               />
               <span className="nocam" style={{ display: 'none', position: 'absolute' }}>
-                NO STREAM — waiting for {SERVER_URL}/stream
+                NO STREAM - waiting for {SERVER_URL}/stream
               </span>
+            </div>
+            <div className="subval" style={{ marginTop: '0.75rem' }}>
+              <Link to="/pov?tab=cam">Open full robot POV</Link>
+            </div>
+          </div>
+          <div className="panel">
+            <h3>LiDAR World</h3>
+            <div
+              className="lidar-canvas"
+              style={{ minHeight: '18rem', borderRadius: '0.9rem', overflow: 'hidden' }}
+            >
+              <Suspense fallback={<p className="empty">Loading 3D view…</p>}>
+                <LidarViewport
+                  showWorld
+                  camera={{ position: [0, 4.3, 4.3], fov: 55 }}
+                  pointSize={0.045}
+                  controls
+                />
+              </Suspense>
+            </div>
+            <div className="subval" style={{ marginTop: '0.75rem' }}>
+              Your phone scan writes <code>/world.glb</code> and appears here live.
+              <span> </span>
+              <Link to="/pov?tab=iphone">Open full LiDAR POV</Link>
             </div>
           </div>
           <div className="panel">
@@ -124,7 +152,7 @@ export default function Dashboard() {
                 {detections.map((d, i) => (
                   <li key={`${d.ts}-${i}`}>
                     <span className="time">{fmtTime(d.ts)}</span>
-                    <span className="fruit">{d.fruit === 'apple' ? '🍎' : '🍌'} {d.fruit}</span>
+                    <span className="fruit">{d.fruit}</span>
                     <span className={`tag ${d.ripeness}`}>{d.ripeness}</span>
                     <span className="right">
                       <span className="conf">{(d.conf * 100).toFixed(0)}%</span>
@@ -143,7 +171,7 @@ export default function Dashboard() {
                 {picks.map((p, i) => (
                   <li key={`${p.ts}-${i}`}>
                     <span className="time">{fmtTime(p.ts)}</span>
-                    <span className="fruit">{p.fruit === 'apple' ? '🍎' : '🍌'}</span>
+                    <span className="fruit">{p.fruit}</span>
                     <span className={`tag ${p.ripeness}`}>{p.ripeness}</span>
                     <span className="conf">→ {p.bin}</span>
                     <span className="right">

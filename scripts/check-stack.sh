@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check-stack.sh — one-shot health check of the web stack. (owner: server-test)
+# check-stack.sh - one-shot health check of the web stack. (owner: server-test)
 #
 #   ./scripts/check-stack.sh            # checks localhost defaults
 #   SERVER_URL=http://192.168.1.5:3001 ./scripts/check-stack.sh
@@ -25,8 +25,8 @@ echo "== check-stack: $SERVER_URL =="
 if curl -s -o /dev/null --max-time 3 "$SERVER_URL/socket.io/?EIO=4&transport=polling"; then
   ok "hub reachable (socket.io endpoint answers)"
 else
-  bad "hub NOT reachable at $SERVER_URL — is web/server running on 3001?"
-  echo "== RESULT: FAIL ($FAIL failure) — nothing else can pass without the hub =="
+  bad "hub NOT reachable at $SERVER_URL - is web/server running on 3001?"
+  echo "== RESULT: FAIL ($FAIL failure) - nothing else can pass without the hub =="
   exit 1
 fi
 
@@ -52,7 +52,7 @@ if [ -d "$TESTDIR/node_modules/socket.io-client" ]; then
     *)             bad "socket check errored: $SOCK_OUT" ;;
   esac
 else
-  warn "socket.io-client not installed — run: cd web/server/test && npm install (skipping live telemetry check)"
+  warn "socket.io-client not installed - run: cd web/server/test && npm install (skipping live telemetry check)"
 fi
 
 # 3. REST endpoints

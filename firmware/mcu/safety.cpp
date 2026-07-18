@@ -5,7 +5,7 @@
 namespace safety {
 
 // Written by the estop RPC handler (Bridge separate-thread, plain provide) and
-// read by tick() in the main loop — volatile for cross-thread visibility.
+// read by tick() in the main loop - volatile for cross-thread visibility.
 static volatile bool estopLatched = false;
 static bool obstacle = false;
 static bool wdEnabled = false;

@@ -1,7 +1,7 @@
-# ht6-db — persistence layer (owner: worker `db`)
+# ht6-db - persistence layer (owner: worker `db`)
 
 Drop-in storage module for the telemetry server. **server-core:** import it
-relatively — no install steps needed, dependencies live in `db/node_modules`:
+relatively - no install steps needed, dependencies live in `db/node_modules`:
 
 ```js
 import { createDb } from './db/index.js';
@@ -28,24 +28,24 @@ schemas, stored verbatim (a `ts` in epoch-ms is stamped in if missing/zero).
 |---|---|
 | `recordTelemetry(t)` | Downsamples to ≤1 Hz (returns `false` when skipped); storage capped at 5000 docs (capped collection / ring buffer). Feed it every event, it self-limits. |
 | `recordDetection(d)` | Capped at 2000 docs in memory mode. |
-| `recordPickEvent(p)` | Never dropped — this is the analytics gold. |
+| `recordPickEvent(p)` | Never dropped - this is the analytics gold. |
 | `recordCommand(c)` | NL-command audit: `{text, action, accepted, source?}`. Capped at 500 in memory. Call on the `nl_command` path. |
-| `getStats()` | Shape below — return it directly from `GET /api/stats`. |
-| `getPicks({ limit=50, fruit, ripeness, since })` | Newest first, no `_id` — for `GET /api/picks`. |
+| `getStats()` | Shape below - return it directly from `GET /api/stats`. |
+| `getPicks({ limit=50, fruit, ripeness, since })` | Newest first, no `_id` - for `GET /api/picks`. |
 | `getDetections({ limit=50 })` | Newest first. |
 | `getCommands({ limit=50 })` | NL-command audit log, newest first. For `GET /api/commands`. |
-| `getTimeSeries({ bucketMs=60000, since, until })` | Picks bucketed into fixed time windows for charts — `{ bucket_ms, series:[{t,picks,successes,kg,apple,banana}] }`, oldest bucket first. For `GET /api/timeseries`. |
-| `getSessions({ gapMs=120000 })` | Harvest runs inferred from pick gaps (≥`gapMs` starts a new run) — `[{start_ts,end_ts,duration_ms,picks,successes,success_rate,waste_avoided_kg,co2e_avoided_kg}]`, newest run first. For `GET /api/sessions`. |
-| `getLatestTelemetry()` | Newest stored telemetry doc (or `null`) — status-header snapshot / late-joiner hydration. For `GET /api/telemetry/latest`. |
-| `getActivity({ since })` | Time-in-state, e-stop count, battery curve from the telemetry window — `{total_ms,state_durations,active_pct,estop_count,battery:{now,min,max,series}}`. For `GET /api/activity`. |
+| `getTimeSeries({ bucketMs=60000, since, until })` | Picks bucketed into fixed time windows for charts - `{ bucket_ms, series:[{t,picks,successes,kg,apple,banana}] }`, oldest bucket first. For `GET /api/timeseries`. |
+| `getSessions({ gapMs=120000 })` | Harvest runs inferred from pick gaps (≥`gapMs` starts a new run) - `[{start_ts,end_ts,duration_ms,picks,successes,success_rate,waste_avoided_kg,co2e_avoided_kg}]`, newest run first. For `GET /api/sessions`. |
+| `getLatestTelemetry()` | Newest stored telemetry doc (or `null`) - status-header snapshot / late-joiner hydration. For `GET /api/telemetry/latest`. |
+| `getActivity({ since })` | Time-in-state, e-stop count, battery curve from the telemetry window - `{total_ms,state_durations,active_pct,estop_count,battery:{now,min,max,series}}`. For `GET /api/activity`. |
 | `close()` | On shutdown. |
 
 **server-core:** the new read methods are each a one-line route (`return await
-db.getX(req.query)`) — `GET /api/timeseries`, `/api/sessions`, `/api/activity`,
+db.getX(req.query)`) - `GET /api/timeseries`, `/api/sessions`, `/api/activity`,
 `/api/commands`, `/api/telemetry/latest`. The one **write** hookup is
 `db.recordCommand({text, action, accepted, source})` on the `nl_command` path
 (after llm-client validates). All `getStats` changes are **additive** (`window`,
-`throughput`, `detections.avg_conf`) — safe to ignore if unused; nothing existing
+`throughput`, `detections.avg_conf`) - safe to ignore if unused; nothing existing
 changed shape.
 
 ## `getStats()` shape (contract for `GET /api/stats`)
@@ -75,5 +75,5 @@ cd web/server/db && npm install && npm run selftest
 ```
 
 Runs the in-memory backend always; also runs Mongo when `MONGODB_URI` is set
-(uses a throwaway `ht6_selftest_*` database — drop them from Atlas UI if they
+(uses a throwaway `ht6_selftest_*` database - drop them from Atlas UI if they
 bother you).

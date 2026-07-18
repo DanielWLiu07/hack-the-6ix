@@ -81,6 +81,9 @@ export const SAMPLES = {
   estop: {},
   nl_command: { text: "pick all ripe apples" },
   nl_action: { ts: 1752768000000, text: "pick all ripe apples", ok: true, action: { task: "pick", fruit: "apple", filter: "ripe", zone: "any" } },
+  // 8x8 occupancy grid, all-unknown (255), origin at (-2,-2)m, 5cm cells.
+  slam_map: { ts: 1752768000000, resolution: 0.05, width: 8, height: 8, origin: [-2, -2], data: Buffer.alloc(64, 255).toString("base64") },
+  slam_pose: { ts: 1752768000000, x: 1.0, y: 0.5, theta: 0.3 },
 };
 
 // Spawn a private, isolated hub (server-core's index.js) on `port`, with Base44
@@ -97,7 +100,12 @@ const SERVER_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 export async function spawnHub(port = 3999, ms = 8000) {
   const proc = spawn("node", ["index.js"], {
     cwd: SERVER_DIR,
-    env: { ...process.env, PORT: String(port), BASE44_WEBHOOK_URL: "", BASE44_SECRET: "" },
+    // MONGODB_URI="" forces the in-memory store so integration tests are
+    // deterministic and never read/write the SHARED Atlas collection (a full
+    // collection would push our fixed-ts test markers out of any limit window).
+    // The empty value wins because index.js's loadEnvFile() does not override
+    // an already-set env var. Atlas itself is covered by db/selftest.js.
+    env: { ...process.env, PORT: String(port), BASE44_WEBHOOK_URL: "", BASE44_SECRET: "", MONGODB_URI: "" },
     stdio: ["ignore", "pipe", "pipe"],
   });
   const url = `http://localhost:${port}`;

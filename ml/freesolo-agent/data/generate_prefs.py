@@ -2,7 +2,7 @@
 """Preference-pair (chosen/rejected) dataset generator for FarmHand RL/DPO.
 
 Bonus deliverable (Phase 2) on top of the SFT set. Teaches the model to *prefer*
-the correct, machine-parseable action over plausible-but-wrong alternatives —
+the correct, machine-parseable action over plausible-but-wrong alternatives -
 the failure modes that actually bite us in production (llm-client rejects any
 non-JSON or schema-violating output, so an SFT model that occasionally lapses
 into prose or guesses a field silently drops the command).
@@ -50,7 +50,7 @@ def other(rng, value, pool):
     return rng.choice(alts)
 
 
-# Prose paraphrases of an action — the single worst failure: not JSON at all.
+# Prose paraphrases of an action - the single worst failure: not JSON at all.
 def prose_of(rng, act):
     task, fruit, filt, zone = act["task"], act["fruit"], act["filter"], act["zone"]
     f = {"apple": "apples", "banana": "bananas", "any": "the fruit"}[fruit]
@@ -58,7 +58,7 @@ def prose_of(rng, act):
     if task == "pick":
         return rng.choice([
             f"Sure, I'll pick the {adj}{f} now.",
-            f"On it — heading over to grab the {adj}{f}.",
+            f"On it - heading over to grab the {adj}{f}.",
             f"Okay! Picking {adj}{f} for you.",
             f"Got it, I'll start harvesting the {adj}{f}.",
         ])
@@ -66,20 +66,20 @@ def prose_of(rng, act):
         return rng.choice([
             f"Sure, sorting the {adj}{f} into their bins now.",
             f"Okay, I'll organize the {adj}{f} by type and ripeness.",
-            "On it — sorting everything into the right bins.",
+            "On it - sorting everything into the right bins.",
         ])
     if task == "stop":
         return rng.choice([
             "Stopping the robot right now!",
             "Okay, halting all motion immediately.",
-            "Emergency stop — everything's shutting down.",
+            "Emergency stop - everything's shutting down.",
         ])
     if task == "drive":
         z = {"forward": "forward", "backward": "backward", "left": "to the left",
              "right": "to the right", "home": "back home", "any": "over there"}[zone]
         return rng.choice([
             f"Sure, driving {z} now.",
-            f"On it — rolling {z}.",
+            f"On it - rolling {z}.",
             f"Okay! Heading {z}.",
         ])
     return "Okay, doing that now."
@@ -103,9 +103,9 @@ def bad_json(rng, act):
         return json.dumps(d, separators=(",", ":"))
     if kind == "wrapped":
         return json.dumps({"action": act}, separators=(",", ":"))
-    # trailing prose after the JSON — not pure JSON, parser-hostile
+    # trailing prose after the JSON - not pure JSON, parser-hostile
     return a_str(act) + rng.choice(["  Done!", "  Let me know if that's right.",
-                                    " — picking now.", "\nAnything else?"])
+                                    " - picking now.", "\nAnything else?"])
 
 
 # ---------------------------------------------------------------- pair builders

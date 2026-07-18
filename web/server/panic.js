@@ -1,4 +1,4 @@
-// panic.js — DEMO PANIC SWITCH (force-sim).
+// panic.js - DEMO PANIC SWITCH (force-sim).
 //
 // If the real robot dies during judging the dashboard would go stale and the
 // demo dies with it. This switch keeps data flowing by spawning `sim.js` as a
@@ -7,9 +7,9 @@
 // auto-mode can tell it apart from a real robot.
 //
 // Modes (runtime-settable via POST /api/force-sim, or boot env FORCE_SIM):
-//   off  — no fallback sim; the real robot is the only source. (default)
-//   on   — MANUAL PANIC: ensure the fallback sim is running right now.
-//   auto — FAILOVER: run the sim iff no real (non-sim) robot has been connected
+//   off  - no fallback sim; the real robot is the only source. (default)
+//   on   - MANUAL PANIC: ensure the fallback sim is running right now.
+//   auto - FAILOVER: run the sim iff no real (non-sim) robot has been connected
 //          for PANIC_GRACE_MS; kill it automatically when a real robot returns.
 //
 // The `{on:true|false}` body is accepted as a dead-simple button (→ on/off).

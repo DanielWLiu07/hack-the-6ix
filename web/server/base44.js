@@ -43,7 +43,7 @@ export async function forwardPickEvent(pick) {
   const secret = SECRET();
   if (!secret && !warnedNoSecret) {
     warnedNoSecret = true;
-    console.warn('[base44] BASE44_WEBHOOK_URL set without BASE44_SECRET — sending without secret header');
+    console.warn('[base44] BASE44_WEBHOOK_URL set without BASE44_SECRET - sending without secret header');
   }
 
   const controller = new AbortController();

@@ -137,7 +137,7 @@ void tick() {
     } else if (lineLen < sizeof(line) - 1) {
       line[lineLen++] = c;
     } else {
-      lineLen = 0;  // overflow — drop the line
+      lineLen = 0;  // overflow - drop the line
       replyErr(2, "line too long");
     }
   }

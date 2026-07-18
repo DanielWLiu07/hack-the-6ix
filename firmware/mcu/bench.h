@@ -1,7 +1,7 @@
-// bench.h — serial bench transport (BRIDGE.md §5).
+// bench.h - serial bench transport (BRIDGE.md §5).
 // 115200 baud, newline-terminated ASCII: D S H E C Q Z W ?. Exercises every
 // subsystem with no Linux core attached; fw-tools' bench.py drives it.
-// Same rpc:: handlers as the App Lab Bridge transport — semantics identical.
+// Same rpc:: handlers as the App Lab Bridge transport - semantics identical.
 #pragma once
 
 #include <Arduino.h>

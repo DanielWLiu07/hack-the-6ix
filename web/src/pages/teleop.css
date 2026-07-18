@@ -1,0 +1,483 @@
+/* Teleop-page-only styles (owned by web-extra-1). Shared control-room styles
+   still come from ui.css; this file only adds the rigged-controller bits so
+   ui.css stays untouched. */
+
+.teleop-layout { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ---- centered rigged-controller hero ---- */
+.ctrl-hero-panel { display: flex; flex-direction: column; }
+.hero-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+}
+.hero-head h3 { margin: 0; }
+
+.ctrl-canvas {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  border-radius: 10px;
+  background:
+    radial-gradient(120% 90% at 50% 22%, rgba(255, 255, 255, 0.07), transparent 70%),
+    var(--ui-panel-2);
+  border: 1px solid var(--ui-border);
+}
+.ctrl-canvas-hero { height: 440px; }
+.ctrl-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+.ctrl-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  color: var(--ui-faint);
+  font-family: var(--ui-mono);
+  font-size: 0.8rem;
+}
+
+/* callout badges pinned onto the 3D model (drei <Html>) */
+.ctrl-badge-wrap { pointer-events: none; }
+.ctrl-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-family: var(--ui-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--ui-text);
+  background: rgba(10, 15, 12, 0.85);
+  border: 1px solid var(--ui-faint);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  transition: transform 0.1s, background 0.1s, border-color 0.1s, box-shadow 0.1s;
+}
+.ctrl-badge.on {
+  color: #0a0f0c;
+  background: var(--ui-green);
+  border-color: var(--ui-green);
+  transform: scale(1.28);
+  box-shadow: 0 0 12px rgba(70, 167, 88, 0.9);
+}
+
+/* legend: number -> control -> binding */
+.ctrl-legend {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.35rem 1rem;
+}
+.ctrl-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ui-dim);
+}
+.ctrl-legend .ln {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-family: var(--ui-mono);
+  font-size: 0.66rem;
+  color: var(--ui-text);
+  background: var(--ui-panel-2);
+  border: 1px solid var(--ui-border);
+}
+.ctrl-legend .lname { color: var(--ui-text); font-weight: 500; }
+.ctrl-legend .lglyph { margin-right: 0.3rem; color: var(--ui-green); font-weight: 700; }
+.ctrl-legend .lact { color: var(--ui-dim); }
+.ctrl-legend kbd {
+  margin-left: auto;
+  font-family: var(--ui-mono);
+  font-size: 0.7rem;
+  line-height: 1;
+  color: var(--ui-text);
+  background: var(--ui-panel-2);
+  border: 1px solid var(--ui-border);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 0.18rem 0.36rem;
+}
+
+/* status/read-out line under the model */
+.ctrl-readout {
+  margin-top: 0.7rem;
+  font-family: var(--ui-mono);
+  font-size: 0.76rem;
+  color: var(--ui-dim);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem 1.1rem;
+  flex-wrap: wrap;
+}
+.ctrl-readout .on { color: var(--ui-green); }
+.ctrl-readout .off { color: var(--ui-faint); }
+.pair-controller {
+  font: inherit;
+  font-size: 0.7rem;
+  color: var(--ui-text);
+  background: var(--ui-panel-2);
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  padding: 0.24rem 0.5rem;
+  cursor: pointer;
+}
+.pair-controller:hover { border-color: var(--ui-green); color: var(--ui-green); }
+
+.drivesrc {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.66rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border);
+  color: var(--ui-faint);
+}
+.drivesrc.src-gamepad { color: var(--ui-green); border-color: rgba(70, 167, 88, 0.5); background: rgba(70, 167, 88, 0.12); }
+.drivesrc.src-keyboard { color: var(--ui-blue); border-color: rgba(82, 169, 255, 0.5); background: rgba(82, 169, 255, 0.12); }
+.drivesrc.src-on-screen { color: var(--ui-yellow); border-color: rgba(255, 207, 63, 0.5); background: rgba(255, 207, 63, 0.12); }
+.drivesrc.src-estop { color: var(--ui-red); border-color: rgba(229, 72, 77, 0.6); background: rgba(229, 72, 77, 0.15); }
+
+/* keyboard/controller mode toggle */
+.mode-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--ui-panel-2);
+  border: 1px solid var(--ui-border);
+}
+.mode-toggle button {
+  font-family: var(--ui-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.3px;
+  color: var(--ui-dim);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+.mode-toggle button:hover { color: var(--ui-text); }
+.mode-toggle button.active {
+  color: #0a0f0c;
+  background: var(--ui-green);
+  font-weight: 600;
+}
+
+/* keyboard diagram (keyboard mode) */
+.kb-diagram {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1.5rem 2.5rem;
+  min-height: 300px;
+  padding: 2rem 1rem;
+  border-radius: 10px;
+  background:
+    radial-gradient(120% 90% at 50% 22%, rgba(255, 255, 255, 0.05), transparent 70%),
+    var(--ui-panel-2);
+  border: 1px solid var(--ui-border);
+  align-content: center;
+}
+.kb-cluster { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.kb-row { display: flex; gap: 6px; }
+.kb-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  height: 46px;
+  padding: 0 0.6rem;
+  border-radius: 8px;
+  font-family: var(--ui-mono);
+  font-size: 1rem;
+  color: var(--ui-text);
+  background: var(--ui-panel);
+  border: 1px solid var(--ui-border);
+  border-bottom-width: 3px;
+  transition: transform 0.06s, background 0.06s, border-color 0.06s, box-shadow 0.06s;
+}
+.kb-key.wide { min-width: 150px; }
+.kb-key.on {
+  color: #0a0f0c;
+  background: var(--ui-green);
+  border-color: var(--ui-green);
+  transform: translateY(1px);
+  box-shadow: 0 0 12px rgba(70, 167, 88, 0.8);
+}
+.kb-caption { margin-top: 0.3rem; font-size: 0.74rem; color: var(--ui-dim); font-family: var(--ui-mono); }
+
+/* on-screen control panels below the hero */
+.estop-panel { display: flex; }
+.estop-panel .estop-btn { width: 100%; }
+
+/* ---- full-screen manga control room ---- */
+.teleop-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow: hidden;
+  color: #111;
+  background: #f4f3ee;
+  font-family: var(--ui-mono);
+}
+/* The background orchard is rendered by StageWorld (paint shader) behind the
+   ink-pass controller, both inside the full-screen Three canvases. */
+.teleop-paper, .teleop-speedlines { display: none; }
+.teleop-stage-head {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+  border-bottom: 2px solid #171914;
+  background: rgba(255, 255, 255, .82);
+  backdrop-filter: blur(10px);
+}
+.teleop-stage-head h1 { margin: .1rem 0 0; font: 900 clamp(1rem, 2vw, 1.55rem)/1 var(--ui-mono); letter-spacing: .1em; }
+.teleop-kicker { font-size: .62rem; font-weight: 800; letter-spacing: .2em; opacity: .65; }
+.teleop-back { color: #171914; text-decoration: none; font-size: .7rem; font-weight: 800; letter-spacing: .12em; }
+.teleop-back:hover { text-decoration: underline; }
+.teleop-stage .drivesrc { color: #171914; border-color: #171914; background: rgba(255,255,255,.6); font-weight: 800; }
+.teleop-stage .drivesrc.src-gamepad { background: #111; color: #fff; }
+.teleop-stage .drivesrc.src-estop { background: #111; color: #fff; }
+.teleop-offline { position: absolute; z-index: 4; top: 5.4rem; left: 50%; transform: translateX(-50%); margin: 0; padding: .45rem .7rem; background: #fff; border: 1px solid #171914; font-size: .66rem; white-space: nowrap; }
+.teleop-scene { position: absolute; inset: 0; }
+.controller-callouts {
+  position: absolute;
+  inset: 5rem 0 10rem;
+  width: 100%;
+  height: calc(100% - 15rem);
+  pointer-events: none;
+  overflow: visible;
+}
+.controller-callouts path {
+  fill: none;
+  stroke: #181818;
+  stroke-width: .14;
+  vector-effect: non-scaling-stroke;
+  opacity: .38;
+}
+.controller-callouts rect { fill: rgba(245,244,238,.82); stroke: #181818; stroke-width: .1; }
+.controller-callouts circle { fill: #f5f4ee; stroke: #181818; stroke-width: .16; }
+.controller-callouts text {
+  fill: #181818;
+  font: 800 1.1px var(--ui-mono);
+  letter-spacing: .08px;
+  paint-order: stroke;
+  stroke: #f5f4ee;
+  stroke-width: .32px;
+  stroke-linejoin: round;
+}
+.controller-callouts .callout-state { font-size: .78px; font-weight: 900; opacity: .48; }
+.controller-callouts .pressed path, .controller-callouts .pressed circle { stroke: #000; stroke-width: .28; fill: #000; }
+.controller-callouts .pressed rect { fill: #111; stroke: #111; }
+.controller-callouts .pressed text { fill: #fff; stroke: #111; font-weight: 900; }
+.controller-callouts .pressed .callout-state { opacity: 1; }
+.controller-callouts .stick-callout > circle { fill: rgba(245,244,238,.86); }
+.controller-callouts .stick-callout .stick-dot { fill: #111; stroke: #111; }
+.ctrl-hero-stage, .ctrl-canvas-stage { width: 100%; height: 100%; }
+.ctrl-canvas-stage { border: 0; border-radius: 0; background: transparent; }
+/* Two stacked layers: painterly world in back, ink controller in front. */
+.stage-world-canvas, .stage-controller-canvas { position: absolute; inset: 0; }
+.stage-controller-canvas { pointer-events: none; }
+.stage-controller-canvas canvas { filter: drop-shadow(0 22px 14px rgba(17,18,15,.32)); }
+.scene-editor {
+  position: absolute;
+  z-index: 6;
+  top: 5.7rem;
+  right: 1rem;
+  width: min(205px, 27vw);
+  padding: .6rem;
+  color: #171914;
+  border: 1px solid #171914;
+  background: rgba(255,255,255,.88);
+  box-shadow: 4px 4px 0 #171914;
+  font: .59rem var(--ui-mono);
+  backdrop-filter: blur(8px);
+}
+.scene-editor-toggle {
+  position: absolute;
+  z-index: 6;
+  top: 5.7rem;
+  right: 1rem;
+  border: 1px solid #171914;
+  background: rgba(255,255,255,.88);
+  color: #171914;
+  padding: .42rem .58rem;
+  font: 800 .58rem var(--ui-mono);
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.scene-editor-title { display: block; margin-bottom: .45rem; font-weight: 900; letter-spacing: .12em; }
+.scene-editor select, .scene-editor button { width: 100%; border: 1px solid #171914; background: #fff; color: #171914; font: inherit; padding: .32rem; }
+.scene-editor button { margin-top: .35rem; cursor: pointer; font-weight: 900; }
+.scene-edit-row { margin-top: .52rem; display: grid; gap: .2rem; }
+.scene-edit-row b { font-size: .53rem; letter-spacing: .1em; }
+.scene-edit-row label { display: grid; grid-template-columns: .55rem 1fr; align-items: center; gap: .25rem; }
+.scene-edit-row input { width: 100%; accent-color: #111; }
+.scene-control-label { pointer-events: none; }
+.scene-control-label > span {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: .3rem;
+  padding: .13rem .23rem;
+  color: #161616;
+  background: rgba(255,255,255,.78);
+  border: 1px solid rgba(22,22,22,.55);
+  border-radius: 999px;
+  box-shadow: 1px 1px 0 rgba(22,22,22,.32);
+  font: 800 .46rem var(--ui-mono);
+  white-space: nowrap;
+}
+.scene-control-label b { letter-spacing: .06em; }
+.scene-control-label em { font-size: .39rem; font-style: normal; opacity: .55; }
+.scene-control-label > span.on { color: #fff; background: #111; border-color: #111; }
+.scene-control-label > span.on em { opacity: 1; }
+.scene-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 6px);
+  grid-template-rows: repeat(3, 6px);
+  gap: 1px;
+  flex-basis: 100%;
+  justify-content: center;
+  margin-top: .18rem;
+}
+.scene-dpad > i { display: block; width: 6px; height: 6px; border: 1px solid currentColor; opacity: .52; }
+.scene-dpad-up { grid-column: 2; grid-row: 1; }
+.scene-dpad-left { grid-column: 1; grid-row: 2; }
+.scene-dpad-center { grid-column: 2; grid-row: 2; background: currentColor; opacity: .4 !important; }
+.scene-dpad-right { grid-column: 3; grid-row: 2; }
+.scene-dpad-down { grid-column: 2; grid-row: 3; }
+.scene-dpad > i.on { background: currentColor; opacity: 1; }
+.scene-joy {
+  position: relative;
+  display: block;
+  flex-basis: 100%;
+  width: 18px;
+  height: 18px;
+  margin-top: .2rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: linear-gradient(currentColor, currentColor) center / 1px 100% no-repeat,
+    linear-gradient(90deg, currentColor, currentColor) center / 100% 1px no-repeat;
+  opacity: .8;
+}
+.scene-joy-dot {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  transition: transform .08s linear;
+}
+.teleop-key-overlay { position: absolute; inset: 0; display: grid; place-items: center; padding: 6rem 1rem 15rem; background: rgba(239,237,227,.75); }
+.teleop-key-overlay .kb-diagram { width: min(760px, 92vw); min-height: 260px; background: rgba(255,255,255,.84); border: 2px solid #171914; box-shadow: 10px 10px 0 #171914; }
+.teleop-dock {
+  position: absolute;
+  z-index: 4;
+  bottom: 0;
+  left: 50%;
+  width: min(1100px, calc(100% - 2rem));
+  transform: translateX(-50%);
+  padding: 0 1rem 1rem;
+  border: 2px solid #171914;
+  border-bottom: 0;
+  border-radius: 12px 12px 0 0;
+  background: rgba(247,244,235,.9);
+  box-shadow: 0 -9px 0 rgba(23,25,20,.88);
+  backdrop-filter: blur(10px);
+  transition: padding .18s ease;
+}
+.teleop-dock.collapsed { padding-bottom: 0; }
+/* collapse / expand handle sits at the top of the dock, always visible */
+.dock-toggle {
+  display: flex;
+  align-items: center;
+  gap: .8rem;
+  width: 100%;
+  padding: .5rem .2rem;
+  border: 0;
+  background: transparent;
+  color: #171914;
+  font: 900 .62rem var(--ui-mono);
+  letter-spacing: .12em;
+  cursor: pointer;
+}
+.dock-toggle-label { white-space: nowrap; }
+.dock-toggle-status {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  margin-left: auto;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: #3c4038;
+}
+.dock-toggle-status .drivesrc { font-size: .58rem; }
+.dock-chevron { font-size: .8rem; line-height: 1; }
+.dock-toggle:hover .dock-toggle-label { text-decoration: underline; }
+.teleop-dock-top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .1rem 0 .65rem; border-top: 1px solid rgba(23,25,20,.3); border-bottom: 1px solid rgba(23,25,20,.3); }
+.teleop-stage .mode-toggle { border-color: #171914; background: rgba(255,255,255,.7); }
+.teleop-stage .mode-toggle button { color: #43473d; }
+.teleop-stage .mode-toggle button.active { color: #fff; background: #171914; }
+.teleop-stage .ctrl-readout { margin: 0; justify-content: flex-end; color: #3c4038; }
+.teleop-stage .ctrl-readout .on { color: #111; font-weight: 800; }
+.teleop-stage .pair-controller { color: #171914; border-color: #171914; background: #fffdf7; }
+.teleop-actions { display: grid; grid-template-columns: 1.1fr 1fr 1.25fr; gap: .8rem; align-items: center; padding-top: .75rem; }
+.teleop-actions > * { min-width: 0; }
+.teleop-stage .estop-btn { border: 2px solid #171914; color: #fff; background: #171914; padding: .75rem; font-size: .8rem; }
+.teleop-drive, .teleop-pick { display: flex; align-items: center; gap: .6rem; font-size: .62rem; font-weight: 900; letter-spacing: .08em; }
+.teleop-drive > span, .teleop-pick > span { white-space: nowrap; }
+.teleop-stage .padgrid { grid-template-columns: repeat(3, 29px); grid-template-rows: repeat(3, 29px); gap: 3px; }
+.teleop-stage .padbtn { border-color: #171914; color: #171914; background: #fffdf7; font-size: .75rem; }
+.teleop-stage .actionrow { flex-wrap: nowrap; width: 100%; }
+.teleop-stage .actionbtn { padding: .5rem .4rem; border-color: #171914; color: #171914; background: #fffdf7; font-size: .7rem; }
+
+@media (max-width: 780px) {
+  .teleop-stage-head { padding: .65rem .8rem; }
+  .teleop-stage-head h1 { font-size: .9rem; }
+  .teleop-back { display: none; }
+  .teleop-dock { width: 100%; }
+  .teleop-dock-top { align-items: flex-start; flex-direction: column; gap: .5rem; }
+  .teleop-stage .ctrl-readout { justify-content: flex-start; }
+  .teleop-actions { grid-template-columns: 1fr; gap: .45rem; }
+  .teleop-drive { justify-content: center; }
+  .teleop-pick { flex-wrap: wrap; justify-content: center; }
+  .teleop-offline { top: 4.3rem; max-width: 90vw; white-space: normal; text-align: center; }
+  .controller-callouts { inset: 4rem 0 14rem; height: calc(100% - 18rem); }
+  .controller-callouts text { font-size: 1.75px; }
+  .scene-editor { top: auto; right: .6rem; bottom: 10.5rem; width: 180px; }
+  .scene-editor-toggle { top: auto; right: .6rem; bottom: 10.5rem; }
+}
+
+@media (max-width: 900px) {
+  .ctrl-canvas-hero { height: 320px; }
+}

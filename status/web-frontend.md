@@ -22,6 +22,44 @@ lidar-pi published `web/public/world.glb` + conventions (their `robot/lidar/phon
 
 Verify: `npm run build` passes (GLTFLoader lands in the lazy LidarView chunk, three.js already there). `world.glb` serves 200 `model/gltf-binary` (22720 B) via vite AND is copied into `dist/`. GLB header validated (`glTF` magic, v2, length matches). Open `http://localhost:5173/lidar?sim=1` → room + fading green C1 ring; toggle works. At venue, lidar-pi swaps the real scan into the same path — zero web change needed.
 
+## [monkey-page] WIP — /stage scaffold live: humanoid rigged B&W manga monkey + TV + live landing + zoom-out
+Assets (all via Meshy, agents): `public/assets/monkey.glb` = HUMANOID rigged cartoon monkey, 1.1MB, 24-bone Mixamo skeleton, 3 clips (Idle/Walk/Run). `public/assets/tv.glb` = flatscreen TV 469KB (screen faces +Z, ~1.75×1.22 screen area). Manga shader now FULLY B&W (`lib/mangaPass.js`).
+`src/pages/MonkeyStage.jsx` (route `/stage`, lazy in main.jsx): opens screen-filling the TV (iframe `/scene/index.html` via drei `Html transform`), camera zooms out 2.6s (easeInOutCubic) to a room pose revealing the TV + monkey; monkey plays Idle + rises from below; funky Katie Roze navbar fades in; whole room B&W-manga-shaded (screen stays crisp color — DOM iframe, post can't touch it, as intended). Build+lint clean, verified via headless screenshots.
+KEY FIX: never `scene.clone()` a skinned mesh (skeleton bind breaks → parts explode); render the gltf directly with transforms on wrapper groups.
+STILL TO TUNE (needs live eyes): camera framing (monkey too large/right-cut), TV frame blends into dark bg (matte-black → manga-black on dark room — needs a floor/lighter room so it reads), navbar text visibility (only brand emoji showing), monkey scale/placement. Iterating with human.
+
+## [stage transition + look] DONE (pending human eyeball)
+- HEIST TRANSITION (priority): landing (App.jsx) listens for the scene's `postMessage({type:'ht6-scene',phase})`. On 'ascent' warms the HTTP cache for tv.glb+monkey.glb (fetch, no three in main bundle). On 'complete' shows a paper crossfade (`.page-crossfade`, never black) and navigates to /stage with router state `{fromLanding:true}`.
+- STAGE ENTRANCE: when arriving fromLanding, EntranceRig starts the camera tight on the TV screen (it plays the same scene = seamless) and eases to the room framing over 1.8s, then hands to OrbitControls. Direct /stage visits skip the entrance. Old CameraRig frame-zoom retired; IntroSequence.jsx is unused/orphan (no conflict) - left in place.
+- LOOK: /stage is now big blocky Suzanne monkey CENTERED, dark room with a focused spotLight ON the monkey (dark kept, monkey lit), grainier B&W manga. Full OrbitControls so zoom/position is hand-tunable.
+- NAVBAR: uses Katie Roze (landing font), painted after the Canvas at max z-index. Renders in the DOM (font verified valid: real contours + metrics) BUT does not composite in headless-swiftshader screenshots (DOM text over WebGL artifact; the box paints, text layer is dropped). Needs a real-browser eyeball - should render fine there.
+STILL TUNING with human: exact framing, TV placement, nav confirmation.
+NEXT: SLAM consumer per lidar-sim's coordination notes.
+
+## [style+data+pov+monkey batch] DONE
+- STYLE SWEEP (mandatory) DONE: removed all emojis + em/en dashes + box-drawing dashes from my web/src files. Emoji removals: brand apples in Layout+MonkeyStage nav, fruit emojis in Dashboard rows (now plain text), Teleop PS-button glyphs. Build + lint clean.
+- DATA RULE (mandatory): my pages already compliant - Dashboard + landing stats read live via useRobot (hub); no in-component dummy arrays. (Analytics/POV are web-extra owned.)
+- /pov REWIRE (priority) DONE: `/pov` now embeds the ORIGINAL scene POV at `/scene/pov.html` fullscreen (new `src/pages/PovScene.jsx`, iframe + Dashboard chip). React POV kept at `/pov-live`. pov.html 200, build clean. @web-extra (RobotPOV owner): your React POV is at /pov-live now, not dropped.
+- BLOCKY MONKEY DONE (agent): monkey.glb is now a blocky voxel/Suzanne humanoid, 2377 tris, rigged (24 Mixamo bones, Walk/Run/Idle), 188KB. Renders assembled + grainy B&W manga on /stage. Manga pushed grittier/grainier (grit 0.75) per "too cartoony" note. Reframed smaller + camera back. flatShading OFF (re-broke skinning; geo already faceted).
+- NEXT: SLAM consumer (slam_map occupancy grid + slam_pose marker under the live scan in LidarView) - schema read, will coordinate with lidar-sim.
+
+## [CLAIMS] web-frontend file ownership (per [web scale-up]) — extras: do NOT edit these
+I (web-frontend) am ACTIVELY working these — CLAIMED, hands off unless you ping me:
+- `src/App.jsx`, `src/App.css` — landing + landing ladder + the new monkey/TV "home" experience
+- `src/components/OrchardHero.jsx` — r3f painterly hero (WebGL2 fallback)
+- `src/components/MonkeyMascot.jsx`, `src/lib/mangaPass.js` — B&W manga monkey renderer + shader
+- `src/components/IntroSequence.jsx` and any new `MonkeyPage`/`MonkeyStage`/`SceneNav` files (monkey-page build)
+- `public/assets/*.glb` (tree/apple/monkey/tv), `public/scene/`, `public/fonts/`, `index.html`, `src/vendor/painterly.js`
+- `src/main.jsx` routing table — SHARED: coordinate via status before adding/changing routes
+- `src/ui.css` — SHARED control-room styles: coordinate before editing (I only touch mascot/landing-adjacent rules)
+
+AVAILABLE for extras to claim (I authored them but am not actively editing): `src/pages/Dashboard.jsx`, `src/pages/Teleop.jsx`, `src/pages/LidarView.jsx`, `src/pages/Analytics.jsx`, `src/components/Layout.jsx`. Claim in YOUR status file before editing; tell me and I'll note it here.
+
+## [landing-probe + monkey] DONE — 1:1 scene landing (probe ladder) + manga monkey mascot
+Landing (final human decision): self-hosted 1:1 scene restored at `public/scene/` (gitignored). `App.jsx` probe ladder: no WebGL2 → ClassicHero; `/scene/index.html` present AND is the real scene (body has `id="gl"`, not the SPA shell's `id="root"`) → fullscreen iframe + SceneChip; absent → OrchardHero fallback. Verified: probe detects the real scene, landing renders the painterly meadow/sky/POMME. Build+lint clean. Master deploys.
+Monkey mascot: generated a cartoony monkey via Meshy (scripts/meshy-gen.mjs, key in .env.local) → 13.5MB → optimized to 4.99MB (quantize + 512 webp) → `public/assets/monkey.glb`. New `src/lib/mangaPass.js` = self-contained manga post (procedural halftone/crosshatch/paper + sobel ink outlines + tone bands, alpha cutout — the orchard-scene MangaPass + its textures were deleted, so this is original). `src/components/MonkeyMascot.jsx` renders it on a transparent canvas; wired into Dashboard (fixed bottom-right, click-through, `.monkey-mascot`). **Verified rendering** via headless Chrome — manga ink/halftone monkey composites cleanly over the dashboard. Build+lint clean.
+Rigging: delegated to a background agent (Meshy auto-rigging via input_task_id → rigged GLB → optimize preserving skin/joints → monkey.glb). Still running; will swap in the rigged model + I'll re-verify when it lands.
+
 ## [landing-final] DONE — landing = OrchardHero ONLY (per priority revert); render verified
 Churn resolved to a clean end state. Sequence: tried r3f-parity → master self-hosted the real scene at /scene/ → human PRIORITY REVERT to OrchardHero-only. Final `App.jsx`: `WEBGL2 ? (OrchardHero + SceneChip) : ClassicHero`. Deleted all interim machinery — SceneEmbed, the probe Landing, `?nolocalscene`, every `/scene/` reference (public/scene being deleted). Reconciled the import breakage master introduced (had removed useState/useEffect while my probe used them → `useState is not defined` crash; gone now).
 Parity work wasn't wasted: OrchardHero gained (from natureScene.js constants) a painted **sky dome** (paper→blue wash `0.62,0.745,0.80` + hill ridges, ported fully-grown w/ slow drift) + a **meadow ground** (`meadow()` noise field, grass-green tint, manual fog) + **camera FOV 25** (the long-lens 2D-storybook look; was 42). **Render verified** via headless Chrome (swiftshader): sky + green meadow + tree + canopy/ground apples + painterly Kuwahara all render, no GLSL/runtime errors, chip overlaid. `npm run build` + oxlint clean. Master deploys.

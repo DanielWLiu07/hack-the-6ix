@@ -1,8 +1,8 @@
-# On-device SLAM — deployment + Qualcomm on-device story
+# On-device SLAM - deployment + Qualcomm on-device story
 
 Lidar-only 2D SLAM (scan matching + occupancy grid) that turns the C1's
 pose-less `lidar_scan` stream into a live global map + robot pose. Pure numpy,
-no ROS — runs **on-device** on the Raspberry Pi *or* the Arduino UNO Q Linux
+no ROS - runs **on-device** on the Raspberry Pi *or* the Arduino UNO Q Linux
 (MPU) side.
 
 ## Why this is on-story for the Qualcomm UNO Q track
@@ -21,7 +21,7 @@ vision inference:
                       │ + servo control  │
                       └──────────────────┘
 ```
-No cloud, no ROS, no GPU — 5 W edge compute doing SLAM. That's the pitch.
+No cloud, no ROS, no GPU - 5 W edge compute doing SLAM. That's the pitch.
 
 ## Measured performance (bench.py, this laptop)
 ```
@@ -31,7 +31,7 @@ peak RSS 41 MB        2 Hz budget headroom: 34x
 The C1 runs at ~2 Hz (500 ms/scan budget). 34× laptop headroom means even a
 5–10× slower UNO Q ARM core stays comfortably real-time (~75–150 ms/scan).
 **Re-run `bench.py` on the UNO Q for the figure to quote to judges** (numbers go
-into `docs/QUALCOMM.md`, owned by vision-infer — hand them over via status).
+into `docs/QUALCOMM.md`, owned by vision-infer - hand them over via status).
 
 ## Deploy on the UNO Q / Pi
 ```bash
@@ -48,9 +48,9 @@ SERVER_URL=http://<laptop-hotspot-ip>:3001 ./run_slam.sh
 1. C1 reader (`lidar_node/`) emits `lidar_scan` → hub.
 2. This node subscribes (hub role `ui`), runs SLAM, emits `slam_update`.
 3. Web lidar view renders the occupancy grid + pose (needs the hub relay + the
-   web render — see coordination below).
+   web render - see coordination below).
 
-## slam_update event (NEW schema — coordination required)
+## slam_update event (NEW schema - coordination required)
 ```jsonc
 "slam_update" {"ts":0,"pose":[x,y,theta_deg],"res":0.05,
                "origin":[ox,oy],"cells":[[cx,cy],...]}  // world-m occupied cells, ≤1500
@@ -62,7 +62,7 @@ SERVER_URL=http://<laptop-hotspot-ip>:3001 ./run_slam.sh
 - **web-frontend**: render `cells` as a ground-plane occupancy overlay (grid of
   `res`-sized squares at `origin + cell*res`) and `pose` as the robot marker,
   inside the same Three.js scene as `world.glb` + the live C1 ring. Frame is the
-  robot frame (same axis map as the C1 ring — see `robot/lidar/phone/README.md`).
+  robot frame (same axis map as the C1 ring - see `robot/lidar/phone/README.md`).
 
 Until the relay lands, SLAM is fully verifiable offline: `node.py` renders
 `slam_map.png` and the emit is a harmless no-op.

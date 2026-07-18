@@ -1,10 +1,10 @@
-// rpc_handlers.h — the ONE semantic implementation of the BRIDGE.md §3
+// rpc_handlers.h - the ONE semantic implementation of the BRIDGE.md §3
 // command set. Both transports (App Lab Bridge glue in bridge_rpc.cpp and
 // the serial bench parser in bench.cpp) are thin bindings over these, so
 // their behavior cannot drift apart.
 //
 // Every handler returns the safety state int (BRIDGE.md §2) and returns
-// immediately — motion is started, never awaited.
+// immediately - motion is started, never awaited.
 #pragma once
 
 #include <Arduino.h>

@@ -63,16 +63,220 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
   font-weight: 600;
 }
 
-/* ── Painterly landing (iframe embed / r3f orchard backdrop + overlay) ── */
+/* -- Painterly landing (iframe embed / r3f orchard backdrop + overlay) -- */
 
 .hero-stage {
   position: relative;
   min-height: 100vh;
   width: 100%;
   overflow: hidden;
-  background: #dcd6c4; /* paper — shows while the scene loads */
+  background: #dcd6c4; /* paper - shows while the scene loads */
   font-family: system-ui, -apple-system, sans-serif;
 }
+
+/* Auth0 account chip: intentionally reads like a little paper orchard tag,
+   rather than a generic SaaS login control. */
+.orchard-account {
+  position: absolute;
+  z-index: 5;
+  top: 1.25rem;
+  right: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-width: 238px;
+  max-width: min(360px, calc(100vw - 2.5rem));
+  padding: .48rem .52rem .48rem .7rem;
+  color: #314133;
+  text-align: left;
+  background:
+    linear-gradient(120deg, rgba(255, 253, 240, .98), rgba(238, 231, 205, .95)),
+    repeating-linear-gradient(4deg, rgba(95, 78, 48, .035) 0 1px, transparent 1px 4px);
+  border: 1px solid rgba(81, 99, 62, .45);
+  border-radius: 4px 8px 6px 9px;
+  box-shadow: 2px 3px 0 rgba(75, 60, 37, .17), 0 8px 20px rgba(35, 44, 29, .2);
+  transform: rotate(-.45deg);
+  font-family: 'Katie Roze', 'Brush Script MT', cursive;
+}
+.orchard-account::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  border: 1px dashed rgba(100, 117, 74, .3);
+  border-radius: 3px 6px 4px 7px;
+}
+.orchard-account > * { position: relative; z-index: 1; }
+.orchard-account.loading { min-width: auto; padding: .65rem .9rem; font-size: 1.15rem; }
+.account-sprout { color: #d45145; font-size: 1.65rem; line-height: 1; }
+.account-avatar {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(70, 96, 52, .65);
+  border-radius: 50% 46% 51% 48%;
+  background: #567443;
+  color: #fff8e7;
+  font-family: system-ui, sans-serif;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+.account-identity { min-width: 0; flex: 1; }
+.account-eyebrow { display: block; color: #9b4e3e; font-family: system-ui, sans-serif; font-size: .48rem; font-weight: 800; letter-spacing: .14em; }
+.orchard-account strong { display: block; overflow: hidden; color: #30432d; font-size: 1.16rem; line-height: 1.05; text-overflow: ellipsis; white-space: nowrap; }
+.orchard-account button {
+  flex: 0 0 auto;
+  padding: .4rem .66rem .46rem;
+  border: 1px solid #7d4535;
+  border-radius: 5px 7px 4px 6px;
+  background: #b95042;
+  box-shadow: 1px 2px 0 #793d32;
+  color: #fff7e8;
+  cursor: pointer;
+  font-family: 'Katie Roze', 'Brush Script MT', cursive;
+  font-size: 1.15rem;
+  line-height: 1;
+  transition: transform .15s ease, background .15s ease;
+}
+.orchard-account button:hover { background: #a34337; transform: translateY(-1px) rotate(1deg); }
+.orchard-account button:focus-visible { outline: 3px solid #f0c76d; outline-offset: 3px; }
+
+/* A deliberately simple affordance: hover it to bring the physical signboard
+   into frame, click it to launch Auth0. Login is optional for the app. */
+.landing-login,
+.landing-logout {
+  position: absolute;
+  z-index: 5;
+  top: 1.25rem;
+  right: 1.25rem;
+  padding: .5rem .9rem .56rem;
+  border: 1px solid rgba(81, 99, 62, .55);
+  border-radius: 4px 8px 6px 9px;
+  background:
+    linear-gradient(120deg, rgba(255, 253, 240, .98), rgba(238, 231, 205, .96)),
+    repeating-linear-gradient(4deg, rgba(95, 78, 48, .045) 0 1px, transparent 1px 4px);
+  box-shadow: 2px 3px 0 rgba(75, 60, 37, .22), 0 8px 20px rgba(35, 44, 29, .2);
+  color: #365238;
+  cursor: pointer;
+  font-family: 'Katie Roze', 'Brush Script MT', cursive;
+  font-size: 1.45rem;
+  line-height: 1;
+  transform: rotate(-.6deg);
+  transition: transform .18s ease, background .18s ease;
+}
+.landing-login:hover { background: #f5e8c7; transform: translateY(-2px) rotate(.6deg); }
+.landing-login:focus-visible { outline: 3px solid #f0c76d; outline-offset: 3px; }
+.landing-login:disabled { cursor: wait; opacity: .72; }
+.landing-login span { display: none; }
+.landing-login::after {
+  content: 'LOGIN';
+  display: block;
+  color: #713f32 !important;
+  font-family: 'Katie Roze', 'Brush Script MT', cursive;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: .035em;
+  text-shadow: 0 1px 0 rgba(255,255,255,.8);
+}
+.landing-login-wrap {
+  position: absolute;
+  z-index: 8;
+  top: 1.25rem;
+  right: 1.25rem;
+  min-width: 126px;
+  padding: .62rem 1rem .68rem;
+  border: 1px solid rgba(81, 99, 62, .55);
+  border-radius: 4px 8px 6px 9px;
+  background:
+    linear-gradient(120deg, rgba(255, 253, 240, .98), rgba(238, 231, 205, .96)),
+    repeating-linear-gradient(4deg, rgba(95, 78, 48, .045) 0 1px, transparent 1px 4px);
+  box-shadow: 2px 3px 0 rgba(75, 60, 37, .22), 0 8px 20px rgba(35, 44, 29, .2);
+  text-align: center;
+  transform: rotate(-.6deg);
+  transition: transform .18s ease, background .18s ease;
+}
+.landing-login-wrap:hover { background: #f5e8c7; transform: translateY(-2px) rotate(.6deg); }
+.landing-login-wrap > span {
+  position: relative;
+  z-index: 1;
+  display: block;
+  color: #713f32;
+  pointer-events: none;
+  font-family: 'Katie Roze', 'Brush Script MT', cursive;
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: .055em;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255,255,255,.9);
+}
+.landing-login-wrap .landing-login {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  transform: none;
+}
+.landing-login-wrap .landing-login::after { display: none; }
+.landing-login-wrap .landing-login:focus-visible { outline: 3px solid #f0c76d; outline-offset: 3px; }
+.landing-logout { display: flex; align-items: center; gap: .65rem; max-width: min(360px, calc(100vw - 2.5rem)); font-family: system-ui, sans-serif; font-size: .75rem; }
+.landing-logout span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.landing-logout button { padding: .3rem .5rem; border: 1px solid #8b4a3a; border-radius: 4px; background: #b95042; color: #fff8e7; cursor: pointer; font: inherit; }
+
+.auth-signboard-panel {
+  position: relative;
+  width: 300px;
+  padding: 1.15rem 1.1rem 1rem;
+  color: #314133;
+  text-align: center;
+  background: rgba(255, 250, 229, .97);
+  border: 2px solid #5d3924;
+  border-radius: 5px 8px 6px 9px;
+  box-shadow: 4px 5px 0 rgba(69, 42, 27, .35), 0 14px 34px rgba(24, 29, 18, .35);
+  font-family: system-ui, sans-serif;
+  transform: translateY(6px);
+}
+.auth-signboard-panel::before { content: ''; position: absolute; inset: 6px; border: 1px dashed rgba(111, 75, 42, .35); pointer-events: none; }
+.auth-signboard-panel > * { position: relative; }
+.signboard-kicker { color: #a04437; font-size: .58rem; font-weight: 800; letter-spacing: .16em; }
+.auth-signboard-panel h2 { margin: .25rem 0 .35rem; color: #365238; font-family: 'Katie Roze', 'Brush Script MT', cursive; font-size: 2rem; }
+.auth-signboard-panel p { color: #5f634f; font-size: .71rem; line-height: 1.45; }
+.signboard-action { width: 100%; margin-top: .75rem; padding: .58rem; border: 1px solid #743a30; border-radius: 5px; background: #b95042; box-shadow: 1px 2px 0 #793d32; color: #fff8e7; cursor: pointer; font-family: 'Katie Roze', 'Brush Script MT', cursive; font-size: 1.35rem; }
+.signboard-demo { display: inline-block; margin-top: .6rem; color: #526e43; font-size: .68rem; }
+.signboard-close { position: absolute; z-index: 2; top: .25rem; right: .35rem; width: 1.45rem; height: 1.45rem; padding: 0; border: 0; background: transparent; color: #79513a; cursor: pointer; font-size: 1.4rem; line-height: 1; }
+
+/* Scene-mode login: the painterly board pans in on the right, this real Auth0
+   panel rides over it. (Orchard-mode anchors the same panel in 3D via drei.) */
+.scene-auth-overlay {
+  position: absolute;
+  z-index: 7;
+  top: 50%;
+  right: clamp(1.25rem, 7vw, 7rem);
+  transform: translateY(-50%);
+  animation: scene-auth-in .45s cubic-bezier(.2, .8, .25, 1) both;
+}
+@keyframes scene-auth-in {
+  from { opacity: 0; transform: translate(14px, calc(-50% + 8px)); }
+  to   { opacity: 1; transform: translateY(-50%); }
+}
+@media (max-width: 720px) {
+  .scene-auth-overlay { right: 50%; transform: translate(50%, -50%); }
+  @keyframes scene-auth-in {
+    from { opacity: 0; transform: translate(50%, calc(-50% + 8px)); }
+    to   { opacity: 1; transform: translate(50%, -50%); }
+  }
+}
+
+.hero > .orchard-account { position: fixed; }
 
 /* Fullscreen backdrops fill the stage and sit behind the overlay. */
 .hero-embed,
@@ -84,6 +288,72 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
   height: 100%;
   border: 0;
   display: block;
+  z-index: 2;
+}
+
+/* Prepared as soon as the landing mounts. The apple ascent only reveals this
+   live stage layer — the route, WebGL canvas, and mascot never remount. */
+.landing-stage-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  transform: scale(1.24);
+  transform-origin: 58% 52%;
+  pointer-events: none;
+  transition: opacity 0.2s ease-out, transform 1.35s cubic-bezier(.18,.78,.2,1);
+}
+.landing-stage-layer.is-active {
+  z-index: 3;
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+/* The outgoing orchard recedes as the already-running stage camera settles,
+   so the claw ascent reads as one continuous pull-back instead of a cut. */
+.landing-stage-layer.is-active ~ .hero-embed,
+.landing-stage-layer.is-active ~ .orchard-canvas {
+  opacity: 0;
+  transform: scale(.94);
+  transition: opacity .42s ease-out, transform 1.2s cubic-bezier(.18,.78,.2,1);
+}
+
+.stage-editor {
+  position: fixed;
+  left: 24px;
+  bottom: 22px;
+  z-index: 8;
+  padding: 8px 11px;
+  color: rgba(255, 255, 255, .78);
+  font: 600 11px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  background: rgba(9, 10, 13, .45);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stage-editor button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 8px;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.stage-editor button:hover,
+.stage-editor button.is-active {
+  color: #101114;
+  background: #f3ecdd;
 }
 
 /* Static gradient shown if WebGL is unavailable or the r3f chunk is loading. */
@@ -106,27 +376,43 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
   z-index: 2;
 }
 
-/* The ONLY thing over the pure scene: a tiny, low-opacity corner link out.
-   Sits above the backdrop but is small enough to leave the scene fully usable. */
-.scene-chip {
-  position: absolute;
-  right: 14px;
-  bottom: 14px;
-  z-index: 4;
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  letter-spacing: 0.03em;
-  text-decoration: none;
-  color: #26332a;
-  background: rgba(240, 237, 224, 0.55);
-  border: 1px solid rgba(90, 110, 88, 0.3);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  opacity: 0.5;
-  transition: opacity 0.15s, background 0.15s;
+
+/* -- Monkey stage: TV + rising manga monkey, funky navbar fades in on zoom -- */
+.stage { position: relative; width: 100%; height: 100vh; overflow: hidden; background: #0b0d10; }
+.stage canvas { display: block; }
+.stage-nav {
+  /* above the drei <Html> screen container (z ~15.7M) so the nav is never hidden */
+  position: absolute; top: 0; left: 0; right: 0; z-index: 2147483000;
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: 0.7rem 1.4rem; pointer-events: none;
+  background: linear-gradient(to bottom, rgba(8, 9, 12, 0.82), rgba(8, 9, 12, 0));
+  opacity: 0; transform: translateY(-12px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
 }
-.scene-chip:hover {
-  opacity: 1;
-  background: rgba(240, 237, 224, 0.9);
+
+.stage-nav.in { opacity: 1; transform: none; }
+.stage-nav a { pointer-events: auto; }
+.stage-brand {
+  font-family: 'Katie Roze', 'Brush Script MT', cursive; font-size: 2.3rem;
+  color: #fff4e6; text-decoration: none; line-height: 1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+.stage-brand span { color: #ff6b5e; }
+.stage-links { display: flex; gap: 0.3rem; margin-left: auto; flex-wrap: wrap; align-items: baseline; }
+.stage-links a {
+  font-family: 'Katie Roze', 'Brush Script MT', cursive; font-size: 1.7rem;
+  color: #f4efe2; text-decoration: none; padding: 0.05rem 0.8rem 0.2rem;
+  border-radius: 10px; text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+  transition: color 0.15s, background 0.15s;
+}
+.stage-links a:hover { color: #ffd27a; background: rgba(255, 255, 255, 0.12); }
+
+@media (max-width: 620px) {
+  .orchard-account { top: .7rem; right: .7rem; min-width: 0; max-width: calc(100vw - 1.4rem); }
+  .orchard-account.signed-out .account-eyebrow, .orchard-account.signed-out strong { display: none; }
+  .orchard-account.signed-out { min-width: auto; padding-left: .55rem; }
+  .stage-nav { padding: .6rem .85rem; align-items: flex-start; }
+  .stage-brand { font-size: 1.8rem; }
+  .stage-links { margin-left: 0; gap: 0; width: 100%; }
+  .stage-links a { font-size: 1.35rem; padding-inline: .42rem; }
 }

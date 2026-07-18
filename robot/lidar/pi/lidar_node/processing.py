@@ -1,6 +1,6 @@
 """Pure math: polar→cartesian conversion and angular downsampling.
 
-No hardware or network imports — this module is fully unit-testable.
+No hardware or network imports - this module is fully unit-testable.
 
 Conventions
 -----------

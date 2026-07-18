@@ -1,4 +1,4 @@
-"""synth.py — synthetic room + trajectory raycaster for offline SLAM testing.
+"""synth.py - synthetic room + trajectory raycaster for offline SLAM testing.
 
 Generates ground-truth robot poses and the corresponding robot-frame
 `lidar_scan` point sets, so slam.py can be validated without hardware and
@@ -16,7 +16,7 @@ def _box(cx, cy, w, h):
 
 
 def room_segments():
-    """A structured 8x6 m room with obstacles — good SLAM features."""
+    """A structured 8x6 m room with obstacles - good SLAM features."""
     segs = []
     segs += _box(0, 0, 8.0, 6.0)      # outer walls
     segs += _box(-2.4, 1.6, 1.0, 0.8)  # crate

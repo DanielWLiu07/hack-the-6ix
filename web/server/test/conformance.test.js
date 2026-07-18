@@ -3,7 +3,7 @@
 // a fake robot + fake browser pair verifies the hub relays every event
 // type in both directions without mangling payloads.
 //
-// If the server isn't up, the whole suite is skipped (clearly), not failed —
+// If the server isn't up, the whole suite is skipped (clearly), not failed -
 // so `npm test` stays meaningful before server-core lands.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -15,7 +15,7 @@ import { validators, ROBOT_TO_WEB_EVENTS, WEB_TO_ROBOT_EVENTS } from "./schemas.
 
 const up = await serverUp();
 
-test("hub reachable", { skip: !up && `server not reachable at ${SERVER_URL} — start web/server first` }, () => {
+test("hub reachable", { skip: !up && `server not reachable at ${SERVER_URL} - start web/server first` }, () => {
   assert.ok(up);
 });
 
@@ -24,7 +24,7 @@ test("sim traffic conforms to schemas", { skip: !up, timeout: 60000 }, async () 
   await connected(browser);
   try {
     // telemetry is 5 Hz; measured sim cadence: detection ~every 10s,
-    // pick_event follows a full sim pick cycle (can exceed 30s) — so long
+    // pick_event follows a full sim pick cycle (can exceed 30s) - so long
     // windows for those, and pick_event absence is a warning, not a failure.
     const results = await Promise.all([
       collect(browser, "telemetry", 10, 6000),
@@ -45,11 +45,11 @@ test("sim traffic conforms to schemas", { skip: !up, timeout: 60000 }, async () 
         failures.push(`${event}: sim emitted none in the window (should be periodic)`);
       }
       if (payloads.length === 0 && event === "pick_event") {
-        console.warn("warning: no pick_event in 45s window (sim pick cycle may be longer) — schema unchecked this run");
+        console.warn("warning: no pick_event in 45s window (sim pick cycle may be longer) - schema unchecked this run");
       }
       for (const p of payloads) {
         const errs = validators[event](p);
-        if (errs.length) failures.push(`${event}: ${errs.join("; ")} — payload ${JSON.stringify(p).slice(0, 200)}`);
+        if (errs.length) failures.push(`${event}: ${errs.join("; ")} - payload ${JSON.stringify(p).slice(0, 200)}`);
       }
     }
     assert.deepEqual(failures, [], `\n${failures.join("\n")}`);

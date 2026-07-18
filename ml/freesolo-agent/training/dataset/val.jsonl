@@ -1,0 +1,123 @@
+{"input": "go grab each appple thanks.", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Scoop up every immature nana", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "Robot, roll back to the charging station when you can", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "Bring me all mature fruits", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "roll left for me", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"left\"}"}
+{"input": "Goo get all of the ripe apples and bananas", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "yo harvest all nanners thnaks!", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Could you harvest a few apples that are ripe.", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "harvest red ones thanks", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "Robot, go pick", "output": "{\"clarify\":\"Do you mean apples, bananas, or both?\"}"}
+{"input": "bring back the nanners ripe or not now", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "harvest whatveer is ripe", "output": "{\"clarify\":\"Which fruit should I go for \\u2014 apples, bananas, or both?\"}"}
+{"input": "shut it down when you can", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "robot, round up all ripe apples!", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "Yo sort those green nanas", "output": "{\"task\":\"sort\",\"fruit\":\"banana\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "would you bring me any apples and bananas pls", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Sort through these", "output": "{\"task\":\"sort\",\"fruit\":\"any\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "would you pick up each nana thx", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "i need you to kill switch.", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "fetch every ready apple ty", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "Hey, gather the green bananas right away", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "drive back to base ty", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "farmhand, snag a few apples that are still green ok!", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "Get all of the apples", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Hey robot, sort them!", "output": "{\"clarify\":\"Should I sort apples, bananas, or everything?\"}"}
+{"input": "Could you canel that", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "get the apples no matter the ripenss when you can", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Hey, move back to base", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "Would you head back right away!", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "robot, go straight!", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"forward\"}"}
+{"input": "Hey robot, pick any applles ty", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Yo categorize those ripened apples for me", "output": "{\"task\":\"sort\",\"fruit\":\"apple\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "yo take all of the apples that are not ripe", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "Yo get to work pickking!", "output": "{\"clarify\":\"Which fruit \\u2014 apples, bananas, or both?\"}"}
+{"input": "Hey robot, organize the fruit!", "output": "{\"task\":\"sort\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "farmhand, roll back to the charging station", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "alright, everything ooff", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Get any apples asap!", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "grab every green fruit", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "go back to the charging station right away", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "collect the ripe ones", "output": "{\"clarify\":\"Apples, bananas, or both?\"}"}
+{"input": "hey robot, stop", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "hey, head out", "output": "{\"clarify\":\"Which direction should I drive: forward, backward, left, right, or home?\"}"}
+{"input": "e-stop!", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "alright, scoot over to the right pls", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"right\"}"}
+{"input": "Please go get the fruit.", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "STOOP!", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Can you gra all the mature nanners thx", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "can you go grab produce that are ripe ty", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "alright, scoot to the right asap", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"right\"}"}
+{"input": "would you snag each ripened nana when you can", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "Drive somewhere.", "output": "{\"clarify\":\"Which direction should I drive: forward, backward, left, right, or home?\"}"}
+{"input": "ok farmhand, go to home base", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "hey farmhand bring back the apples on your right ty", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"right\"}"}
+{"input": "Roll staight when you can!", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"forward\"}"}
+{"input": "Would you wait wait wait stop.", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "alright, get the ones thaat aren't ready", "output": "{\"clarify\":\"Which fruit \\u2014 apples, bananas, or both?\"}"}
+{"input": "farmhand, scoop up the produce no matter the ripeness ty.", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "yo reverse a bit ok", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"backward\"}"}
+{"input": "alright, pluck any ready-to-eat produce", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "YO HEAD TO THE START OK.", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "could you grab all the fruits in the right row when you can!", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"right\"}"}
+{"input": "scoot over to the left please!", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"left\"}"}
+{"input": "Go grab all the all the fruit asap", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "I need you to stop everything!", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "hey armhand cruise over to the right now", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"right\"}"}
+{"input": "farmhand, harvest everything pls!", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "yo pick the apples that look ready.", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "ok farmhand, organize these", "output": "{\"task\":\"sort\",\"fruit\":\"any\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "full stop", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "full speed ahead asap", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"forward\"}"}
+{"input": "hey robot, harvest each apple right awway", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "ok farmhand, ekep going ty", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"forward\"}"}
+{"input": "yo pluck a few bananas ok!", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "COLLECT ALL THE APPLES TO YOUR RIGHT RIGHT AWAY.", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"right\"}"}
+{"input": "Please sort it!", "output": "{\"clarify\":\"Sort what \\u2014 apples, bananas, or everything?\"}"}
+{"input": "pick some both fruits for me", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "yo round up all the apples to your right please!", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"right\"}"}
+{"input": "hey farmhand harvest whatever is ripe", "output": "{\"clarify\":\"Which fruit \\u2014 apples, bananas, or both?\"}"}
+{"input": "Wait stoop", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "quit it", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "go ahead and pick up the apples!", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "i need you to do your thing", "output": "{\"clarify\":\"Which fruit \\u2014 apples, bananas, or both?\"}"}
+{"input": "write me a poem about farming!", "output": "{\"clarify\":\"Sorry, I only handle robot commands: pick, sort, drive, or stop.\"}"}
+{"input": "can you pluck each fruit asap!", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "please advance", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"forward\"}"}
+{"input": "hey farmhand go grab the red apples", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "pluck the apples both ripe and unripe thx", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Collect any fruit ok", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Could you collect some green apples", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "Hey, red button", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Cruise over to the left thanks", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"left\"}"}
+{"input": "would you red button.", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "please fetch any bananas please", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "HALT", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Farmhand, collect the nanners in front of you pls", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"any\",\"zone\":\"forward\"}"}
+{"input": "Ok farmhand, go get all the ripe nanas right away.", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "Robot, bring me any apples that need more time right away", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "Snag each piece of fruit ty", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "snag each ready-to-eat piece of fruit", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "harvest whatever is ripe!", "output": "{\"clarify\":\"Which fruit should I go for \\u2014 apples, bananas, or both?\"}"}
+{"input": "robot, snag any both fruits asap", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "alright, sort through the haul by type please", "output": "{\"task\":\"sort\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "hey robot, back it up for me.", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"backward\"}"}
+{"input": "Steer over to the right.", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"right\"}"}
+{"input": "HEY ROBOT, COLLECT SOME IMMATURE BOTH FRUITS", "output": "{\"task\":\"pick\",\"fruit\":\"any\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "Would you sort through the harvest", "output": "{\"task\":\"sort\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "sop!", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Hey robot, pluck any nanners asap", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Yo harvest some nanas that are ripe ty", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "go get any nanas that are still green right away", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "pick up all of the immature apples pls", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "come home when you can", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"home\"}"}
+{"input": "robot, harvest time", "output": "{\"clarify\":\"Do you mean apples, bananas, or both?\"}"}
+{"input": "CAN YOU BIN THE BANANAS!", "output": "{\"task\":\"sort\",\"fruit\":\"banana\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "hold everything please", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "Cruise to the left", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"left\"}"}
+{"input": "ok farmhand, roll backwards", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"backward\"}"}
+{"input": "can you fetch all the nanners that are ready to eat when you can", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"ripe\",\"zone\":\"any\"}"}
+{"input": "would you gather the underripe bananas", "output": "{\"task\":\"pick\",\"fruit\":\"banana\",\"filter\":\"unripe\",\"zone\":\"any\"}"}
+{"input": "alright, kill switch", "output": "{\"task\":\"stop\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "take all the apples pls", "output": "{\"task\":\"pick\",\"fruit\":\"apple\",\"filter\":\"any\",\"zone\":\"any\"}"}
+{"input": "go ahead and drive left!", "output": "{\"task\":\"drive\",\"fruit\":\"any\",\"filter\":\"any\",\"zone\":\"left\"}"}

@@ -166,6 +166,15 @@ def test_node_telemetry_payload_schema():
     assert node._telemetry()["state"] == "ESTOP"
 
 
+def test_soak_short_run_all_success():
+    from robot_linux.soak import run_soak
+    s = run_soak(cycles=4, speed=40.0, tick_hz=4000.0, seed=1, verbose=False)
+    assert s["completed"] == 4
+    assert s["success_rate"] == 1.0
+    assert s["stalls"] == 0
+    assert s["tick_errors"] == 0
+
+
 def test_mock_bridge_clamps_and_estops():
     b = MockBridge()
     b.move_servos([999, -5, 90, 90, 90], 0)

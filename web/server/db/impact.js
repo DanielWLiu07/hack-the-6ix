@@ -1,5 +1,5 @@
 // Environmental-impact model for the "Battery, not Blood" pitch.
-// Assumptions documented in docs/DATA.md — keep these two files in sync.
+// Assumptions documented in docs/DATA.md - keep these two files in sync.
 
 // Average edible mass per fruit (kg). Sources: USDA average medium apple ~182 g,
 // medium banana ~118 g. Rounded for the demo counter.
@@ -9,12 +9,12 @@ export const KG_PER_FRUIT = {
 };
 
 // kg CO2e emitted per kg of food wasted (production + decomposition).
-// FAO food-wastage-footprint figures land in the 2–4 range; we use a
+// FAO food-wastage-footprint figures land in the 2-4 range; we use a
 // conservative 2.5 and say so on the dashboard.
 export const CO2E_PER_KG_WASTE = 2.5;
 
 // A successful pick+sort = one fruit correctly graded at the point of harvest
-// instead of lost in the 30–40% post-harvest gap. We claim the fruit's mass as
+// instead of lost in the 30-40% post-harvest gap. We claim the fruit's mass as
 // waste avoided only for successful picks.
 export function computeImpact(successesByFruit) {
   let wasteKg = 0;

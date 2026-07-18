@@ -4,7 +4,7 @@
 # The UNO Q runs a Debian-based aarch64 Linux on its MPU. This script sets up a
 # self-contained venv, installs the pinned deps, verifies the detector, records
 # on-device bench numbers (for the Qualcomm track writeup), and can launch the
-# MJPEG pipeline. Everything runs ON the board — no cloud inference.
+# MJPEG pipeline. Everything runs ON the board - no cloud inference.
 #
 # Usage (on the UNO Q, from the repo's robot/vision dir):
 #   ./deploy_unoq.sh setup     # create venv + install deps
@@ -24,7 +24,7 @@ log() { printf '\033[1;36m[deploy_unoq]\033[0m %s\n' "$*"; }
 setup() {
   log "arch: $(uname -m)  host: $(uname -n)"
   if [[ "$(uname -m)" != "aarch64" && "$(uname -m)" != "arm64" ]]; then
-    log "WARNING: not on ARM ($(uname -m)) — this script targets the UNO Q MPU."
+    log "WARNING: not on ARM ($(uname -m)) - this script targets the UNO Q MPU."
   fi
   command -v python3 >/dev/null || { log "python3 not found"; exit 1; }
   [[ -d "$VENV" ]] || python3 -m venv "$VENV"
@@ -41,14 +41,14 @@ verify() {
 
 bench() {
   local out="$HERE/bench_unoq.txt"
-  log "on-device bench — quoting these in docs/QUALCOMM.md"
+  log "on-device bench - quoting these in docs/QUALCOMM.md"
   {
     echo "# UNO Q on-device bench  ($(date -u +%FT%TZ))  arch=$(uname -m)"
     for size in 640x480 320x320 320x240; do
       "$PY" bench.py --detector auto --frames 300 --size "$size" | grep '^BENCH'
     done
   } | tee "$out"
-  log "wrote $out — paste the BENCH lines into docs/QUALCOMM.md"
+  log "wrote $out - paste the BENCH lines into docs/QUALCOMM.md"
 }
 
 run() {

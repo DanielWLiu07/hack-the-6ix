@@ -4,21 +4,21 @@
 // (no hub needed) against a throwaway local HTTP server that captures what the
 // forwarder POSTs. This is the deterministic way to prove the PickReport body,
 // the shared-secret header, and the "disabled unless configured" contract from
-// docs/BASE44.md — without ever touching the real Orchard OS endpoint.
+// docs/BASE44.md - without ever touching the real Orchard OS endpoint.
 import { test, before, after, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
 import { forwardPickEvent, base44Enabled } from "../base44.js";
 import { SAMPLES, sleep } from "./helpers.js";
 
-// env keys this module reads — snapshot & restore so tests don't leak into each
+// env keys this module reads - snapshot & restore so tests don't leak into each
 // other or into whatever launched `npm test`.
 const ENV_KEYS = ["BASE44_WEBHOOK_URL", "BASE44_SECRET", "BASE44_JOB_ID", "BASE44_TIMEOUT_MS"];
 const saved = {};
 
 let server, url;
 let received; // { headers, body } of the last POST the mock got
-let respond;  // (req,res) => void — per-test override of the mock's reply
+let respond;  // (req,res) => void - per-test override of the mock's reply
 
 before(async () => {
   for (const k of ENV_KEYS) saved[k] = process.env[k];
@@ -100,7 +100,7 @@ test("omits the secret header when BASE44_SECRET is unset", async () => {
 test("a failing webhook (500) never throws into the caller", async () => {
   process.env.BASE44_WEBHOOK_URL = url;
   respond = (_req, res) => { res.writeHead(500); res.end("boom"); };
-  // must resolve, not reject — the forwarder is fire-and-forget by contract
+  // must resolve, not reject - the forwarder is fire-and-forget by contract
   await forwardPickEvent(SAMPLES.pick_event);
   assert.ok(true);
 });

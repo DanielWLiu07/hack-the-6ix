@@ -1,26 +1,27 @@
-// OrchardHero — painterly 3D landing backdrop (the end-goal hero).
+// OrchardHero - painterly 3D landing backdrop (the end-goal hero).
 // Long-lens painterly framing: a 25° camera, painted sky dome (paper→blue
 // wash + hill ridges), meadow ground, and tree.glb + apple.glb, all run
 // through the vendored anisotropic-Kuwahara post chain (src/vendor/painterly.js).
-// Self-contained r3f — no external assets beyond the two GLBs.
+// Self-contained r3f - no external assets beyond the two GLBs.
 //
 // Renders ONLY the background. Hero copy/chip are overlaid by the caller.
 
-import { Suspense, useLayoutEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useGLTF, useProgress } from '@react-three/drei'
+import { Html, Text, useGLTF, useProgress } from '@react-three/drei'
 import * as THREE from 'three'
 import { PainterlyPipeline } from '../vendor/painterly.js'
 
 const TREE_URL = '/assets/tree.glb'
 const APPLE_URL = '/assets/apple.glb'
+const AUTH_SIGN_URL = '/assets/auth-signboard.glb'
 
 // Scene tuning constants
 const PAPER = '#dcd6c4'
 const FOG = '#ccd5c8'
 const TREE_H = 3.4 // framed for the 25° long lens
 const APPLE_D = 0.26
-const CAM0 = [5.2, 2.4, 6.9] // exact — the dome horizon is calibrated to it
+const CAM0 = [5.2, 2.4, 6.9] // exact - the dome horizon is calibrated to it
 const LOOK = [0, 1.4, 0]
 
 const APPLES = [
@@ -36,9 +37,9 @@ const APPLES = [
   [-1.35, 0.0, 0.6, false],
 ]
 
-// ── Painted sky dome — pinned fully-grown (uGrow=1); uTime keeps the slow
+// -- Painted sky dome - pinned fully-grown (uGrow=1); uTime keeps the slow
 // disc drift. Horizon v=-0.113 is measured for the 25° camera at CAM0, so the
-// hill ridges land on the real horizon. ──
+// hill ridges land on the real horizon. --
 const SKY_VERT = /* glsl */ `
   varying vec3 vP;
   void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`
@@ -119,8 +120,8 @@ function SkyDome() {
   )
 }
 
-// ── Meadow ground — meadow() noise field tinted toward grass green, with the
-// scene's paper fog folded in manually (raw ShaderMaterial). ──
+// -- Meadow ground - meadow() noise field tinted toward grass green, with the
+// scene's paper fog folded in manually (raw ShaderMaterial). --
 const GROUND_VERT = /* glsl */ `
   varying vec3 vWpos; varying float vFogDepth;
   void main(){
@@ -272,18 +273,89 @@ function Apples() {
   ))
 }
 
-function CameraDrift() {
+const SIGN_POS = [2.35, 0, 0.45]
+const SIGN_CAMERA = [6.05, 2.45, 4.45]
+const SIGN_LOOK = [2.25, 1.45, 0.38]
+
+function CameraDrift({ authBoardOpen }) {
+  const desired = useMemo(() => new THREE.Vector3(), [])
+  const target = useMemo(() => new THREE.Vector3(), [])
+  const pointer = useRef({ x: 0, y: 0 })
+  // Track window coordinates rather than only canvas pointer events: the Login
+  // button sits above the canvas, so its hover should keep the same parallax.
+  useEffect(() => {
+    const onMove = (event) => {
+      pointer.current.x = (event.clientX / window.innerWidth - 0.5) * 2
+      pointer.current.y = (event.clientY / window.innerHeight - 0.5) * 2
+    }
+    window.addEventListener('pointermove', onMove, { passive: true })
+    return () => window.removeEventListener('pointermove', onMove)
+  }, [])
   useFrame((state) => {
     const t = state.clock.elapsedTime
     const cam = state.camera
-    cam.position.set(
-      CAM0[0] + Math.sin(t * 0.08) * 0.25,
-      CAM0[1] + Math.sin(t * 0.06) * 0.08,
-      CAM0[2] + Math.cos(t * 0.07) * 0.18,
-    )
-    cam.lookAt(LOOK[0], LOOK[1], LOOK[2])
+    if (authBoardOpen) {
+      desired.set(...SIGN_CAMERA)
+      target.set(...SIGN_LOOK)
+    } else {
+      desired.set(
+        CAM0[0] + Math.sin(t * 0.08) * 0.25,
+        CAM0[1] + Math.sin(t * 0.06) * 0.08,
+        CAM0[2] + Math.cos(t * 0.07) * 0.18,
+      )
+      target.set(...LOOK)
+    }
+    // Preserve the soft camera-follow interaction in both orchard and signboard
+    // views. Focus changes the destination; it never freezes the cursor logic.
+    desired.x += pointer.current.x * 0.16
+    desired.y -= pointer.current.y * 0.08
+    target.x += pointer.current.x * 0.3
+    target.y -= pointer.current.y * 0.16
+    cam.position.lerp(desired, authBoardOpen ? 0.045 : 0.028)
+    cam.lookAt(target)
   })
   return null
+}
+
+// A physical orchard sign: hand-painted timber, a little crooked on purpose.
+// The Html card is anchored to its face so Auth0 remains real, keyboard-accessible
+// UI while the camera does the in-world reveal.
+function MeshyAuthSign() {
+  const { scene } = useGLTF(AUTH_SIGN_URL)
+  const model = useMemo(() => scene.clone(true), [scene])
+  useLayoutEffect(() => {
+    fitToHeight(model, 3.4)
+  }, [model])
+  return <primitive object={model} />
+}
+
+function AuthSignboard({ open, panel }) {
+  const group = useRef()
+  useFrame((state) => {
+    if (!group.current) return
+    const targetY = open ? 1 : 0.72
+    group.current.scale.y = THREE.MathUtils.lerp(group.current.scale.y, targetY, 0.08)
+    group.current.rotation.z = Math.sin(state.clock.elapsedTime * 0.45) * 0.008 - 0.035
+  })
+  return (
+    <group ref={group} position={SIGN_POS} rotation={[0, -0.18, 0]} scale={[1, 0.72, 1]}>
+      <Suspense fallback={null}><MeshyAuthSign /></Suspense>
+      <Text position={[0, 2.2, 0.14]} fontSize={0.22} color="#9c4035" anchorX="center" anchorY="middle" letterSpacing={0.055}>
+        FARMHAND
+      </Text>
+      <Text position={[0, 1.91, 0.14]} fontSize={0.28} color="#345236" anchorX="center" anchorY="middle">
+        ORCHARD PASS
+      </Text>
+      <Text position={[0, 1.53, 0.14]} fontSize={0.105} color="#755b35" anchorX="center" anchorY="middle" letterSpacing={0.035}>
+        AUTHORIZED PICKERS WELCOME
+      </Text>
+      {open && panel && (
+        <Html transform position={[0, 1.42, 0.24]} distanceFactor={2.9} occlude={false}>
+          {panel}
+        </Html>
+      )}
+    </group>
+  )
 }
 
 function PainterlyPass() {
@@ -312,7 +384,7 @@ function LoadBadge() {
   return <div className="orchard-load">painting orchard… {Math.round(progress)}%</div>
 }
 
-export default function OrchardHero() {
+export default function OrchardHero({ authBoardOpen = false, authPanel = null }) {
   return (
     <div className="orchard-canvas">
       <Canvas
@@ -332,7 +404,8 @@ export default function OrchardHero() {
           <Tree />
           <Apples />
         </Suspense>
-        <CameraDrift />
+        <AuthSignboard open={authBoardOpen} panel={authPanel} />
+        <CameraDrift authBoardOpen={authBoardOpen} />
         <PainterlyPass />
       </Canvas>
       <LoadBadge />
@@ -342,3 +415,4 @@ export default function OrchardHero() {
 
 useGLTF.preload(TREE_URL)
 useGLTF.preload(APPLE_URL)
+useGLTF.preload(AUTH_SIGN_URL)

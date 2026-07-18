@@ -1,4 +1,4 @@
-"""HSV blob detector for 3D-printed fruit — the works-today fallback detector.
+"""HSV blob detector for 3D-printed fruit - the works-today fallback detector.
 
 Classifies by color + shape:
   red blob                -> apple  ripe
@@ -25,7 +25,7 @@ import numpy as np
 
 MIN_AREA = int(os.environ.get("HSV_MIN_AREA", "1200"))
 
-# (H, S, V) ranges — OpenCV hue is 0-179.
+# (H, S, V) ranges - OpenCV hue is 0-179.
 # Red wraps around hue 0 so it needs two ranges.
 RANGES = {
     "red": [((0, 120, 60), (10, 255, 255)), ((170, 120, 60), (179, 255, 255))],

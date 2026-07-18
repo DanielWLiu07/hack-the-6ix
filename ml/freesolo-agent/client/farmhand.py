@@ -5,11 +5,16 @@ into a structured robot action, and STRICTLY validates it before anything is
 forwarded to the robot. Raw LLM output never reaches the robot.
 
 Modes (picked automatically):
-  - FARMHAND_URL set   -> POST the text to the teammate's trained model endpoint
+  - FARMHAND_URL set   -> call the Freesolo (OpenAI-compatible) chat endpoint
   - FARMHAND_URL unset -> built-in regex rules (works today, no network)
 
+Config is read from the environment, and from a git-ignored `.env` file next to
+this module if present (see .env.example). Freesolo serves trained models over
+an OpenAI-compatible API: POST <FARMHAND_URL>/chat/completions with a
+`Authorization: Bearer <FREESOLO_API_KEY>` header and model=<FARMHAND_MODEL>.
+
 Action schema (matches root CLAUDE.md + llm-data's dataset spec, see
-status/llm-data.md 22:12 — validated output always carries all 4 keys):
+status/llm-data.md 22:12 - validated output always carries all 4 keys):
   {"task": "pick|sort|stop|drive", "fruit": "apple|banana|any",
    "filter": "ripe|unripe|any", "zone": "any|left|right|forward|backward|home"}
 
@@ -30,6 +35,29 @@ import sys
 import time
 import urllib.error
 import urllib.request
+
+def _load_env_file():
+    """Load KEY=VALUE lines from a git-ignored .env next to this module.
+
+    Existing environment variables win (never overridden). No dependency.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    try:
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, _, val = line.partition("=")
+                key = key.strip()
+                val = val.strip().strip('"').strip("'")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+    except FileNotFoundError:
+        pass
+
+
+_load_env_file()
 
 TASKS = {"pick", "sort", "stop", "drive"}
 FRUITS = {"apple", "banana", "any"}
@@ -150,11 +178,11 @@ def mock_model(text):
         return json.dumps({"task": "drive", "zone": _mock_zone(t)})
     else:
         return json.dumps(
-            {"clarify": "I can pick, sort, drive, or stop — what would you like?"}
+            {"clarify": "I can pick, sort, drive, or stop - what would you like?"}
         )
 
     if fruit is None:
-        return json.dumps({"clarify": "Which fruit — apples, bananas, or both?"})
+        return json.dumps({"clarify": "Which fruit - apples, bananas, or both?"})
     return json.dumps(
         {"task": task, "fruit": fruit, "filter": filt, "zone": _mock_zone(t)}
     )
@@ -162,24 +190,61 @@ def mock_model(text):
 
 # ------------------------------------------------------------ endpoint model
 
-def endpoint_model(text, url, timeout=None):
-    """POST {"text": ...} to the teammate's model endpoint, return raw body str.
+DEFAULT_SYSTEM = (
+    "You convert farm-robot commands into a single JSON object and nothing else. "
+    'Either an action {"task":"pick|sort|stop|drive","fruit":"apple|banana|any",'
+    '"filter":"ripe|unripe|any","zone":"any|left|right|forward|backward|home"} '
+    'or a clarification {"clarify":"<question>"} when the command is ambiguous. '
+    "Output JSON only, no prose."
+)
 
-    Input format is a guess until the teammate confirms (see ../NOTES.md);
-    adjust here in ONE place when they answer.
+
+def _endpoint_url(url):
+    """Normalize FARMHAND_URL to the chat-completions endpoint.
+
+    Accepts a base like https://host/v1 (Freesolo's shape) or a full
+    .../chat/completions URL; returns the full endpoint.
     """
-    timeout = timeout or float(os.environ.get("FARMHAND_TIMEOUT", "5"))
+    url = url.rstrip("/")
+    if url.endswith("/chat/completions"):
+        return url
+    return url + "/chat/completions"
+
+
+def endpoint_model(text, url, timeout=None):
+    """Call the Freesolo (OpenAI-compatible) chat endpoint; return the assistant
+    message content string.
+
+    Freesolo serves a trained model at <base>/v1 with a Bearer API key (see
+    ../TRAINING.md). Everything wire-format lives here in ONE place.
+    """
+    timeout = timeout or float(os.environ.get("FARMHAND_TIMEOUT", "20"))
+    payload = {
+        "model": os.environ.get("FARMHAND_MODEL", ""),
+        "messages": [
+            {"role": "system", "content": os.environ.get("FARMHAND_SYSTEM_PROMPT", DEFAULT_SYSTEM)},
+            {"role": "user", "content": text},
+        ],
+        "temperature": float(os.environ.get("FARMHAND_TEMPERATURE", "0")),
+    }
+    if os.environ.get("FARMHAND_JSON_MODE", "1").lower() not in ("0", "false", "no", ""):
+        # json_object (not a strict schema) so the model can still emit {"clarify": ...}
+        payload["response_format"] = {"type": "json_object"}
     req = urllib.request.Request(
-        url,
-        data=json.dumps({"text": text}).encode(),
+        _endpoint_url(url),
+        data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    api_key = os.environ.get("FARMHAND_API_KEY")
+    api_key = os.environ.get("FREESOLO_API_KEY") or os.environ.get("FARMHAND_API_KEY")
     if api_key:
         req.add_header("Authorization", "Bearer " + api_key)
     with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read().decode("utf-8", "replace")
+        raw = resp.read().decode("utf-8", "replace")
+    try:
+        return json.loads(raw)["choices"][0]["message"]["content"]
+    except (ValueError, KeyError, IndexError, TypeError) as e:
+        raise ValueError("unexpected endpoint response: %s" % e)
 
 
 _JSON_OBJ = re.compile(r"\{.*\}", re.S)

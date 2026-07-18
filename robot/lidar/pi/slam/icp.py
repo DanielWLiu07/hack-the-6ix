@@ -1,4 +1,4 @@
-"""icp.py — compact 2D point-to-point ICP (SE(2) lidar odometry).
+"""icp.py - compact 2D point-to-point ICP (SE(2) lidar odometry).
 
 Pure numpy, no scipy. Aligns a source scan onto a reference point set and
 returns the rigid transform (x, y, theta) that best maps source→reference.

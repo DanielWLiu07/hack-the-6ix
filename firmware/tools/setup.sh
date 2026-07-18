@@ -34,7 +34,7 @@ ARDUINO_USER_DIR="${ARDUINO_USER_DIR:-$HOME/.arduino-ht6}"
 say "setting arduino-cli user dir -> ${ARDUINO_USER_DIR} (avoids ~/Documents TCC block)"
 arduino-cli config set directories.user "${ARDUINO_USER_DIR}"
 
-# STM32duino board index — fallback target for compile-checking the sketch
+# STM32duino board index - fallback target for compile-checking the sketch
 # when no UNO Q core / board is available on this machine.
 arduino-cli config set board_manager.additional_urls \
   https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
@@ -46,13 +46,13 @@ arduino-cli core update-index
 say "searching for an UNO Q core..."
 UNOQ_CORE="$(arduino-cli core search 2>/dev/null | grep -i -E 'uno[ _-]?q|qualcomm' | awk '{print $1}' | head -1 || true)"
 if [ -n "${UNOQ_CORE}" ]; then
-  say "found core '${UNOQ_CORE}' — installing"
+  say "found core '${UNOQ_CORE}' - installing"
   arduino-cli core install "${UNOQ_CORE}"
 else
   warn "no UNO Q core in the index. That's expected: UNO Q sketches normally"
   warn "deploy via Arduino App Lab (see README.md). Installing STM32duino core"
   warn "so we can at least COMPILE-CHECK firmware/mcu on this laptop."
-  arduino-cli core install STMicroelectronics:stm32 || warn "STM32 core install failed — compile checks unavailable"
+  arduino-cli core install STMicroelectronics:stm32 || warn "STM32 core install failed - compile checks unavailable"
 fi
 
 # --- 3. libraries fw-mcu needs ---------------------------------------------
@@ -62,7 +62,7 @@ arduino-cli lib install "Adafruit PWM Servo Driver Library" || warn "PCA9685 lib
 # NOT optional: the UNO Q core's variant.h #errors out without it (no Serial),
 # so a silent failure here breaks EVERY compile. Fail loud.
 if ! arduino-cli lib install Arduino_RouterBridge; then
-  warn "Arduino_RouterBridge install FAILED — firmware/mcu will not compile."
+  warn "Arduino_RouterBridge install FAILED - firmware/mcu will not compile."
   warn "If the error is 'destination dir ... already exists', a stale partial"
   warn "install is in the OLD user dir; this script now uses ${ARDUINO_USER_DIR}."
   exit 1

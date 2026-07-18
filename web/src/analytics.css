@@ -1,0 +1,234 @@
+/* Analytics - the WHOLE page sits on the landing's painterly orchard scene
+ * (reused OrchardHero, full-viewport behind), with translucent frosted data
+ * cards floating over it in the green painterly palette. Scoped to Analytics
+ * only (az-*). No emojis, no em dashes. */
+
+.az {
+  --ink: #2f4227; /* deep green text */
+  --ink-2: #4f5c3d; /* muted */
+  --ink-3: #6f7a58; /* faint */
+  --card: rgba(233, 227, 210, 0.82); /* frosted paper */
+  --card-solid: #e7e1cf;
+  --card-2: rgba(51, 69, 43, 0.1); /* tracks */
+  --leaf: #52803a;
+  --leaf-deep: #3a6129;
+  --gold: #b57e28;
+  --line: rgba(47, 66, 39, 0.2);
+  --line-2: rgba(47, 66, 39, 0.34);
+  --mono: var(--ui-mono);
+  --disp: var(--ui-display);
+
+  position: relative;
+  margin: -1.25rem; /* bleed to the edges of .page padding */
+  color: var(--ink);
+}
+
+/* full-viewport painterly scene behind the whole page */
+.az-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: #dcd6c4; /* painterly paper, shown before/behind the canvas */
+}
+.az-scene .orchard-canvas,
+.az-scene .hero-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.orchard-load {
+  position: absolute;
+  inset: auto auto 12px 14px;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: #3a4a30;
+  opacity: 0.7;
+}
+
+/* data column floats above the scene */
+.az-overlay {
+  position: relative;
+  z-index: 1;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+/* frosted card base */
+.az-panel {
+  position: relative;
+  background: var(--card);
+  backdrop-filter: blur(9px) saturate(1.15);
+  -webkit-backdrop-filter: blur(9px) saturate(1.15);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow:
+    0 6px 22px rgba(30, 40, 18, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  padding: 1.05rem 1.15rem;
+}
+.az-panel > h3 {
+  margin: 0 0 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+/* ---- title header --------------------------------------------------- */
+.az-head {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 0.6rem 1.4rem 0.7rem;
+  border-radius: 14px;
+  background: var(--card);
+  backdrop-filter: blur(10px) saturate(1.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 8px 26px rgba(30, 40, 18, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.az-title {
+  font-family: var(--disp);
+  font-weight: 400;
+  font-size: clamp(2.6rem, 6.5vw, 4.6rem);
+  line-height: 0.92;
+  letter-spacing: 0.5px;
+  margin: 0;
+  color: var(--ink);
+}
+
+/* ---- controls ------------------------------------------------------- */
+.az-controls { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+.az-seg {
+  display: inline-flex;
+  border: 1px solid var(--line-2);
+  border-radius: 9px;
+  overflow: hidden;
+  background: var(--card);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+.az-seg button {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 0.36rem 0.85rem;
+  background: transparent;
+  color: var(--ink-2);
+  border: none;
+  border-right: 1px solid var(--line);
+  cursor: pointer;
+}
+.az-seg button:last-child { border-right: none; }
+.az-seg button:hover { color: var(--ink); background: rgba(255, 255, 255, 0.25); }
+.az-seg button.on { background: var(--leaf); color: #f4f1e2; }
+
+.az-live {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink-2);
+  padding: 0.34rem 0.75rem;
+  border: 1px solid var(--line-2);
+  border-radius: 9px;
+  background: var(--card);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+}
+.az-live .sq { width: 8px; height: 8px; border-radius: 50%; background: var(--leaf); box-shadow: 0 0 8px rgba(82, 128, 58, 0.7); }
+.az-live.stale .sq { background: transparent; border: 1.5px solid var(--ink-3); box-shadow: none; }
+
+.az-note {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  color: var(--ink);
+  background: var(--card);
+  backdrop-filter: blur(9px);
+  -webkit-backdrop-filter: blur(9px);
+  border: 1px solid var(--line-2);
+  border-left: 4px solid var(--gold);
+  border-radius: 9px;
+  padding: 0.5rem 0.85rem;
+}
+
+/* ---- grids ---------------------------------------------------------- */
+.az-grid { display: grid; gap: 1.1rem; }
+.az-metrics { grid-template-columns: repeat(auto-fit, minmax(178px, 1fr)); }
+.az-two { grid-template-columns: 1.4fr 1fr; align-items: start; }
+@media (max-width: 720px) { .az-two { grid-template-columns: 1fr; } }
+
+/* ---- metric tiles --------------------------------------------------- */
+.az-metric .az-num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 2.2rem; line-height: 1; color: var(--ink); }
+.az-metric .az-num .u { font-size: 0.95rem; font-weight: 500; color: var(--ink-3); margin-left: 0.25rem; }
+.az-metric .az-delta { font-family: var(--mono); font-size: 0.72rem; margin-top: 0.3rem; color: var(--ink-2); }
+.az-spark { display: block; width: 100%; height: 34px; margin-top: 0.6rem; border-top: 1px solid var(--line); padding-top: 0.35rem; }
+.az-spark .line { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
+
+/* ---- bin table ------------------------------------------------------ */
+.az-tbl { display: flex; flex-direction: column; gap: 0.6rem; }
+.az-tbl-row { display: grid; grid-template-columns: 8.5rem 1fr 3.4rem; align-items: center; gap: 0.7rem; }
+.az-tbl-name {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+.az-tbl-name i { width: 11px; height: 11px; border-radius: 3px; flex: 0 0 auto; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.14); }
+.az-tbl-name i.ripe { background: var(--leaf); }
+.az-tbl-name i.unripe { background: var(--gold); }
+.az-tbl-bar { position: relative; height: 15px; background: rgba(47, 66, 39, 0.12); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.az-tbl-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 8px; transition: width 0.4s ease; }
+.az-tbl-bar > span.ripe { background: linear-gradient(180deg, #6a9a4a, var(--leaf-deep)); }
+.az-tbl-bar > span.unripe { background: linear-gradient(180deg, #d09a3e, var(--gold)); }
+.az-tbl-count { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.9rem; text-align: right; color: var(--ink); }
+.az-tbl-count .az-tbl-pct { color: var(--ink-3); font-size: 0.68rem; font-weight: 500; }
+
+.az-legend {
+  display: flex;
+  gap: 1.2rem;
+  margin-top: 0.85rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-2);
+}
+.az-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 0.4rem; vertical-align: -2px; }
+.az-legend i.ripe { background: var(--leaf); }
+.az-legend i.unripe { background: var(--gold); }
+
+/* ---- fruit x ripeness matrix ---------------------------------------- */
+.az-matrix { display: grid; grid-template-columns: auto 1fr 1fr auto; gap: 1px; background: var(--line-2); border: 1px solid var(--line-2); border-radius: 10px; overflow: hidden; }
+.az-matrix > div { background: rgba(233, 227, 210, 0.9); padding: 0.6rem 0.7rem; font-family: var(--mono); font-size: 0.86rem; color: var(--ink); }
+.az-matrix .h { background: var(--leaf-deep); color: #eef0df; font-size: 0.62rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.az-matrix .rh { color: var(--ink-2); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.04em; }
+.az-matrix .cell { font-variant-numeric: tabular-nums; }
+.az-matrix .cell b { font-weight: 700; font-size: 1.05rem; }
+.az-matrix .tot { color: var(--gold); font-weight: 700; }
+.az-matrix .cell.tot { background: rgba(47, 66, 39, 0.12); }
+.az-matrix .h.tot { color: #eef0df; }
+
+/* ---- throughput strip ----------------------------------------------- */
+.az-strip .az-spark { height: 58px; border-top: none; padding-top: 0; }

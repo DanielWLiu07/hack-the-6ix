@@ -23,7 +23,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 DL = ROOT / "roboflow_raw"
 
-# (workspace, project, version, fruit) — public Universe apple/banana detection sets.
+# (workspace, project, version, fruit) - public Universe apple/banana detection sets.
 # Swap slugs freely if a download 404s; any YOLO-format det set with apple/banana works.
 SOURCES = [
     ("mixed-fruits", "fruit-detection-simple", 1, None),
@@ -119,7 +119,7 @@ def main():
             if sdir.exists():
                 kept, dropped = remap_split(sdir, split_dst)
                 print(f"  {split_src}: kept {kept} imgs, dropped {dropped} ambiguous boxes")
-    print("done — merged into data/dataset/ (rf_ prefix). Retrain with train.py.")
+    print("done - merged into data/dataset/ (rf_ prefix). Retrain with train.py.")
 
 
 if __name__ == "__main__":

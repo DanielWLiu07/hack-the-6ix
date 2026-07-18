@@ -53,3 +53,37 @@ Trained-model eval row left as TODO (flips from mock the moment teammate's endpo
 Wrote `docs/PITCH.md`: full 3:00 script following the mandated flow (env hook → live pick+sort → dashboard → MPU/MCU slide → FarmHand NL), with per-beat timings that sum to exactly 3:00, a timing-summary table, and speaker roles (A=story/impact, B=tech/demo, OP=silent operator).
 Numbers kept consistent with docs/DEVPOST.md + vision-infer's sections: 30–40% food loss, ~5 W on-device, <10 ms e-stop, ~400 fruit/hr / ~60 kg waste-avoided/hr, FarmHand 93% held-out, validated-JSON safety catch. Added: per-track callout ("which line scores which prize"), 2:30 + 90s expo cut-downs, and an OP pre-flight checklist tied to the sim panic switch (server-core/docs/DEPLOY.md) and my DEMO_TRANSCRIPT.md as backup.
 My FarmHand service still running/connected. Idle-ready.
+
+## [night] DONE — docs/DEVPOST_SUBMISSION.md (paste-ready form fields) + TRAINING.md
+`docs/DEVPOST_SUBMISSION.md`: every Devpost box paste-ready — name/tagline/summary, inspiration, what-it-does, how-built, challenges, accomplishments, what-we-learned, what's-next, built-with, track selections, links stub, + an evidence index table. Folded in TONIGHT's FINAL numbers, cross-checked against source docs (not invented):
+- Vision v0 FINAL: mAP50 0.993 / mAP50-95 0.930 / P0.988 R0.986 (per status/vision-train "[DONE] v0 complete"); HSV fallback 0.965/0.891.
+- SLAM: pose-less ICP scan-match, ~14% drift, tour.py room-tour (status/lidar-sim Phase-2).
+- Impact: ~400 fruit/hr / ~60 kg/hr / ~150 kg CO2e/hr, FAO/USDA-sourced (docs/IMPACT.md).
+- FarmHand: 93.3% baseline, 10-cmd end-to-end run (7 fwd / 3 clarify / 0 invalid).
+Two live TODOs flagged inline for the human, NOT invented: (1) trained-FarmHand eval number, (2) on-board UNO Q YOLOv8n FPS.
+Also wrote `ml/freesolo-agent/TRAINING.md` — click-by-click Freesolo runbook (upload farmhand_train.jsonl → SFT → optional DPO on prefs → paste endpoint → I flip FARMHAND_URL → eval.py scores it) after the human asked how training works. Answers "who runs it / how / what plugs in where" so the teammate can execute without touching robot/server code.
+Service still running/connected. Idle-ready.
+
+## [freesolo-wired] DONE - read Freesolo docs, wired client to real API, secure key slot
+Read freesolo.co/docs (product = Flash: SFT/GRPO/OPD runs via the `flash` CLI; trained models served over an OpenAI-compatible /v1/chat/completions API, `Authorization: Bearer <FREESOLO_API_KEY>`, model=<run-id>, supports response_format json_object). Answers the open NOTES.md questions.
+Changes in client/ (my dir):
+- farmhand.py endpoint mode rewritten to the OpenAI-compatible chat call (was the {"text":...} guess): builds messages[system+user], sends response_format json_object so the model returns pure JSON but can still emit {"clarify":...}, parses choices[0].message.content, then the SAME strict validator. Bearer from FREESOLO_API_KEY (or legacy FARMHAND_API_KEY). URL normalizer accepts a base .../v1 or full .../chat/completions.
+- Auto-loads a git-ignored client/.env (tiny stdlib loader, env wins). Added .env to client/.gitignore; added client/.env.example (placeholders only).
+Verified: 23/23 unit tests pass; live smoke vs a local OpenAI-compatible stub -> correct validated action + clarification path; stub confirmed Bearer key + model + response_format all sent; .env auto-load works and is git-ignored; test .env removed.
+Human is pasting their Freesolo key into client/.env (FREESOLO_API_KEY). With no FARMHAND_URL yet, client stays in safe mock mode. Flip to real model = set FARMHAND_URL (from `flash deployments --json`, .../v1) + FARMHAND_MODEL (run-id) after deploy, then `data/eval.py --endpoint` scores it. TRAINING.md has the full flash flow.
+
+## [freesolo-train] WIP/BLOCKED(billing) - real SFT run fully prepped, blocked on org billing only
+Human provided a valid Freesolo key (2nd paste; 1st was a masked/truncated value with a literal ellipsis - caught it). `flash whoami` OK: account the team account, org hackthe6ixbanana.
+Built the whole training run under NEW dir ml/freesolo-agent/training/ (not client/):
+- convert_dataset.py: ../data/farmhand_{train,val}.jsonl (chat-JSONL) -> Freesolo {"input","output"} rows. 2349 train / 123 val. Captures the canonical 514-char system prompt to system_prompt.txt.
+- environment.py: EnvironmentSingleTurn, prepends our exact system prompt (train==serve), JSON-aware reward (exact action match / clarify match / 0.5 partial for schema-valid-but-wrong) - reusable for a later GRPO stage.
+- configs/sft.toml: model Qwen/Qwen3.5-0.8B (smallest = cheap + "small edge model" story), algorithm sft, 3 epochs, max_examples 2349, lora_rank 32.
+- `flash env push` published `hackthe6ixbanana/farmhand`. `flash train --dry-run` VALIDATES clean. `--cost`: 222 steps, RTX 4090, ~16 min train, TOTAL $0.18.
+BLOCKER: `flash train` submit -> "No billing record for this org. Add a card and top up to start." No CLI billing command; must be done at freesolo.co (or get the event's 'infinite credits' applied to org hackthe6ixbanana by the Freesolo organizers). Once billing is active it's ONE command: `flash train configs/sft.toml` -> `flash deploy <run-id>` -> fill FARMHAND_URL(.../v1)+FARMHAND_MODEL in client/.env -> `data/eval.py --endpoint` for the accuracy row.
+Client is already wired to the OpenAI-compatible endpoint (verified vs stub). Note: coordinate w/ teammate re CLAUDE.md "don't start a competing run" - flagged to human.
+
+## [freesolo-train] WIP - SFT run SUBMITTED and training (credits unblocked via promo)
+Human applied a promo-code credit -> billing unblocked. Submitted `flash train configs/sft.toml`.
+Run: flash-1784357076-b93a0ca9 (SFT, Qwen/Qwen3.5-0.8B, RTX 5090 @ ~$0.46/hr, 3 epochs, 2349 ex, est ~$0.18, ~20 min). Currently provisioning/loading. Background monitor polling until terminal, then I deploy + eval.
+Staged stage-2: configs/rl.toml (GRPO on the same env, optimizes environment.py's JSON reward, init_from_adapter to fill from SFT adapter) - the SFT->RL pipeline for the Best-Model-Trained track. Will decide whether RL is worth running AFTER seeing SFT eval numbers (little headroom if SFT already ~99%).
+Next on SFT completion: `flash deploy <run-id>` -> set FARMHAND_URL(.../v1)+FARMHAND_MODEL in client/.env -> `data/eval.py --endpoint` for the trained-model accuracy row (baseline is 93.3%).

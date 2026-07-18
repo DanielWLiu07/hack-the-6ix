@@ -1,4 +1,4 @@
-"""occupancy.py — log-odds 2D occupancy grid.
+"""occupancy.py - log-odds 2D occupancy grid.
 
 The map SLAM builds. Each scan (already in the WORLD frame + the sensor origin)
 is integrated with a beam model: cells the beam passes through are marked free,
@@ -9,13 +9,16 @@ Coordinates: world meters, +x/+y. Grid is indexed [row=y, col=x]; cell (0,0) is
 at world `origin`. Call `integrate()` per scan, `render()`/`occupied_cells()` to
 read out.
 """
+import base64
+
 import numpy as np
 
-# log-odds increments (clamped) — tuned for a 2 Hz noisy scan
+# log-odds increments (clamped) - tuned for a 2 Hz noisy scan
 L_OCC = 0.85
 L_FREE = -0.40
 L_MIN, L_MAX = -5.0, 5.0
 OCC_THRESH = 0.7          # P(occupied) above this = "occupied" in readouts
+FREE_THRESH = 0.3         # P(occupied) below this = "free" in readouts
 
 
 class OccupancyGrid:
@@ -121,6 +124,40 @@ class OccupancyGrid:
         wx = self.origin[0] + (xs + 0.5) * self.res
         wy = self.origin[1] + (ys + 0.5) * self.res
         return np.column_stack([wx, wy]).round(3).tolist()
+
+    def slam_map_payload(self, ts, center_xy, size=128):
+        """Serialize the master-approved `slam_map` payload (root CLAUDE.md).
+
+        This grid grows unbounded, but the schema caps the map at 128x128 cells.
+        So crop a `size`-cell window at the grid's native resolution centered on
+        the robot (`center_xy`, world meters), pad anything outside the grid with
+        UNKNOWN, and threshold to the wire encoding: 0=free 100=occupied
+        255=unknown, row-major (index = y*width + x)."""
+        n = int(size)
+        p = self.prob()
+        native = np.full(self.log.shape, 255, np.uint8)
+        native[p <= FREE_THRESH] = 0
+        native[p >= OCC_THRESH] = 100
+
+        gx, gy = self.w2g(np.asarray(center_xy, dtype=np.float64)[None, :])[0]
+        x0 = int(gx) - n // 2
+        y0 = int(gy) - n // 2
+        out = np.full((n, n), 255, np.uint8)
+        sx0, sy0 = max(0, x0), max(0, y0)
+        sx1, sy1 = min(self.n, x0 + n), min(self.n, y0 + n)
+        if sx1 > sx0 and sy1 > sy0:
+            dx0, dy0 = sx0 - x0, sy0 - y0
+            out[dy0:dy0 + (sy1 - sy0), dx0:dx0 + (sx1 - sx0)] = native[sy0:sy1, sx0:sx1]
+
+        return {
+            "ts": int(ts),
+            "resolution": round(self.res, 4),
+            "width": n,
+            "height": n,
+            "origin": [round(float(self.origin[0] + x0 * self.res), 3),
+                       round(float(self.origin[1] + y0 * self.res), 3)],
+            "data": base64.b64encode(out.tobytes()).decode("ascii"),
+        }
 
     def render(self, path, trajectory=None):
         """Save a PNG (occupied=black, free=white, unknown=grey). Optional

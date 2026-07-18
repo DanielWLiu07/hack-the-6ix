@@ -8,7 +8,7 @@ Action schema (all four keys always present, "any" = unspecified):
   {"task":"pick|sort|stop|drive","fruit":"apple|banana|any",
    "filter":"ripe|unripe|any","zone":"any|left|right|forward|backward|home"}
 
-Assistant convention (model ALWAYS outputs JSON — llm-client parses both shapes):
+Assistant convention (model ALWAYS outputs JSON - llm-client parses both shapes):
   - actionable command  -> assistant outputs ONLY the compact action JSON
   - ambiguous command   -> assistant outputs {"clarify":"<one short question>"},
                            user answers, assistant outputs the action JSON
@@ -163,15 +163,15 @@ ZONE_PICK_SUFFIX = {
 }
 
 CLARIFY_FRUIT_Q = [
-    "Which fruit — apples, bananas, or both?",
+    "Which fruit - apples, bananas, or both?",
     "Do you mean apples, bananas, or both?",
     "Apples, bananas, or both?",
-    "Which fruit should I go for — apples, bananas, or both?",
+    "Which fruit should I go for - apples, bananas, or both?",
 ]
 CLARIFY_ZONE_Q = [
-    "Which way — forward, backward, left, right, or home?",
+    "Which way - forward, backward, left, right, or home?",
     "Which direction should I drive: forward, backward, left, right, or home?",
-    "Where to — forward, backward, left, right, or back home?",
+    "Where to - forward, backward, left, right, or back home?",
 ]
 FRUIT_ANSWERS = {
     "apple": ["apples", "the apples", "just apples", "apples please", "apple",
@@ -223,8 +223,8 @@ OFFTOPIC = [
     "turn on the lights in the house", "walk the dog", "mow the lawn",
 ]
 OFFTOPIC_REPLIES = [
-    "I can only control the fruit robot — picking, sorting, driving, or stopping. What would you like it to do?",
-    "That's outside my wheelhouse. I can pick fruit, sort it, drive the rover, or stop — what should I do?",
+    "I can only control the fruit robot - picking, sorting, driving, or stopping. What would you like it to do?",
+    "That's outside my wheelhouse. I can pick fruit, sort it, drive the rover, or stop - what should I do?",
     "I'm just the farm robot's command interface. Try asking me to pick, sort, drive, or stop.",
     "Sorry, I only handle robot commands: pick, sort, drive, or stop.",
 ]
@@ -345,7 +345,7 @@ def main():
     seen = set()
     examples = []
 
-    # texts reserved for the hand-written eval set — never emit these
+    # texts reserved for the hand-written eval set - never emit these
     eval_path = HERE / "eval_set.jsonl"
     if eval_path.exists():
         for line in eval_path.read_text().splitlines():
@@ -433,7 +433,7 @@ def main():
         t = surface(rng, rng.choice(VAGUE_SORT), suffix=False)
         fruit = rng.choice(["apple", "banana", "any"])
         ans = rng.choice(FRUIT_ANSWERS[fruit])
-        q = rng.choice(["Sort what — apples, bananas, or everything?",
+        q = rng.choice(["Sort what - apples, bananas, or everything?",
                         "Should I sort apples, bananas, or everything?"])
         ex = chat([
             {"role": "user", "content": t},

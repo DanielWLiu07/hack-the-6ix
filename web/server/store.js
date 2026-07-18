@@ -1,4 +1,4 @@
-// Persistence: prefers the db worker's module (web/server/db — Mongo/Atlas with
+// Persistence: prefers the db worker's module (web/server/db - Mongo/Atlas with
 // in-memory fallback, self-downsampling, tested against real mongod). If that
 // module is ever missing/broken, a minimal built-in memory store with the SAME
 // interface keeps the stack booting.
@@ -31,6 +31,12 @@ class FallbackMemoryStore {
     if (this.#detections.length > 2000) this.#detections.shift();
   }
   async recordPickEvent(p) { this.#picks.push(p); }
+  #commands = [];
+  async recordCommand(c) { this.#commands.push(c); if (this.#commands.length > 500) this.#commands.shift(); }
+  async getCommands({ limit = 50, operator } = {}) {
+    const out = operator ? this.#commands.filter((c) => c.operator === operator) : this.#commands;
+    return out.slice(-limit).reverse();
+  }
 
   async getPicks({ limit = 50, fruit, ripeness, since } = {}) {
     let out = this.#picks;

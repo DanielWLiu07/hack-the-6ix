@@ -1,6 +1,6 @@
-// config.h — all pins, limits, and tuning in one place.
+// config.h - all pins, limits, and tuning in one place.
 // Pins are TBD until fw-tools publishes firmware/PINOUT.md; change ONLY here.
-// Protocol constants (states, rates, clamps) come from firmware/BRIDGE.md —
+// Protocol constants (states, rates, clamps) come from firmware/BRIDGE.md -
 // do not change them without a BLOCKED status entry to master.
 #pragma once
 
@@ -46,7 +46,7 @@
 #define SERVO_MIN_US 500
 #define SERVO_MAX_US 2500
 
-// Per-joint soft limits in degrees — protect the arm from self-collision.
+// Per-joint soft limits in degrees - protect the arm from self-collision.
 // Order: base, shoulder, elbow, wrist, gripper.
 static const float JOINT_MIN_DEG[NUM_JOINTS] = {0, 15, 10, 0, 30};
 static const float JOINT_MAX_DEG[NUM_JOINTS] = {180, 165, 170, 180, 120};
@@ -55,7 +55,7 @@ static const float JOINT_MAX_DEG[NUM_JOINTS] = {180, 165, 170, 180, 120};
 #define ZERO_ALL_MS 1500
 
 // Servo control tick (BRIDGE.md §6: interpolation step every 20 ms).
-// Poses are ALWAYS interpolated — snapping browns out the 5 V rail.
+// Poses are ALWAYS interpolated - snapping browns out the 5 V rail.
 #define SERVO_TICK_MS 20
 // move_servos duration_ms clamp range (BRIDGE.md §1).
 #define SERVO_MIN_MOVE_MS 100

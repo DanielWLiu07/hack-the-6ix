@@ -172,7 +172,8 @@ def run_socketio(server_url, rate, beams):
 
     while True:  # outer loop: survive the server not being up yet
         try:
-            sio.connect(server_url)
+            # role=robot: the hub only relays lidar_scan to uis from robots.
+            sio.connect(server_url, auth={"role": "robot"})
             break
         except socketio.exceptions.ConnectionError:
             print(f"[sim] server {server_url} unreachable, retry in 2 s",

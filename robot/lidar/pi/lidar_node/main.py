@@ -26,7 +26,7 @@ _running = True
 
 def _stop(signum, _frame):
     global _running
-    log.info("signal %s — shutting down", signum)
+    log.info("signal %s - shutting down", signum)
     _running = False
 
 

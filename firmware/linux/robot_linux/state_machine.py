@@ -207,7 +207,11 @@ class PickStateMachine:
         })
         self.stats["picks"] += 1
         self.current_det = None
+        home = self.poses.get("home")
+        self.bridge.move_servos(home, self._dur(1200))
         if hasattr(self.camera, "spawn_fruit"):
-            self.camera.spawn_fruit()
-        self.bridge.move_servos(self.poses.get("home"), self._dur(1200))
+            # present the next fruit relative to the rest pose SEEK starts from,
+            # not the bin pose the arm is currently in (SEEK's base sweep may
+            # not reach an extreme bin angle).
+            self.camera.spawn_fruit(near_joints=home)
         self._transition(SEEK if self.continuous else IDLE)

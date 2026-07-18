@@ -4,7 +4,7 @@
 Prediction sources (pick one):
   --endpoint URL      POST {"text": <command>} per command; response must be the
                       action JSON, or {"action": {...}}, or chat-style
-                      {"choices":[{"message":{"content": "..."}}]} — the first
+                      {"choices":[{"message":{"content": "..."}}]} - the first
                       JSON object found in the content is used.
   --predictions FILE  JSONL, one line per eval row IN ORDER. Each line is either
                       the action JSON itself or {"output": "<raw model text>"}.
@@ -79,7 +79,7 @@ def normalize(a):
 # ------------------------------------------------------------------ baseline
 
 def baseline_predict(text):
-    """Keyword-rules baseline — the number the trained model has to beat."""
+    """Keyword-rules baseline - the number the trained model has to beat."""
     t = text.lower()
     if re.search(r"\b(stop|halt|freeze|abort|cancel|e-?stop|kill?\s*it|stand down|brakes|cease|don'?t move)\b", t):
         return {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}
@@ -181,7 +181,7 @@ def score(rows, preds, label):
         if not ok:
             misses.append((r, p))
 
-    print(f"\n### FarmHand eval — {label} ({n} held-out commands)\n")
+    print(f"\n### FarmHand eval - {label} ({n} held-out commands)\n")
     print("| Metric | Accuracy |")
     print("|---|---|")
     print(f"| **Exact match (all fields)** | **{exact}/{n} ({100*exact/n:.1f}%)** |")

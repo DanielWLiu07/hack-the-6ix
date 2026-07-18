@@ -1,4 +1,4 @@
-// Cloud Run entrypoint (deploy worker). Runs the hub, and — when SIM=1 —
+// Cloud Run entrypoint (deploy worker). Runs the hub, and - when SIM=1 -
 // sim.js alongside it as the fake robot so the public dashboard always has data.
 // Flip sim off without a rebuild:  gcloud run services update ht6-hub --update-env-vars SIM=0
 import { spawn } from 'node:child_process';

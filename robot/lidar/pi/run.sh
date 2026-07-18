@@ -29,9 +29,9 @@ while [ "$STOP" -eq 0 ]; do
     [ "$STOP" -eq 1 ] && break
     case "$CODE" in
         0) echo "[run.sh] clean exit"; break ;;
-        2) echo "[run.sh] NO_DEVICE — retrying in 5s (plug in the lidar?)"; sleep 5 ;;
-        3) echo "[run.sh] server unreachable — retrying in 5s"; sleep 5 ;;
-        *) echo "[run.sh] crashed (exit $CODE) — restarting in 3s"; sleep 3 ;;
+        2) echo "[run.sh] NO_DEVICE - retrying in 5s (plug in the lidar?)"; sleep 5 ;;
+        3) echo "[run.sh] server unreachable - retrying in 5s"; sleep 5 ;;
+        *) echo "[run.sh] crashed (exit $CODE) - restarting in 3s"; sleep 3 ;;
     esac
 done
 echo "[run.sh] stopped"

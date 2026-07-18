@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Scripted room-tour renderer — backup demo footage of the lidar SLAM-lite map.
+"""Scripted room-tour renderer - backup demo footage of the lidar SLAM-lite map.
 
 Drives the synthetic robot on a deterministic tour of the room, feeds every scan
 through scan_match.ScanMapper (scan-to-map ICP odometry), and renders a video of
 the *global* occupancy map building up in real time: the recovered trajectory,
-the live scan, and the accumulated world map. This is the "wow" artifact — a
+the live scan, and the accumulated world map. This is the "wow" artifact - a
 coherent room map assembled from a pose-less `lidar_scan` stream, no external
 odometry.
 
@@ -43,13 +43,17 @@ def _robot_marker(ax, x, y, th, color="#ff9500"):
                    color=color, zorder=5)
 
 
-def run_tour(seconds, seed=7):
-    """Drive the tour, returning per-display-frame snapshots for rendering."""
+def run_tour(seconds, seed=7, display_hz=DISPLAY_HZ):
+    """Drive the tour, returning per-display-frame snapshots for rendering.
+
+    `display_hz` sets how densely the build-up is sampled into frames - higher =
+    smoother, more watchable footage (the SLAM itself always runs at LIDAR_HZ).
+    """
     robot = sim.Robot()
     rng = np.random.default_rng(seed)
     mapper = sm.ScanMapper()
     dt = 1.0 / LIDAR_HZ
-    every = max(1, round(LIDAR_HZ / DISPLAY_HZ))   # internal scans per frame
+    every = max(1, round(LIDAR_HZ / display_hz))   # internal scans per frame
     n_scans = int(seconds * LIDAR_HZ)
 
     frames = []
@@ -71,7 +75,32 @@ def run_tour(seconds, seed=7):
     return frames, mapper
 
 
-def render(frames, out, fps):
+def _badge(ax):
+    """A small 'on-device SLAM' recording badge, top-right."""
+    ax.text(0.985, 0.975, "●  SLAM · ON-DEVICE", transform=ax.transAxes,
+            color="#22d3ee", fontsize=9.5, va="top", ha="right",
+            family="monospace", weight="bold",
+            bbox=dict(boxstyle="round,pad=0.35", fc="#0b0f14", ec="#22d3ee",
+                      alpha=0.85, lw=1.0))
+
+
+def _card(ax, artists, lines):
+    """Render a full-frame title card: hide the plot, draw centered text."""
+    for a in artists:
+        a.set_visible(False)
+    ax.set_title("", loc="left")
+    handles = []
+    y = 0.62
+    for text, size, color, weight in lines:
+        h = ax.text(0.5, y, text, transform=ax.transAxes, color=color,
+                    fontsize=size, ha="center", va="center", weight=weight,
+                    family="sans-serif")
+        handles.append(h)
+        y -= (size + 16) / 380.0
+    return handles
+
+
+def render(frames, out, fps, demo=False, hold_intro=2.0, hold_outro=3.0):
     # Fixed extent covering the whole 8x6 room + margin (world frame).
     fig, ax = plt.subplots(figsize=(8, 6.2), facecolor="#0b0f14")
     ax.set_facecolor("#0b0f14")
@@ -86,13 +115,38 @@ def render(frames, out, fps):
     map_sc = ax.scatter([], [], s=2, c="#3b6ea5", alpha=0.55, zorder=1)
     live_sc = ax.scatter([], [], s=6, c="#22d3ee", alpha=0.95, zorder=3)
     (traj_ln,) = ax.plot([], [], "-", color="#ff9500", lw=1.4, alpha=0.8, zorder=2)
+    plot_artists = [map_sc, live_sc, traj_ln]
     robot_patch = [None]
     txt = ax.text(0.015, 0.975, "", transform=ax.transAxes, color="#cbd5e1",
                   fontsize=10, va="top", family="monospace")
+    if demo:
+        _badge(ax)
 
     writer = _pick_writer(out, fps)
     with writer.saving(fig, out, dpi=110):
-        for k, f in enumerate(frames):
+        if demo:
+            txt.set_visible(False)
+            ax.tick_params(labelbottom=False, labelleft=False,
+                           bottom=False, left=False)
+            card = _card(ax, plot_artists, [
+                ("Battery, not Blood.", 26, "#f8fafc", "bold"),
+                ("Autonomous fruit-picking & sorting robot", 13, "#94a3b8", "normal"),
+                ("On-device SLAM  ·  RPLIDAR C1  ·  Raspberry Pi", 14,
+                 "#22d3ee", "bold"),
+                ("Live 360° occupancy mapping - no cloud, no wheel odometry",
+                 11, "#64748b", "normal"),
+            ])
+            for _ in range(max(1, int(hold_intro * fps))):
+                writer.grab_frame()
+            for h in card:
+                h.remove()
+            for a in plot_artists:
+                a.set_visible(True)
+            txt.set_visible(True)
+            ax.tick_params(labelbottom=True, labelleft=True, bottom=True,
+                           left=True, colors="#4a5568", labelsize=8)
+
+        for f in frames:
             m = f["map"]
             map_sc.set_offsets(m if len(m) else np.empty((0, 2)))
             live_sc.set_offsets(f["live"] if len(f["live"]) else np.empty((0, 2)))
@@ -101,11 +155,23 @@ def render(frames, out, fps):
                 robot_patch[0][0].remove()
             px, py, pth = f["pose"]
             robot_patch[0] = _robot_marker(ax, px, py, pth)
-            ax.set_title("Lidar SLAM-lite — live occupancy map from pose-less scans",
+            ax.set_title("Lidar SLAM-lite - live occupancy map from pose-less scans",
                          color="white", fontsize=12, loc="left")
             txt.set_text(f"scan {f['scan_i']:4d}   map {len(m):5d} pts   "
                          f"match {f['err']*100:4.1f} cm")
             writer.grab_frame()
+
+        if demo and frames:
+            # Outro: hold on the completed map with a summary caption.
+            cap = ax.text(0.5, 0.055,
+                          "Room reconstructed in real time from a 360° lidar stream",
+                          transform=ax.transAxes, color="#e2e8f0", fontsize=12.5,
+                          ha="center", va="center", weight="bold",
+                          bbox=dict(boxstyle="round,pad=0.5", fc="#0b0f14",
+                                    ec="#334155", alpha=0.9, lw=1.0))
+            for _ in range(max(1, int(hold_outro * fps))):
+                writer.grab_frame()
+            cap.remove()
     plt.close(fig)
 
 
@@ -135,7 +201,7 @@ def save_final_png(frames, mapper, path):
     ax.tick_params(colors="#4a5568", labelsize=8)
     for s in ax.spines.values():
         s.set_color("#1f2933")
-    ax.set_title(f"Reconstructed room map — {len(m)} pts, "
+    ax.set_title(f"Reconstructed room map - {len(m)} pts, "
                  f"{len(traj)} poses", color="white", fontsize=12, loc="left")
     fig.savefig(path, dpi=130, facecolor="#0b0f14", bbox_inches="tight")
     plt.close(fig)
@@ -149,18 +215,24 @@ def main():
                     help="tour duration in sim-seconds (default 16; longer = "
                          "more coverage but more open-loop drift smear)")
     ap.add_argument("--fps", type=int, default=10, help="output fps (default 10)")
+    ap.add_argument("--demo", action="store_true",
+                    help="polished demo-video segment: intro title card, "
+                         "on-device SLAM badge, outro hold")
     ap.add_argument("--seed", type=int, default=7)
     args = ap.parse_args()
 
+    # Demo mode samples the build-up densely (5 Hz) for smooth, watchable
+    # footage; the dev render stays at the 2 Hz web-stream cadence.
+    display_hz = 5.0 if args.demo else DISPLAY_HZ
     print(f"[tour] driving {args.seconds:.0f}s tour at {LIDAR_HZ:.0f} Hz "
           f"({int(args.seconds*LIDAR_HZ)} scans)...")
-    frames, mapper = run_tour(args.seconds, seed=args.seed)
+    frames, mapper = run_tour(args.seconds, seed=args.seed, display_hz=display_hz)
     gx, gy, _ = mapper.pose
     print(f"[tour] {len(frames)} frames, final map {len(mapper.world_points())} pts, "
           f"end pose ({gx:+.2f},{gy:+.2f}), last match {mapper.last_error*100:.1f} cm, "
           f"{mapper.rejects} gated steps")
-    print(f"[tour] rendering -> {args.out} ...")
-    render(frames, args.out, args.fps)
+    print(f"[tour] rendering{' demo segment' if args.demo else ''} -> {args.out} ...")
+    render(frames, args.out, args.fps, demo=args.demo)
     png = args.out.rsplit(".", 1)[0] + "_map.png"
     save_final_png(frames, mapper, png)
     print(f"[tour] wrote {args.out} and {png}")

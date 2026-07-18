@@ -40,3 +40,9 @@
 - Human-priority standby was for web-frontend flipping `USE_R3F_HERO=true`. Flag flipped (App.jsx:17), I build-verified clean (OrchardHero 4.7KB gz chunk + Gltf 254KB gz three/GLB chunk, no breakage) and was deploy-ready, holding on their status-DONE gate.
 - Master shipped it directly before the gate landed. Human told me to stand down. Verified prod alias **https://hack-the-6ix-chi.vercel.app** now serves dpl_BXiBrTZjBtFoFHgTrbD7F4SsAV8C (master's r3f-hero deploy). No redundant deploy from me.
 - Resumed normal milestone-watch (baseline web-frontend.md = 63 lines). Will build-verify + redeploy at the next frontend milestone.
+
+## [restart+++] WIP — reconciled deploy state; DEFERRING landing deploys to master (human call)
+- web-frontend itself crashed+recovered and rewrote its status (newest-first). Heavy landing churn now resolved: landing = OrchardHero ONLY (sky dome + meadow + FOV 25), world.glb overlay in LidarView. All entries DONE; tree builds clean.
+- Prod alias → dpl_APi4WzjLnzqGL2nB1 (deployed 23:29:06) already carries master's `[landing-final]` ship (App.jsx 23:27, world.glb 23:23). One later edit `OrchardHero.jsx` @23:31:21 postdates that deploy with NO status DONE backing it → prod is ~1 substantive edit behind.
+- **Master has self-deployed all landing changes (4 prod deploys/40min); human directed me to DEFER to master (hold), not race.** So I did NOT redeploy. Per decision: only ship NON-landing frontend milestones going forward; master owns landing/hero deploys.
+- My earlier line-count watchers false-tripped on this actively-appended file. Replaced with a robust DONE-heading-set diff watcher that ignores landing/hero/orchard/scene entries.

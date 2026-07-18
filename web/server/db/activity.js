@@ -6,7 +6,7 @@ import { round2 } from './impact.js';
 
 const STATES = ['IDLE', 'SEEK', 'PICK', 'SORT', 'ESTOP'];
 // Gaps larger than this between consecutive samples mean the robot was
-// disconnected/off — don't attribute that time to the earlier state.
+// disconnected/off - don't attribute that time to the earlier state.
 const MAX_GAP_MS = 5000;
 const BATTERY_SERIES_MAX = 120;
 

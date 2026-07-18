@@ -36,7 +36,7 @@ class ScanEmitter:
         self._sio = sio
 
     def emit_scan(self, points: "list[list[float]]", ts: "float|None" = None):
-        """Send one lidar_scan. Silently drops the frame while disconnected —
+        """Send one lidar_scan. Silently drops the frame while disconnected -
         stale scans are worthless, the next one arrives in ≤0.5 s."""
         if self._sio is None or not self._sio.connected:
             return False

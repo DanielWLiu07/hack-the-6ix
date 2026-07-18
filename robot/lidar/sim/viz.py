@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Debug viewer: render N accumulated sim scans to a PNG (age-faded, robot at
-origin) — a quick visual check that scans look like the room and a preview of
+origin) - a quick visual check that scans look like the room and a preview of
 the DECAY.md effect. Requires matplotlib (not in requirements.txt on purpose;
 install ad hoc: `.venv/bin/pip install matplotlib`).
 

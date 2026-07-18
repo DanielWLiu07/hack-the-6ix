@@ -19,6 +19,27 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent
 EXPORT = ROOT / "export"
 
+# metadata keys ultralytics/quantizer stamp that are safe + useful to keep in a
+# judged artifact (no local paths / usernames). Everything else is dropped.
+SAFE_META_KEYS = {"names", "imgsz", "task", "stride", "batch", "channels", "author"}
+
+
+def sanitize_onnx(path):
+    """Strip machine-identifying metadata from an exported .onnx in place.
+
+    Ultralytics stamps meta[description] = "... trained on <ABS PATH>/dataset.yaml"
+    which leaks the local username/path into a shipped, judge-visible artifact.
+    We clear the doc_string and keep only a curated, path-free metadata allowlist.
+    """
+    import onnx
+    m = onnx.load(str(path))
+    m.doc_string = ""
+    kept = [p for p in m.metadata_props
+            if p.key in SAFE_META_KEYS and "/Users/" not in p.value]
+    del m.metadata_props[:]
+    m.metadata_props.extend(kept)
+    onnx.save(m, str(path))
+
 
 def letterbox(img, size):
     """Match ultralytics preprocessing: BGR→RGB, letterbox to size, /255, CHW."""
@@ -77,12 +98,14 @@ def main():
     onnx_out = model.export(format="onnx", imgsz=args.imgsz, opset=12, simplify=True)
     shutil.copy(onnx_out, EXPORT / "model.onnx")
     shutil.copy(ROOT / "classes.json", EXPORT / "classes.json")
+    sanitize_onnx(EXPORT / "model.onnx")  # scrub local paths/username before shipping
     print(f"→ {EXPORT/'model.onnx'} ({(EXPORT/'model.onnx').stat().st_size/1e6:.1f} MB)")
 
     if not args.no_int8:
         try:
             q = quantize_int8(EXPORT / "model.onnx", args.imgsz)
             if q:
+                sanitize_onnx(q)  # quantizer re-stamps the leaky description; scrub again
                 print(f"→ {q} ({q.stat().st_size/1e6:.1f} MB)")
         except Exception as e:  # int8 is an optimization, never block the deliverable
             print(f"int8 quantization failed ({e}); model.onnx still valid")

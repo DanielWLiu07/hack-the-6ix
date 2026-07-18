@@ -11,8 +11,8 @@ class NoDeviceError(RuntimeError):
 
 
 # USB-serial bridge chips used by common hobby lidars:
-#   CP210x (Silicon Labs) — RPLIDAR A1/A2 dev boards, many LD-series
-#   CH340  (QinHeng)      — cheap clones, some LD19 adapters
+#   CP210x (Silicon Labs) - RPLIDAR A1/A2 dev boards, many LD-series
+#   CH340  (QinHeng)      - cheap clones, some LD19 adapters
 KNOWN_VID_PID = {
     (0x10C4, 0xEA60),  # CP2102
     (0x1A86, 0x7523),  # CH340

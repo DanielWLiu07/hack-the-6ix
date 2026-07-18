@@ -45,6 +45,6 @@ ANGLE_CCW = _env_int("ANGLE_CCW", 0)
 # Reconnect/backoff behavior
 RETRY_DELAY_S = _env_float("RETRY_DELAY_S", 3.0)
 
-# LIDAR_MOCK=1: no hardware — synthesize sweeps (tests the full pipeline,
+# LIDAR_MOCK=1: no hardware - synthesize sweeps (tests the full pipeline,
 # and is the demo fallback if the lidar dies at the venue).
 LIDAR_MOCK = _env_int("LIDAR_MOCK", 0)

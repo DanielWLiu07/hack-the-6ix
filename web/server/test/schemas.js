@@ -1,5 +1,5 @@
 // Validators for the shared Socket.IO event schemas defined in root CLAUDE.md.
-// Root CLAUDE.md is the single source of truth — if these disagree with it, THESE are wrong.
+// Root CLAUDE.md is the single source of truth - if these disagree with it, THESE are wrong.
 //
 // Each validator takes a payload and returns an array of error strings (empty = valid).
 // Unknown/extra keys are errors: the assignment says payloads must match the schemas
@@ -66,13 +66,16 @@ export function validateDetection(p) {
 
 export function validatePickEvent(p) {
   const errs = [];
-  if (!checkKeys(p, ["ts", "fruit", "ripeness", "bin", "success", "duration_ms"], errs)) return errs;
+  // image_url is an OPTIONAL, master-ratified field (photo-per-pick; root CLAUDE.md).
+  if (!checkKeys(p, ["ts", "fruit", "ripeness", "bin", "success", "duration_ms", "image_url"], errs)) return errs;
   req(p, "ts", isNum, "number (epoch ms)", errs);
   req(p, "fruit", (v) => FRUITS.includes(v), `one of ${FRUITS.join("|")}`, errs);
   req(p, "ripeness", (v) => RIPENESS.includes(v), `one of ${RIPENESS.join("|")}`, errs);
   req(p, "bin", (v) => BINS.includes(v), `one of ${BINS.join("|")}`, errs);
   req(p, "success", (v) => typeof v === "boolean", "boolean", errs);
   req(p, "duration_ms", (v) => isNum(v) && v >= 0, "non-negative number (ms)", errs);
+  // optional: only type-checked when present.
+  if ("image_url" in p) req(p, "image_url", (v) => typeof v === "string" && v.length > 0, "non-empty string (photo URL)", errs);
   // consistency: bin should match fruit (+ ripeness when using 4 bins)
   if (typeof p.fruit === "string" && typeof p.bin === "string" && !p.bin.startsWith(p.fruit)) {
     errs.push(`bin "${p.bin}" inconsistent with fruit "${p.fruit}"`);
@@ -116,7 +119,7 @@ export function validatePick(p) {
 
 export function validateEstop(p) {
   const errs = [];
-  // schema: {} — empty object. Tolerate undefined (bare emit) but flag any keys.
+  // schema: {} - empty object. Tolerate undefined (bare emit) but flag any keys.
   if (p === undefined) return errs;
   checkKeys(p, [], errs);
   return errs;
@@ -129,12 +132,12 @@ export function validateNlCommand(p) {
   return errs;
 }
 
-// nl_action — FarmHand LLM reply. NOT in root CLAUDE.md; contract owned by
+// nl_action - FarmHand LLM reply. NOT in root CLAUDE.md; contract owned by
 // llm-client (see status/llm-client.md 22:05) and consumed by server-core's hub
 // (index.js). Shape: {ts, text, ok, <one of action|clarification|error>}.
-//   action:        {task, fruit, filter, zone} — every key required (llm-client 22:11)
-//   clarification: string (ok:true, no action — hub echoes to ui, does NOT forward to robot)
-//   error:         string (ok:false — never forwarded to robot)
+//   action:        {task, fruit, filter, zone} - every key required (llm-client 22:11)
+//   clarification: string (ok:true, no action - hub echoes to ui, does NOT forward to robot)
+//   error:         string (ok:false - never forwarded to robot)
 const NL_TASKS = ["pick", "sort", "stop", "drive"];
 const NL_FRUITS = ["apple", "banana", "any"];
 const NL_FILTERS = ["ripe", "unripe", "any"];
@@ -173,6 +176,43 @@ export function validateNlAction(p) {
   return errs;
 }
 
+// SLAM map + pose (root CLAUDE.md "Schema addendum: SLAM map", master-approved).
+// robot -> web, max 0.5 Hz. Occupancy grid capped at 128x128 cells; `data` is a
+// base64 uint8 grid (0=free, 100=occupied, 255=unknown) of exactly width*height
+// bytes. Producer: lidar SLAM node (sim + Pi). Consumer: web lidar page.
+const isInt = (v) => Number.isInteger(v);
+
+export function validateSlamMap(p) {
+  const errs = [];
+  if (!checkKeys(p, ["ts", "resolution", "width", "height", "origin", "data"], errs)) return errs;
+  req(p, "ts", isNum, "number (epoch ms)", errs);
+  req(p, "resolution", (v) => isNum(v) && v > 0, "positive number (m/cell)", errs);
+  const okW = req(p, "width", (v) => isInt(v) && v >= 1 && v <= 128, "integer 1..128 (cells)", errs);
+  const okH = req(p, "height", (v) => isInt(v) && v >= 1 && v <= 128, "integer 1..128 (cells)", errs);
+  req(p, "origin", (v) => Array.isArray(v) && v.length === 2 && v.every(isNum), "array [x,y] of 2 numbers (m)", errs);
+  if (req(p, "data", (v) => typeof v === "string" && v.length > 0, "non-empty base64 string", errs)) {
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(p.data)) {
+      errs.push("data is not valid base64");
+    } else if (okW && okH) {
+      let bytes = -1;
+      try { bytes = Buffer.from(p.data, "base64").length; } catch { /* reported below */ }
+      const expected = p.width * p.height;
+      if (bytes !== expected) errs.push(`data decodes to ${bytes} bytes, expected width*height=${expected}`);
+    }
+  }
+  return errs;
+}
+
+export function validateSlamPose(p) {
+  const errs = [];
+  if (!checkKeys(p, ["ts", "x", "y", "theta"], errs)) return errs;
+  req(p, "ts", isNum, "number (epoch ms)", errs);
+  req(p, "x", isNum, "number (m)", errs);
+  req(p, "y", isNum, "number (m)", errs);
+  req(p, "theta", isNum, "number (radians)", errs);
+  return errs;
+}
+
 // event name → validator, for both directions
 export const validators = {
   telemetry: validateTelemetry,
@@ -185,7 +225,13 @@ export const validators = {
   estop: validateEstop,
   nl_command: validateNlCommand,
   nl_action: validateNlAction,
+  slam_map: validateSlamMap,
+  slam_pose: validateSlamPose,
 };
 
-export const ROBOT_TO_WEB_EVENTS = ["telemetry", "detection", "pick_event", "lidar_scan"];
+export const ROBOT_TO_WEB_EVENTS = ["telemetry", "detection", "pick_event", "lidar_scan", "slam_map", "slam_pose"];
 export const WEB_TO_ROBOT_EVENTS = ["drive", "arm_pose", "pick", "estop", "nl_command"];
+// SLAM map + pose are now relayed by server-core's hub (index.js ROBOT_EVENTS),
+// so they live in ROBOT_TO_WEB_EVENTS above and the live-relay conformance test
+// covers them. Kept as a named subset for callers that want just the SLAM pair.
+export const SLAM_ROBOT_TO_WEB_EVENTS = ["slam_map", "slam_pose"];

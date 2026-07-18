@@ -1,7 +1,7 @@
 # ml/ripeness data pipeline
 
 4 classes: `apple_ripe(0)`, `apple_unripe(1)`, `banana_ripe(2)`, `banana_unripe(3)`
-(canonical list + fruit/ripeness mapping in `classes.json` — that file is the
+(canonical list + fruit/ripeness mapping in `classes.json` - that file is the
 contract with `firmware/linux`).
 
 Dataset layout (YOLO format, referenced by `dataset.yaml`):
@@ -14,18 +14,18 @@ data/dataset/
 
 ## Sources, in priority order
 
-1. **Synthetic** (`data/make_synth.py`) — the bootstrap set that v0 is trained
+1. **Synthetic** (`data/make_synth.py`) - the bootstrap set that v0 is trained
    on. Procedurally rendered solid-color shiny apples/bananas (matching the
    3D-printed props: red/green apples, yellow/green bananas) on cluttered,
    noise/blur/gamma-augmented backgrounds with non-fruit distractor shapes.
    1200 train / 200 val, deterministic (seeded). Regenerate:
    `python3 data/make_synth.py --train 1200 --val 200`
-2. **Real prop photos** (`capture.py`) — captured at the venue from the arm
+2. **Real prop photos** (`capture.py`) - captured at the venue from the arm
    camera; HSV auto-labeled per burst. THE dataset that matters; see the
    30-min finetune loop in `capture.py`'s docstring. Files prefixed `real_`.
-3. **Public Roboflow data** (`data/download_public.py`) — real apple/banana
+3. **Public Roboflow data** (`data/download_public.py`) - real apple/banana
    photos, ripeness auto-assigned by bbox hue, files prefixed `rf_`.
-   ⚠️ BLOCKED on env `ROBOFLOW_API_KEY` (any free account). Optional — helps
+   BLOCKED on env `ROBOFLOW_API_KEY` (any free account). Optional - helps
    generalization but the props are the actual test distribution.
 
 ## Training / export

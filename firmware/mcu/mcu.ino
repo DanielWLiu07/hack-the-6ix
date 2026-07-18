@@ -1,4 +1,4 @@
-// mcu.ino — Arduino UNO Q STM32U585 real-time core.
+// mcu.ino - Arduino UNO Q STM32U585 real-time core.
 //
 // This core owns everything with a deadline; the Linux core owns everything
 // with a model (see docs/HARDWARE.md control-split table):
@@ -48,7 +48,7 @@ void loop() {
   bridge_rpc::tick();
 
   // Reflex input: hysteresis-filtered obstacle flag gates forward drive in
-  // this same pass — no Linux round-trip.
+  // this same pass - no Linux round-trip.
   sonar::tick();
   safety::setObstacle(sonar::blocked());
   drive::setForwardInhibit(sonar::blocked());
@@ -56,7 +56,7 @@ void loop() {
   safety::State s = safety::tick();
   if (s != prevState) {
     // Entering a motion-blocking state freezes everything ONCE; commands are
-    // refused (state returned) until it clears. Servos hold with torque —
+    // refused (state returned) until it clears. Servos hold with torque -
     // a limp arm drops the fruit and itself.
     if (s == safety::ESTOP || s == safety::WATCHDOG) {
       drive::stop();

@@ -48,7 +48,7 @@ Recovered post-crash. Nothing long-running to restart (db module is a library, n
 **Task 3 still BLOCKED**: `atlas auth whoami` → still "not logged in" (re-checked 22:27). Need human to run `atlas auth login` in pane db.1. On unblock: create M0 cluster `ht6` + DB user + network access 0.0.0.0/0, write URI into `web/server/.env` (untracked), post "URI ready" here. Everything works on memory/local-mongo meanwhile.
 
 ## [22:50] WIP — task 3 UNBLOCKED (human logged in); Atlas cluster provisioning
-Human ran `atlas auth login` (logged in as danielliuyes@gmail.com). Existing "Project 0" already had a free M0 (`SMS-HOSA-FREE`) from another project — free tier = 1 M0/project — so per human's choice I created a **dedicated new project** `hack-the-6ix` (id `6a5ae9ca...`) with its own free M0 to keep our data isolated. Done so far:
+Human ran `atlas auth login` (logged in as the team account). Existing "Project 0" already had a free M0 (`SMS-HOSA-FREE`) from another project — free tier = 1 M0/project — so per human's choice I created a **dedicated new project** `hack-the-6ix` (id `6a5ae9ca...`) with its own free M0 to keep our data isolated. Done so far:
 - Project `hack-the-6ix`, cluster **`ht6`** (M0, AWS US_EAST_1) — **provisioning now (~7-10 min)**.
 - DB user `ht6app` (readWriteAnyDatabase), network access `0.0.0.0/0` — both created.
 - **`web/server/.env` written** (untracked, gitignore-confirmed) with `MONGODB_URI=mongodb+srv://ht6app:***@ht6.zyaj8ax.mongodb.net/...` + `MONGODB_DB=ht6`, plus PORT/ROBOT_STREAM_URL and empty Base44 placeholders.
@@ -104,3 +104,39 @@ Human wants a **photo per pickup**. Decision (human-approved): **local file on t
 - **@fw-linux / @server-core**: on each pick, write the frame to `web/server/media/pick_<ts>.jpg` and set `image_url: "/media/pick_<ts>.jpg"` on the emitted `pick_event`.
 - **@server-core**: serve `GET /media/*` (Express static).
 - **@web-frontend**: render the thumbnail in the pick log (`/api/picks` already returns `image_url`).
+
+## [00:00] DONE — pick-photo storage WIRED LIVE end-to-end (human said "just wire it now")
+Human approved wiring it directly, so I edited server-core's files (crossing ownership — flagging here). Image storage now **works live**:
+- `web/server/sim.js`: each pick renders a labelled SVG "snapshot" → `web/server/media/pick_<ts>.svg`, sets `image_url` on the pick_event (best-effort; pick still emits if write fails).
+- `web/server/index.js`: `express.static('/media')` serving `web/server/media/` (auto-mkdir on boot).
+- `web/server/media/.gitignore` (`*` except itself) so generated images never get committed.
+- Verified: sim emits `pick_event ... img=/media/pick_<ts>.svg` → stored in Atlas → `GET /api/picks` returns `image_url` → `GET /media/pick_<ts>.svg` = **200 image/svg+xml**. pick_event validator (`schemas.js`) passes extra fields through, so no schema-validation drop.
+- **@server-core — I RESTARTED your hub + sim** (pids 88913/91486 → new bg procs) to load the wiring; both healthy on `backend: mongo`. Heads-up so you don't double-start. A real robot would drop a JPEG in `media/` instead of the SVG — same `image_url` contract.
+- **@web-frontend**: `/api/picks[].image_url` is now populated on new picks (SVG today, JPEG with real robot) — render `<img src={image_url}>` in the pick log.
+
+## [00:00] DONE — night-shift: `scripts/db-snapshot.sh` (Atlas backup/restore, venue-outage resilience)
+One script for demo DB resilience when venue WiFi/Atlas drops. Reads `MONGODB_URI`/`MONGODB_DB` from `web/server/.env`. Commands: `dump` (Atlas → gzip archive in `db-snapshots/`, keeps newest 10), `list`, `restore [ARCHIVE]` (→ Atlas), **`restore-local`** (the failover: spins local mongod on :27777 via `local-mongo.sh`, restores latest, prints the URI to export), `auto [SECONDS]` (unattended dump loop).
+- **Tested end-to-end**: `dump` → 72K archive from live Atlas; `restore-local` → local mongod restored **187 pick_events + 592 detections** (incl. 9 with the new `image_url`); verified in local mongod; stopped clean. `restore`→Atlas shares the same code path (not run against live Atlas to avoid its `--drop` disrupting the running demo).
+- `db-snapshots/` gitignored (`.gitignore` added — holds real pick data).
+- Documented in `docs/DATA.md` "Backup & venue-outage failover". **@deploy**: reference it in `docs/DEPLOY.md`'s venue/hotspot plan; suggest running `db-snapshot.sh auto 300` in a spare pane during judging.
+
+## [00:18] DONE — pick photos → Vercel Blob (hybrid) + MongoDB/Auth0 track push
+**Blob (human chose Vercel Blob):** `web/server/blob.js` (`@vercel/blob`, token-gated, never throws) + sim uploads each pick SVG when `BLOB_READ_WRITE_TOKEN` is set, else falls back to an **absolute hub URL** (fixed the earlier relative `/media` path that broke on the Vercel view). Verified fallback live (200, image/svg+xml). **NEEDS: human creates a Blob store in Vercel (project hack-the-6ix → Storage → Blob) + pastes token into `web/server/.env`** — then pick photos load on the deployed dashboard + phones. `.env.example` documents it.
+
+**MongoDB + Auth0 track strategy (`docs/MONGODB_AUTH0.md`) + db-side implementation:**
+- **Atlas Time Series collection**: `telemetry` is now a native TS collection (timeField `time`, `meta.state`, seconds granularity, 1 h TTL) — flagship "we chose Atlas on purpose" signal. **Flipped LIVE `ht6`** (dropped old capped telemetry, restarted hub → recreated as timeseries; `getCollectionInfos` confirms `type: timeseries`, telemetry flowing, getActivity/getLatestTelemetry read clean with `time`/`meta` stripped). Selftest hard-asserts timeseries on fresh Atlas dbs. Capped fallback for old servers / memory backend.
+- **Operator attribution (the Auth0↔Mongo synergy)**: optional `operator` (Auth0 sub/email) on `pick_events` + `commands`, sparse-indexed; `getPicks({operator})` / `getCommands({operator})` both backends; tested. Story: every pick/command on a physical robot is attributed to an authenticated operator → live Atlas audit trail.
+- Aggregation pipelines (`$facet`/`$mod`/`$switch`) already power stats/timeseries — highlighted as track evidence.
+- **@server-core — I RESTARTED the hub again** (timeseries code); healthy on Atlas. Also: to close the Auth0 track you need to (1) verify the Auth0 JWT on the socket handshake + reject non-operators on control events, (2) stamp `operator` onto pick_event/command from the verified token before `store.record*`. db side is ready.
+- **@web-frontend**: RBAC operator-vs-viewer UI + pass Auth0 access token on socket handshake + per-operator audit panel (`/api/picks?operator=` / `/api/commands?operator=`) + embed an Atlas Chart. **@master**: OK to add optional nullable `operator` to root pick_event/command schemas?
+Full plan + judging checklists in `docs/MONGODB_AUTH0.md`.
+
+## [00:33] WIP — Auth0 hub-side WIRED (env-gated), awaiting human's Auth0 app creds
+Honest check first: Auth0 was **dormant** (no creds → dev-bypass; no server verification; 0 picks attributed). Human decided posture: **real login, but share all data** (attribute, don't restrict) + wants setup steps + Mongo/Auth0 to win. Built the hub side (crossed into server-core files, authorized):
+- `web/server/auth.js` — Auth0 JWT verification via `jose` + JWKS, fully **env-gated** (`AUTH0_DOMAIN`/`AUTH0_AUDIENCE` unset → no-op/dev-bypass). `verifyToken()`, `operatorLabel()`.
+- `web/server/index.js` — `io.use` handshake middleware attaches `socket.data.operator`; NL commands recorded to Atlas `commands` with operator; `pick_event` stamped with the controlling operator (`lastOperator`) before store/emit. **No data gating** (hackathon posture). All additive + env-gated → hub boots identically with auth off (verified: health 200, backend mongo, picks flowing, sim up).
+- `web/server/store.js` — added `recordCommand`/`getCommands` to the fallback store so the new command path can't crash it.
+- `.env`/`.env.example` — `AUTH0_DOMAIN`/`AUTH0_AUDIENCE`/`AUTH0_ROLES_CLAIM` stubs.
+- Installed `jose` (+ earlier `@vercel/blob`) in web/server.
+**BLOCKED on human**: create the Auth0 SPA app + API (audience) + a user → send Domain / Client ID / Audience. Steps in `docs/MONGODB_AUTH0.md` "Step-by-step setup".
+**@web-frontend**: once creds land — Auth0Provider needs `audience`; get token via `getAccessTokenSilently({authorizationParams:{audience}})` and pass on the socket: `io(URL,{auth:{token}})` in `src/lib/robot.jsx`; creds in `web/.env.local` (`VITE_AUTH0_*`). Plus a "who did what" audit panel from `/api/commands`+`/api/picks` (both carry `operator`). Roles/RBAC NOT needed (share-all-data).

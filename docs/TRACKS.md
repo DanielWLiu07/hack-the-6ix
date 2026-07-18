@@ -2,33 +2,33 @@
 
 One Devpost submission, stacked across every track we plausibly qualify for.
 
-## ⚠️ The one-track rule
+## The one-track rule
 
 **A project can only enter ONE of: Best Environmental / Best Hardware / Best Beginner.**
 
 We're choosing **Best Environmental** (per team decision). Note the tradeoff honestly:
-- **Hardware** is arguably our *strongest natural fit* (this is literally a hardware-centered project — arm, rover, lidar, edge compute) and the field may be thinner.
+- **Hardware** is arguably our *strongest natural fit* (this is literally a hardware-centered project - arm, rover, lidar, edge compute) and the field may be thinner.
 - **Environmental** requires the sustainability story to carry: food waste reduction, labor-free local agriculture, lower food costs → less famine. We back it with *numbers* in the demo (e.g. "X% of fruit rots unpicked due to labor shortages; a $200 robot changes that math").
 - Decide finally at submission time based on what other teams are building. Ask organizers if switching is allowed before deadline.
 
 ## Priority tiers
 
-### Tier 1 — build the project around these
+### Tier 1 - build the project around these
 
 | Track | Prize | Hard requirements | How we satisfy |
 |---|---|---|---|
 | **Overall 1st–3rd** | Hoverboard / Fitbit / Projector | Judged: difficulty, uniqueness, design, completeness | Full-custom robotics + polished web app. Completeness = staged demo fallbacks (PLAN.md). |
-| **Best Environmental** | BLAHAJ 🦈 | Sustainability-focused | Food-waste / famine framing with real numbers. Put it FIRST in the pitch, not last. |
-| **Qualcomm — Arduino UNO Q** | Meta Ray-Bans | Must show **intentional MPU/MCU split** + **genuine on-device AI** (no cloud) | Linux side: quantized YOLO ripeness inference + planner. MCU side: real-time motor/servo/e-stop. Explicitly diagram the split in the demo. Inference must run on the board, not a laptop. |
-| **Deloitte — AI for Green** | Prize pack | AI applied to sustainability, measurable impact | Same env story + quantify: kg fruit saved/hr, cost per pick vs manual labor, model runs on 5W edge device (this is *also* Green AI — efficient quantized edge model, no datacenter). Hits both dimensions. |
+| **Best Environmental** | BLAHAJ | Sustainability-focused | Food-waste / famine framing with real numbers. Put it FIRST in the pitch, not last. |
+| **Qualcomm - Arduino UNO Q** | Meta Ray-Bans | Must show **intentional MPU/MCU split** + **genuine on-device AI** (no cloud) | Linux side: quantized YOLO ripeness inference + planner. MCU side: real-time motor/servo/e-stop. Explicitly diagram the split in the demo. Inference must run on the board, not a laptop. |
+| **Deloitte - AI for Green** | Prize pack | AI applied to sustainability, measurable impact | Same env story + quantify: kg fruit saved/hr, cost per pick vs manual labor, model runs on 5W edge device (this is *also* Green AI - efficient quantized edge model, no datacenter). Hits both dimensions. |
 
-### Tier 2 — meaningful extra work but big payoff
+### Tier 2 - meaningful extra work but big payoff
 
 | Track | Prize | Requirements | How |
 |---|---|---|---|
-| **Freesolo — Best Model Trained** | SF flight + interview | Train an LLM on Freesolo (SFT/RL/distillation), infinite credits during event | **"FarmHand"**: SFT a small model on synthetic pairs of natural-language commands → structured action JSON (`{"task":"pick","filter":"ripe","zone":"left"}`) + multi-turn clarification dialogs. It becomes the robot's NL command interface. Generate ~1–2k training pairs with a big model, fine-tune, demo live voice/text commanding. |
+| **Freesolo - Best Model Trained** | SF flight + interview | Train an LLM on Freesolo (SFT/RL/distillation), infinite credits during event | **"FarmHand"**: SFT a small model on synthetic pairs of natural-language commands → structured action JSON (`{"task":"pick","filter":"ripe","zone":"left"}`) + multi-turn clarification dialogs. It becomes the robot's NL command interface. Generate ~1–2k training pairs with a big model, fine-tune, demo live voice/text commanding. |
 
-### Tier 3 — nearly free, claim them
+### Tier 3 - nearly free, claim them
 
 | Track | Prize | How |
 |---|---|---|
@@ -38,20 +38,20 @@ We're choosing **Best Environmental** (per team decision). Note the tradeoff hon
 
 ### Stretch (only if ahead of schedule)
 
-- **ElevenLabs** (earbuds + credits): give FarmHand a voice — robot announces picks / responds to commands via conversational agent. ~2h of work, only if Tier 1–2 are done.
-- **MLH Gemini**: only if we genuinely need it (e.g. generating the Freesolo training set) — don't force it.
+- **ElevenLabs** (earbuds + credits): give FarmHand a voice - robot announces picks / responds to commands via conversational agent. ~2h of work, only if Tier 1–2 are done.
+- **MLH Gemini**: only if we genuinely need it (e.g. generating the Freesolo training set) - don't force it.
 
-### Tier 2b — Base44 Venture Builder ($2,000 CAD) — IN
+### Tier 2b - Base44 Venture Builder ($2,000 CAD) - IN
 
-- **Base44** (parts list said "Base22" — it's Base44): separate companion product built ON base44.com — **"Orchard OS"**, the SaaS layer where orchard operators book robotic harvest runs and watch live ROI, fed by a REAL webhook from our robot's server. Full build brief + paste-ready prompts + demo script: `docs/BASE44.md`. One teammate owns it (~4–6 h).
+- **Base44** (parts list said "Base22" - it's Base44): separate companion product built ON base44.com - **"Orchard OS"**, the SaaS layer where orchard operators book robotic harvest runs and watch live ROI, fed by a REAL webhook from our robot's server. Full build brief + paste-ready prompts + demo script: `docs/BASE44.md`. One teammate owns it (~4–6 h).
 
 ### Explicitly skipping
 
-- QNX (different hardware path than UNO Q — can't do both well), Chexy/Unifold/Solana/BGA (fintech/payments — no fit), Stay22, CORTEX, Backboard, Phoebe, Presage, Warp.
+- QNX (different hardware path than UNO Q - can't do both well), Chexy/Unifold/Solana/BGA (fintech/payments - no fit), Stay22, CORTEX, Backboard, Phoebe, Presage, Warp.
 
 ## Devpost submission checklist
 
-- [ ] Select: Environmental (NOT hardware/beginner), Qualcomm, Deloitte, Freesolo, MongoDB, Auth0, Chexy❌, People's Choice auto
+- [ ] Select: Environmental (NOT hardware/beginner), Qualcomm, Deloitte, Freesolo, MongoDB, Auth0, Base44. Do NOT select Chexy. People's Choice is automatic.
 - [ ] Repo link public, README polished
 - [ ] Demo video ≤ 2–3 min: hook (env stats) → live pick → dashboard → MPU/MCU split slide → FarmHand command demo
 - [ ] Explicit slide/section for EACH sponsor's judging criteria (judges score what they can see)

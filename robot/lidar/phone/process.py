@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""process.py — iPhone lidar export -> optimized, aligned world.glb.
+"""process.py - iPhone lidar export -> optimized, aligned world.glb.
 
 Ingests a handheld iPhone lidar scan exported from Polycam / Scaniverse / Record3D
 (GLB, PLY, or OBJ, with vertex color or texture), aligns it into the robot frame
@@ -7,7 +7,7 @@ Ingests a handheld iPhone lidar scan exported from Polycam / Scaniverse / Record
 <15 MB web budget, and writes web/public/world.glb.
 
 Pipeline:
-    1. load (trimesh — keeps vertex colors + textures)
+    1. load (trimesh - keeps vertex colors + textures)
     2. axis fix (--z-up for Z-up PLY exports) + scale + yaw + translate  [alignment]
     3. export intermediate GLB
     4. gltf-transform optimize: weld, dedup, simplify, resize textures, prune
@@ -17,7 +17,7 @@ Pipeline:
 
 Requires: pip install -r requirements.txt   AND   npx @gltf-transform/cli
 (the npx package auto-downloads on first run; falls back to trimesh-only export
-if gltf-transform is unavailable — see --no-optimize).
+if gltf-transform is unavailable - see --no-optimize).
 
 Examples:
     python3 process.py scan.glb                       # align (identity) + optimize
@@ -37,7 +37,7 @@ import numpy as np
 try:
     import trimesh
 except ImportError:
-    sys.exit("trimesh not installed — run: pip install -r requirements.txt")
+    sys.exit("trimesh not installed - run: pip install -r requirements.txt")
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_OUT = os.path.normpath(os.path.join(_HERE, "..", "..", "..", "web", "public", "world.glb"))
@@ -153,14 +153,14 @@ def main():
             ok = optimize_glb(raw, args.out, simplify=args.simplify,
                               texture_size=args.texture_size, compress=args.compress)
             if not ok:
-                print("gltf-transform unavailable — writing un-optimized trimesh export "
+                print("gltf-transform unavailable - writing un-optimized trimesh export "
                       "(install Node/npx or pass --no-optimize to silence)", file=sys.stderr)
                 shutil.copyfile(raw, args.out)
 
     final = os.path.getsize(args.out)
     print(f"wrote {args.out}  ({final/1e6:.2f} MB)")
     if final > BUDGET_BYTES:
-        print(f"OVER 15 MB budget by {(final-BUDGET_BYTES)/1e6:.1f} MB — lower --simplify "
+        print(f"OVER 15 MB budget by {(final-BUDGET_BYTES)/1e6:.1f} MB - lower --simplify "
               f"(e.g. 0.25) or --texture-size (e.g. 1024), or add --compress.", file=sys.stderr)
         sys.exit(1)
 

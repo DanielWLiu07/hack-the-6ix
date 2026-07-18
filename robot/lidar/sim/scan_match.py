@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Scan matching (lidar odometry) for the pose-less `lidar_scan` stream.
 
-The `lidar_scan` schema carries NO robot pose — every scan is in the *current*
+The `lidar_scan` schema carries NO robot pose - every scan is in the *current*
 robot frame (radar-style). This module recovers ego-motion by aligning each new
 scan to the previous one with point-to-point ICP, then chains those relative
 transforms into a global trajectory + world-frame point map. That turns the
 robot-centered stream into a "SLAM-lite" map without any odometry from the base.
 
-Numpy-only (no scipy) — brute-force nearest-neighbour is fine at <=360 pts.
+Numpy-only (no scipy) - brute-force nearest-neighbour is fine at <=360 pts.
 
 Core API:
     T = icp(src, dst)                 # 3x3 homogeneous transform mapping src->dst
@@ -121,13 +121,13 @@ class ScanMapper:
 
     Feed successive `lidar_scan` point arrays (robot frame). Each scan is aligned
     against the *accumulated world map* (a stable reference), not merely the
-    previous scan — this is what keeps open-loop drift low, since per-scan errors
+    previous scan - this is what keeps open-loop drift low, since per-scan errors
     no longer compound. A constant-velocity prior seeds each alignment so sharp
     turns still converge, and a motion-consistency gate rejects the occasional
     wild ICP result (coasting on the prior instead). The map is voxel-deduped so
     memory stays bounded over a long demo run.
 
-    Reads the `lidar_scan` schema only (no pose in the stream) — everything here
+    Reads the `lidar_scan` schema only (no pose in the stream) - everything here
     is recovered from geometry.
     """
 
@@ -231,7 +231,7 @@ class ScanMapper:
 # -------------------------------------------------------------------- self-test
 
 def _room_outline_points(n_per_seg=25, noise=0.01, seed=0):
-    """Sample points along the sim room walls — what a real scan looks like."""
+    """Sample points along the sim room walls - what a real scan looks like."""
     import sim
     rng = np.random.default_rng(seed)
     pts = []
@@ -288,7 +288,7 @@ def _self_test():
           f"last_icp_err={mapper.last_error*100:.1f} cm")
 
     # Open-loop scan-to-map drift; moving obstacle + range noise + no loop
-    # closure inject error. Allow ~2 m over a ~13 m path (~15%) — this is a
+    # closure inject error. Allow ~2 m over a ~13 m path (~15%) - this is a
     # wow-feature demo of lidar odometry, not metric-grade SLAM.
     ok_drift = drift < 2.0
     print(f"trajectory drift {'PASS' if ok_drift else 'FAIL'} "

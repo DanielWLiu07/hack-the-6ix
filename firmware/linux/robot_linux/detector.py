@@ -1,9 +1,9 @@
 """Detector abstraction + loaders (assignment task 4).
 
 Priority order in load_detector():
-  1. OnnxDetector  — ml/ripeness/export/model.onnx + classes.json (YOLOv8n)
-  2. HSVDetector   — vision-infer's robot/vision/hsv_detector.py fallback
-  3. MockDetector  — synthetic ground truth from MockCamera (dev/sim)
+  1. OnnxDetector  - ml/ripeness/export/model.onnx + classes.json (YOLOv8n)
+  2. HSVDetector   - vision-infer's robot/vision/hsv_detector.py fallback
+  3. MockDetector  - synthetic ground truth from MockCamera (dev/sim)
 
 All detectors return a list of Detection; Detection.to_event() emits the
 root-CLAUDE.md "detection" schema payload.
@@ -73,10 +73,26 @@ class OnnxDetector:
                                             providers=["CPUExecutionProvider"])
         inp = self.session.get_inputs()[0]
         self.input_name = inp.name
-        # NCHW [1,3,S,S]; fall back to 320 if dims are dynamic
+        # classes.json is vision-train's final dict format
+        # {"classes": [...], "imgsz": 320, "class_map": {name: {fruit, ripeness}}}
+        # but tolerate a bare list too (older exports).
+        data = json.loads(Path(classes_path).read_text())
+        if isinstance(data, dict):
+            self.classes = data.get("classes", [])
+            self.class_map = data.get("class_map", {})
+            json_imgsz = data.get("imgsz")
+        else:
+            self.classes = list(data)
+            self.class_map = {}
+            json_imgsz = None
+        # NCHW [1,3,S,S]; prefer the model's static dim, then classes.json, then 320
         shape = inp.shape
-        self.size = int(shape[2]) if isinstance(shape[2], int) else 320
-        self.classes = json.loads(Path(classes_path).read_text())
+        if isinstance(shape[2], int):
+            self.size = int(shape[2])
+        elif json_imgsz:
+            self.size = int(json_imgsz)
+        else:
+            self.size = 320
         self.min_conf = min_conf
 
     def _preprocess(self, frame):
@@ -108,7 +124,11 @@ class OnnxDetector:
             x0 = (cx - bw / 2) / scale
             y0 = (cy - bh / 2) / scale
             name = self.classes[int(cid)] if int(cid) < len(self.classes) else "apple_ripe"
-            fruit, _, ripeness = name.partition("_")
+            mapped = self.class_map.get(name)
+            if mapped:
+                fruit, ripeness = mapped["fruit"], mapped["ripeness"]
+            else:
+                fruit, _, ripeness = name.partition("_")
             dets.append(Detection(fruit, ripeness or "ripe", float(cf),
                                   [x0, y0, bw / scale, bh / scale]))
         return _nms(dets)

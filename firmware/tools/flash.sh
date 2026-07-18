@@ -2,7 +2,7 @@
 # fw-tools: compile (and if possible upload) the MCU sketch.
 #
 #   ./flash.sh                 # compile + upload firmware/mcu to auto-detected board
-#   ./flash.sh --check         # compile only (no board needed) — CI-style sanity
+#   ./flash.sh --check         # compile only (no board needed) - CI-style sanity
 #   PORT=/dev/cu.usbmodemX ARDUINO_FQBN=vendor:arch:board ./flash.sh
 #
 # If no desktop-flashable UNO Q core exists, use --check here and deploy the
@@ -17,7 +17,7 @@ CHECK_ONLY=0
 say() { printf '\033[1;32m[flash]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[flash]\033[0m %s\n' "$*" >&2; exit 1; }
 
-command -v arduino-cli >/dev/null 2>&1 || die "arduino-cli not found — run ./setup.sh first"
+command -v arduino-cli >/dev/null 2>&1 || die "arduino-cli not found - run ./setup.sh first"
 ls "$SKETCH"/*.ino >/dev/null 2>&1 || die "no .ino in $SKETCH (fw-mcu not started yet?)"
 
 # --- resolve FQBN -----------------------------------------------------------
@@ -38,7 +38,7 @@ if [ -z "${ARDUINO_FQBN:-}" ]; then
   # 3) STM32U585 compile-check target (same MCU family as the UNO Q's M33)
   ARDUINO_FQBN="STMicroelectronics:stm32:GenU5"
   EXTRA_FLAGS="--build-property build.board=GENERIC_U585ZITXQ"
-  say "no UNO Q board/core — compile-checking against generic STM32U585"
+  say "no UNO Q board/core - compile-checking against generic STM32U585"
   CHECK_ONLY=1
 fi
 say "FQBN: $ARDUINO_FQBN"
@@ -46,13 +46,13 @@ say "FQBN: $ARDUINO_FQBN"
 # --- compile ----------------------------------------------------------------
 arduino-cli compile --fqbn "$ARDUINO_FQBN" ${EXTRA_FLAGS:-} "$SKETCH" || die "compile failed"
 say "compile OK"
-[ "$CHECK_ONLY" = 1 ] && { say "check-only mode — not uploading"; exit 0; }
+[ "$CHECK_ONLY" = 1 ] && { say "check-only mode - not uploading"; exit 0; }
 
 # --- upload -----------------------------------------------------------------
 if [ -z "${PORT:-}" ]; then
   PORT="$(arduino-cli board list 2>/dev/null | awk '/usb/ {print $1; exit}' || true)"
 fi
-[ -n "${PORT:-}" ] || die "no serial port found — set PORT=... or deploy via App Lab"
+[ -n "${PORT:-}" ] || die "no serial port found - set PORT=... or deploy via App Lab"
 say "uploading to $PORT"
 arduino-cli upload --fqbn "$ARDUINO_FQBN" -p "$PORT" "$SKETCH"
 say "flashed."

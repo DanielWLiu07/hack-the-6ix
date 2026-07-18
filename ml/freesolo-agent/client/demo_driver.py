@@ -108,21 +108,21 @@ def render(rows):
     for i, text, action, fwd, got in rows:
         out.append(f"\n## {i}. `{text}`\n")
         if not got or action is None:
-            out.append("- ⚠️ no nl_action received (timeout)\n")
+            out.append("- WARNING: no nl_action received (timeout)\n")
             continue
         if action.get("ok") and action.get("action"):
             a = action["action"]
             out.append(f"- **farmhand → action**: `{a}`")
             robot_got = [ (n,d) for (n,d) in fwd if n in ("pick","estop","drive","arm_pose") ]
             nlf = [d for (n,d) in fwd if n == "nl_action"]
-            out.append(f"- **hub forwarded to robot**: full `nl_action` {'✅' if nlf else '—'}"
+            out.append(f"- **hub forwarded to robot**: full `nl_action` {'yes' if nlf else '-'}"
                        + (f", mapped control `{robot_got}`" if robot_got else ""))
         elif action.get("ok") and action.get("clarification"):
             out.append(f"- **farmhand → clarification**: \"{action['clarification']}\"")
-            out.append("- **robot**: nothing forwarded (awaiting user reply) ✅")
+            out.append("- **robot**: nothing forwarded (awaiting user reply)")
         else:
-            out.append(f"- **farmhand → REJECTED**: `{action.get('error')}` — "
-                       f"invalid/unparseable, **never forwarded to robot** ✅")
+            out.append(f"- **farmhand → REJECTED**: `{action.get('error')}` - "
+                       f"invalid/unparseable, **never forwarded to robot**")
     text = "\n".join(out) + "\n"
     dest = sys.argv[1] if len(sys.argv) > 1 else "transcript.md"
     with open(dest, "w") as f:

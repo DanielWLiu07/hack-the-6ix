@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Schema conformance + robustness tests for the telemetry hub (worker: server-test). Own package on purpose — never add deps to web/server/package.json.",
+  "description": "Schema conformance + robustness tests for the telemetry hub (worker: server-test). Own package on purpose - never add deps to web/server/package.json.",
   "scripts": {
     "test": "node --test --test-concurrency=1 ./*.test.js",
     "test:conformance": "node --test ./conformance.test.js",

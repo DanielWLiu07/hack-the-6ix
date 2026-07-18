@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke-test the exported ONNX model on one image — no ultralytics needed.
+"""Smoke-test the exported ONNX model on one image - no ultralytics needed.
 
     python3 infer_test.py                          # picks a val image automatically
     python3 infer_test.py --image path.jpg --model export/model.int8.onnx

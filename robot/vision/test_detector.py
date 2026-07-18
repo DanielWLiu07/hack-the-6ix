@@ -88,7 +88,7 @@ if __name__ == "__main__":
     result = evaluate(det, args.frames, verbose=args.verbose)
     print(f"detector={det.name} {result}")
     # recall gate is 0.85: touching same-color fruits merge into one blob and
-    # fail the IoU match — known HSV limit, not a regression signal
+    # fail the IoU match - known HSV limit, not a regression signal
     ok = result["precision"] >= 0.9 and result["recall"] >= 0.85
     print("PASS" if ok else "NEEDS TUNING")
     sys.exit(0 if ok else 1)

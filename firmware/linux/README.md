@@ -1,4 +1,4 @@
-# firmware/linux — UNO Q Linux side (QRB2210, Python)
+# firmware/linux - UNO Q Linux side (QRB2210, Python)
 
 Camera capture, on-device inference, pick/sort state machine, and the
 Socket.IO link to the laptop hub. Talks to the STM32 (`firmware/mcu/`) over the
@@ -51,13 +51,22 @@ pass `--real-detector` to run the ONNX/HSV path against a live camera in sim.
 | `pose_recorder.py` | Interactive keyboard pose recorder (P0 arm-bringup tool). |
 | `state_machine.py` | SEEK→ALIGN→PICK→SORT→DROP, tick-based, non-blocking. |
 | `robot_node.py` | Wires it all to the Socket.IO hub; 20 Hz control tick, 5 Hz telemetry + heartbeat. |
+| `soak.py` | N-cycle pick/sort soak + final-model load check (demo-hardening). |
 | `config.py` | Env-overridable config (rates, gains, joint limits, paths). |
 
-## Test
+## Test & soak
 
 ```bash
-PYTHONPATH=. pytest -q          # offline: SM cycle, servoing, detector, node telemetry
+PYTHONPATH=. pytest -q                              # offline unit tests
+python -m robot_linux.soak --cycles 100 --model-check   # pick/sort soak + model load
 ```
+
+The soak runs N full pick/sort cycles against the mock, spawns all 4 fruit
+classes, and reports success rate, per-bin distribution, duration stats, stalls,
+tick errors, and memory growth (bounded - a demo-hardening leak check).
+`--model-check` also loads the final `export/model.onnx` through the real loader
+and inference-soaks it (latency/FPS). The behavioral loop uses `MockDetector`
+because the real model can't see MockCamera's synthetic frames.
 
 ## Verified
 

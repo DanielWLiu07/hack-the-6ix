@@ -57,7 +57,7 @@ test("hub routes nl_command from ui to the FarmHand agent", async () => {
 // (index.js:83-92) which fan-outs to robots, in addition to the agent routing.
 // Per root CLAUDE.md, nl_command is meant to reach the robot only *structured*
 // (via FarmHand → nl_action). The robot ignores the raw copy, so this is
-// harmless today — logged as an informational finding for server-core, not
+// harmless today - logged as an informational finding for server-core, not
 // asserted here. This test pins the current behavior so a future change is
 // visible in the diff.
 test("hub currently also relays raw nl_command to robots (documents status quo)", async () => {
@@ -242,7 +242,7 @@ test("ui control events (drive/arm_pose/pick/estop) reach the robot", async () =
       ui.emit(event, SAMPLES[event]);
       let payload;
       try { payload = await got; } catch { assert.fail(`hub did not relay ui "${event}" to robot`); }
-      if (event === "estop") continue; // {} — nothing to compare
+      if (event === "estop") continue; // {} - nothing to compare
       const errs = validators[event](payload);
       assert.deepEqual(errs, [], `relayed ${event} fails schema: ${errs.join("; ")}`);
     }

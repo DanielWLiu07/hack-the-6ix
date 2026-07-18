@@ -44,8 +44,8 @@ banner "$S:deploy.1" "deploy:vercel" "vercel --prod from web/"
 nw firmware "$R/firmware/mcu"
 tmux split-window -t $S:firmware -h -c "$R/firmware/linux"
 tmux split-window -t "$S:firmware.2" -v -c "$R/firmware"
-banner "$S:firmware.1" "fw:mcu" "STM32 side — motors/servos/e-stop"
-banner "$S:firmware.2" "fw:linux" "UNO Q Linux — vision+IK+planner"
+banner "$S:firmware.1" "fw:mcu" "STM32 side - motors/servos/e-stop"
+banner "$S:firmware.2" "fw:linux" "UNO Q Linux - vision+IK+planner"
 banner "$S:firmware.3" "fw:serial" "serial monitor / arduino-cli"
 
 # ── vision ──
@@ -57,13 +57,13 @@ banner "$S:vision.2" "vision:infer" "camera pipeline / on-device tests"
 # ── lidar ──
 nw lidar "$R/robot/lidar"
 tmux split-window -t $S:lidar -h -c "$R/robot/lidar"
-banner "$S:lidar.1" "lidar:pi-ssh" "ssh pi@... — lidar reader"
+banner "$S:lidar.1" "lidar:pi-ssh" "ssh pi@... - lidar reader"
 banner "$S:lidar.2" "lidar:dev" "scan → websocket → three.js"
 
 # ── freesolo ──
 nw freesolo "$R/ml/freesolo-agent"
 tmux split-window -t $S:freesolo -h -c "$R/ml/freesolo-agent"
-banner "$S:freesolo.1" "llm:train" "Freesolo SFT — FarmHand commander"
+banner "$S:freesolo.1" "llm:train" "Freesolo SFT - FarmHand commander"
 banner "$S:freesolo.2" "llm:data" "synthetic command→JSON dataset gen"
 
 tmux select-window -t $S:master

@@ -19,7 +19,7 @@ static float ping() {
   digitalWrite(PIN_ULTRA_TRIG, HIGH);
   delayMicroseconds(10);
   digitalWrite(PIN_ULTRA_TRIG, LOW);
-  // Blocking, but bounded by SONAR_TIMEOUT_US (~6 ms) — see config.h.
+  // Blocking, but bounded by SONAR_TIMEOUT_US (~6 ms) - see config.h.
   uint32_t us = pulseIn(PIN_ULTRA_ECHO, HIGH, SONAR_TIMEOUT_US);
   if (us == 0) return -1;
   return (float)us / 58.0f;  // µs -> cm (speed of sound round trip)
@@ -39,7 +39,7 @@ bool tick() {
     closeCount = close ? (uint8_t)(closeCount + 1) : 0;
     if (closeCount >= SONAR_TRIP_COUNT) isBlocked = true;
   } else {
-    // Clear: hysteresis — needs distance above the clear threshold, or echo
+    // Clear: hysteresis - needs distance above the clear threshold, or echo
     // lost entirely (obstacle left the ~1 m window).
     if (distCm < 0 || distCm > SONAR_CLEAR_CM) {
       isBlocked = false;

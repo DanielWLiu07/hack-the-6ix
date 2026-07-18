@@ -1,4 +1,4 @@
-// Self-test for the validators — runs with NO server. If these fail, the
+// Self-test for the validators - runs with NO server. If these fail, the
 // conformance results mean nothing, so keep this green first.
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -39,6 +39,18 @@ const BAD = {
   pick: [{ target: "grape" }, {}],
   estop: [{ reason: "x" }],
   nl_command: [{ text: "" }, { txt: "hi" }, 42],
+  slam_map: [
+    { ...SAMPLES.slam_map, width: 200 },             // exceeds 128-cell cap
+    { ...SAMPLES.slam_map, height: 4 },              // width*height no longer matches data bytes
+    { ...SAMPLES.slam_map, data: "not base64!!!" },  // not base64
+    { ...SAMPLES.slam_map, origin: [0] },            // origin must be [x,y]
+    { ...SAMPLES.slam_map, resolution: 0 },          // must be positive
+  ],
+  slam_pose: [
+    { ...SAMPLES.slam_pose, theta: "0" },            // theta must be a number
+    { x: 0, y: 0, theta: 0 },                        // missing ts
+    { ...SAMPLES.slam_pose, extra: 1 },              // unknown key
+  ],
 };
 
 test("known-bad payloads are rejected", () => {

@@ -3,14 +3,14 @@
 NL command → structured robot action, with strict schema validation between the
 LLM and the robot. Two pieces:
 
-- **`farmhand.py`** — core translator. Zero dependencies (pure stdlib).
+- **`farmhand.py`** - core translator. Zero dependencies (pure stdlib).
   - `FARMHAND_URL` unset → deterministic mock regex rules (works today).
   - `FARMHAND_URL` set → POSTs `{"text": ...}` to the teammate's Freesolo model
     endpoint (`FARMHAND_API_KEY` optional bearer token, `FARMHAND_TIMEOUT` secs).
   - Every model output is validated against the action schema; anything invalid
     is rejected with `{"ok": false, "error": ...}`. Raw LLM output never
     reaches the robot.
-- **`service.py`** — Socket.IO client that connects to the laptop hub
+- **`service.py`** - Socket.IO client that connects to the laptop hub
   (`SERVER_URL`, default `http://localhost:3001`), listens for `nl_command`
   `{"text": ...}`, and emits back `nl_action` (see below). Auto-reconnects.
 
@@ -34,7 +34,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 {"ts": 0, "text": "pick all ripe apples", "ok": true,
  "action": {"task":"pick","fruit":"apple","filter":"ripe"}}          // do it
 {"ts": 0, "text": "pick the fruit", "ok": true,
- "clarification": "Which fruit — apples, bananas, or both?"}          // ask user
+ "clarification": "Which fruit - apples, bananas, or both?"}          // ask user
 {"ts": 0, "text": "...", "ok": false, "error": "invalid_model_output"} // drop it
 ```
 
@@ -49,5 +49,5 @@ real model.
 
 Set `FARMHAND_URL`. If their request/response format differs from
 `{"text": ...}` → JSON body, adjust `endpoint_model()` / `parse_model_body()`
-in `farmhand.py` — that's the only place the wire format lives. Open questions
+in `farmhand.py` - that's the only place the wire format lives. Open questions
 for them are in `../NOTES.md`.

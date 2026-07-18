@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""app.py — phone capture app: upload an iPhone lidar scan → world.glb.
+"""app.py - phone capture app: upload an iPhone lidar scan → world.glb.
 
 A mobile-first web server you open ON YOUR PHONE at the venue. Scan the scene
 with Polycam / Scaniverse (they own the ARKit lidar capture), export GLB/PLY/OBJ,
@@ -43,7 +43,7 @@ def lan_ip():
 
 PAGE = """<!doctype html><html><head><meta charset=utf-8>
 <meta name=viewport content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>FarmHand — phone lidar capture</title>
+<title>FarmHand - phone lidar capture</title>
 <style>
   :root{{color-scheme:dark}}
   *{{box-sizing:border-box}}
@@ -61,14 +61,14 @@ PAGE = """<!doctype html><html><head><meta charset=utf-8>
   code{{background:#0b0e14;padding:2px 6px;border-radius:5px;color:#f9e2af}}
   #status{{white-space:pre-wrap;font:13px ui-monospace,monospace}}
 </style></head><body>
-<h1>🍎 FarmHand — phone lidar</h1>
+<h1>FarmHand - phone lidar</h1>
 <p class=sub>Scan the scene → upload → it appears in the 3D dashboard.</p>
 <div class=card>
   <b>How to capture</b>
   <ol>
     <li>Open <b>Polycam</b> or <b>Scaniverse</b> (LiDAR mode) on this iPhone.</li>
     <li>Scan the demo table / room. Stop when the mesh looks complete.</li>
-    <li>Export as <code>GLB</code> (or PLY/OBJ) — "Share → Export model".</li>
+    <li>Export as <code>GLB</code> (or PLY/OBJ) - "Share → Export model".</li>
     <li>Come back here, pick the file, tap <b>Generate world</b>.</li>
   </ol>
 </div>
@@ -112,7 +112,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path.startswith("/health"):
             return self._send(200, '{"ok":true}', "application/json")
         last = "none yet" if not _last["name"] else \
-            f'{html.escape(_last["name"])} ({_last["size"]//1024} KB) — {"ok" if _last["ok"] else "failed"}'
+            f'{html.escape(_last["name"])} ({_last["size"]//1024} KB) - {"ok" if _last["ok"] else "failed"}'
         self._send(200, PAGE.format(ip=lan_ip(), last=last))
 
     def do_POST(self):
@@ -126,7 +126,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(400, "no file received")
         ext = os.path.splitext(name)[1].lower()
         if ext not in ALLOWED:
-            return self._send(400, f"unsupported type {ext} — export GLB/PLY/OBJ from Polycam/Scaniverse")
+            return self._send(400, f"unsupported type {ext} - export GLB/PLY/OBJ from Polycam/Scaniverse")
 
         safe = "upload_" + str(int(time.time())) + ext
         dst = os.path.join(UPLOAD_DIR, safe)
@@ -146,7 +146,7 @@ class Handler(BaseHTTPRequestHandler):
         size_mb = os.path.getsize(WORLD_OUT) / 1e6
         tail = proc.stdout.strip().splitlines()[-1] if proc.stdout.strip() else ""
         return self._send(200, f"world.glb generated ({size_mb:.1f} MB). {tail}\n"
-                               f"Open the dashboard lidar view — it's live.")
+                               f"Open the dashboard lidar view - it's live.")
 
     def _parse_upload(self):
         """Minimal multipart/form-data parser (stdlib, cgi-free for 3.13+)."""

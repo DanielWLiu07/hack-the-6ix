@@ -1,4 +1,4 @@
-// arm.h — 5-joint servo sequencing with smooth interpolation.
+// arm.h - 5-joint servo sequencing with smooth interpolation.
 // Poses are always reached by easing from the current pose over a duration;
 // there is no code path that snaps a servo (snapping browns out the 5 V rail
 // and drops the fruit). A new moveTo() preempts the active move, retargeting
@@ -21,7 +21,7 @@ void begin();
 void moveTo(const float joints[NUM_JOINTS], uint32_t durationMs);
 
 // Freeze in place: cancel the active move, hold current pose with torque
-// (WATCHDOG/ESTOP path — a limp arm drops the fruit and itself).
+// (WATCHDOG/ESTOP path - a limp arm drops the fruit and itself).
 void hold();
 
 // Call from the main loop; advances interpolation every SERVO_TICK_MS.

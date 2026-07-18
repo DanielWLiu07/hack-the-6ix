@@ -1,4 +1,4 @@
-// drive.h — tank drive: normalized {l,r} in [-1,1] -> PWM + direction.
+// drive.h - tank drive: normalized {l,r} in [-1,1] -> PWM + direction.
 #pragma once
 
 #include <Arduino.h>

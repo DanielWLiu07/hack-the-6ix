@@ -17,3 +17,5 @@ ml/**/datasets/
 venv/
 *.log
 !ml/ripeness/export/*.onnx
+web/public/scene/
+robot/lidar/phone/ios/

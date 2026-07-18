@@ -1,11 +1,15 @@
-// sim.js — fake robot client. Connects to the hub as role=robot and emits
+// sim.js - fake robot client. Connects to the hub as role=robot and emits
 // plausible telemetry (5 Hz), detections, pick_events and lidar_scans per the
 // root CLAUDE.md schemas. Responds to drive / pick / estop.
 //
 //   SERVER_URL=http://localhost:3001 npm run sim
 //   SIM_LIDAR=0 to disable lidar frames (e.g. when lidar-sim's is running)
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { io } from 'socket.io-client';
+import { uploadImage } from './blob.js';
+import { OccGrid } from './occgrid.js';
 
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3001';
 const LIDAR_ON = process.env.SIM_LIDAR !== '0';
@@ -129,15 +133,16 @@ setInterval(() => {
   if (sim.state !== 'ESTOP' && now - sim.stateSince > STATE_DURATION[sim.state]) {
     const next = NEXT_STATE[sim.state];
     if (next === 'PICK' && !sim.pendingFruit) sim.pendingFruit = randomFruit();
-    if (sim.state === 'SORT') emitPickEvent(now);
+    if (sim.state === 'SORT') emitPickEvent(now).catch((e) => console.warn('[sim] pick emit failed:', e.message));
     setState(next);
   }
 }, 200);
 
-function emitPickEvent(now) {
+async function emitPickEvent(now) {
   const { fruit, ripeness } = sim.pendingFruit || randomFruit();
   sim.pendingFruit = null;
   const success = Math.random() < 0.9;
+  const image_url = await writePickImage(now, { fruit, ripeness, success });
   socket.emit('pick_event', {
     ts: now,
     fruit,
@@ -145,8 +150,48 @@ function emitPickEvent(now) {
     bin: `${fruit}_${ripeness}`,
     success,
     duration_ms: STATE_DURATION.PICK + STATE_DURATION.SORT + Math.floor(Math.random() * 800),
+    ...(image_url ? { image_url } : {}), // photo-per-pickup (docs/DATA.md "Pick photos")
   });
-  console.log(`[sim] pick_event ${fruit}/${ripeness} success=${success}`);
+  console.log(`[sim] pick_event ${fruit}/${ripeness} success=${success} img=${image_url ?? 'none'}`);
+}
+
+// The sim has no real camera, so it renders a labelled SVG "snapshot" per pick
+// into the SAME media/ dir the hub serves at /media (both live in web/server/).
+// A real robot would drop a JPEG here instead; the pick_event just references it.
+const MEDIA_DIR = path.join(import.meta.dirname, 'media');
+const FRUIT_COLOR = {
+  apple_ripe: '#d1381f', apple_unripe: '#4f9e3f',
+  banana_ripe: '#f2c018', banana_unripe: '#b7c24a',
+};
+async function writePickImage(ts, { fruit, ripeness, success }) {
+  const file = `pick_${ts}.svg`;
+  // Absolute hub URL (not a bare "/media/..") so it also resolves from the
+  // Vercel-hosted dashboard / phones, which aren't served by the hub.
+  const localUrl = `${SERVER_URL.replace(/\/$/, '')}/media/${file}`;
+  try {
+    fs.mkdirSync(MEDIA_DIR, { recursive: true });
+    const color = FRUIT_COLOR[`${fruit}_${ripeness}`] ?? '#888';
+    const shape = fruit === 'banana'
+      ? `<path d="M96 150 Q160 210 224 150 Q170 176 96 150 Z" fill="${color}"/>`
+      : `<circle cx="160" cy="130" r="52" fill="${color}"/>`;
+    const badge = success ? '#3ddc84' : '#e5484d';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">
+<rect width="320" height="240" fill="#14171c"/>
+${shape}
+<circle cx="248" cy="48" r="16" fill="${badge}"/>
+<text x="248" y="55" font-family="sans-serif" font-size="18" font-weight="bold" fill="#14171c" text-anchor="middle">${success ? 'OK' : 'X'}</text>
+<text x="20" y="210" font-family="sans-serif" font-size="20" fill="#e6e6e6">${fruit} · ${ripeness}</text>
+<text x="20" y="230" font-family="sans-serif" font-size="12" fill="#8a929c">pick ${ts}</text>
+</svg>`;
+    fs.writeFileSync(path.join(MEDIA_DIR, file), svg); // local copy = offline fallback
+    // Hybrid: upload to Vercel Blob when BLOB_READ_WRITE_TOKEN is set (public URL
+    // that works everywhere); otherwise serve the local copy from the hub.
+    const blobUrl = await uploadImage(file, Buffer.from(svg), 'image/svg+xml');
+    return blobUrl || localUrl;
+  } catch (err) {
+    console.warn('[sim] pick image write failed:', err.message);
+    return null; // image is best-effort; the pick_event still goes out
+  }
 }
 
 // --- detections while seeking (~every 1.5 s) --------------------------------
@@ -185,6 +230,13 @@ function wallDistance(px, py, angle) {
   return d;
 }
 
+// Persistent SLAM occupancy grid, fed with the ground-truth pose the sim
+// already integrates. Centered on the 6x4 room so the rover stays inside it.
+// The web lidar view renders this as the accumulating map; slam_pose moves the
+// robot marker. slam_map is throttled to 0.5 Hz per the schema.
+const occ = new OccGrid({ res: 0.05, size: 128, cx: 3, cy: 2 });
+let slamTick = 0;
+
 if (LIDAR_ON) {
   setInterval(() => {
     const points = [];
@@ -196,6 +248,17 @@ if (LIDAR_ON) {
       if (Math.random() < 0.03) continue; // dropouts
       points.push([+(d * Math.cos(rel)).toFixed(3), +(d * Math.sin(rel)).toFixed(3)]);
     }
-    socket.emit('lidar_scan', { ts: Date.now(), points });
+    const ts = Date.now();
+    socket.emit('lidar_scan', { ts, points });
+
+    // fuse into the persistent map + publish pose (2 Hz) and map (0.5 Hz)
+    occ.integrate(sim.pos.x, sim.pos.y, sim.pos.heading, points);
+    socket.emit('slam_pose', {
+      ts,
+      x: +sim.pos.x.toFixed(3),
+      y: +sim.pos.y.toFixed(3),
+      theta: +sim.pos.heading.toFixed(4),
+    });
+    if (slamTick++ % 4 === 0) socket.emit('slam_map', occ.payload(ts));
   }, 500);
 }

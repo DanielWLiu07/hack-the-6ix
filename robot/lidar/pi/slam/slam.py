@@ -1,8 +1,8 @@
-"""slam.py — lidar-only 2D SLAM front-end (scan-to-map).
+"""slam.py - lidar-only 2D SLAM front-end (scan-to-map).
 
 Ties icp.py (motion estimation) + occupancy.py (the map). Consumes the
 pose-less `lidar_scan` stream and maintains a global robot pose + occupancy
-grid, with zero odometry. Self-contained, pure numpy — deploys on-device
+grid, with zero odometry. Self-contained, pure numpy - deploys on-device
 (Pi / UNO Q Linux side).
 
 Usage:
@@ -75,7 +75,7 @@ class Slam:
             new_pose = T_corr @ init
             self.lost = False
         else:
-            # match failed (occlusion / fast turn) — coast on the motion prior
+            # match failed (occlusion / fast turn) - coast on the motion prior
             new_pose = init
             self.lost = True
 
@@ -85,7 +85,7 @@ class Slam:
 
         x, y, th = self.pose
         self.trajectory.append((x, y))
-        # only grow the ICP reference on meaningful motion (keyframe) — bounds cost + drift
+        # only grow the ICP reference on meaningful motion (keyframe) - bounds cost + drift
         if self._is_keyframe(x, y, th) and not self.lost:
             self._add_ref(apply_T(self.pose_T, scan))
             self._last_kf = np.array([x, y, th])

@@ -15,7 +15,7 @@ from pathlib import Path
 from . import config
 
 DEFAULT_POSES = {
-    # [base, shoulder, elbow, wrist, gripper] degrees — placeholders until
+    # [base, shoulder, elbow, wrist, gripper] degrees - placeholders until
     # real arm is jogged with the pose recorder.
     "zero": [90, 90, 90, 90, 90],
     "home": [90, 100, 60, 90, config.GRIPPER_OPEN],
@@ -23,7 +23,7 @@ DEFAULT_POSES = {
     "approach": [90, 60, 95, 110, config.GRIPPER_OPEN],
     "grip_close": [90, 60, 95, 110, config.GRIPPER_CLOSED],
     "lift": [90, 95, 70, 95, config.GRIPPER_CLOSED],
-    # Bin drop poses — one per class, carried with gripper closed.
+    # Bin drop poses - one per class, carried with gripper closed.
     "apple_ripe": [30, 95, 70, 95, config.GRIPPER_CLOSED],
     "apple_unripe": [60, 95, 70, 95, config.GRIPPER_CLOSED],
     "banana_ripe": [120, 95, 70, 95, config.GRIPPER_CLOSED],

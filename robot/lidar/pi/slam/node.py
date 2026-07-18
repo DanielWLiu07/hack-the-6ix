@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""node.py — live on-device SLAM node.
+"""node.py - live on-device SLAM node.
 
 Subscribes to the hub's `lidar_scan` stream, runs the lidar-only 2D SLAM
-(icp + occupancy grid), and publishes `slam_update` (pose + occupied cells)
-back to the hub for the web lidar view. Also renders a map PNG periodically
-(offline proof + demo-backup footage).
+(icp + occupancy grid), and publishes the master-approved `slam_pose` (2 Hz)
+and `slam_map` (0.5 Hz, 128x128 base64 occupancy grid) back to the hub for the
+web lidar view. Also renders a map PNG periodically (offline proof + demo-backup
+footage).
 
 This is the piece that runs ON-DEVICE (Raspberry Pi now / Arduino UNO Q Linux
-side for the Qualcomm on-device story) — pure numpy, no ROS. In the dev/sim
+side for the Qualcomm on-device story) - pure numpy, no ROS. In the dev/sim
 setup, scans arrive via the hub; on the real robot the same node runs beside
 the C1 reader (scans routed through the hub identically).
 
@@ -15,12 +16,12 @@ Env / flags:
     SERVER_URL (env) or --server   hub URL (default http://localhost:3001)
     --map-out PATH                  where to render map.png (default ./slam_map.png)
     --map-every N                   render every N scans (default 20; 0 = never)
-    --no-emit                       compute + render only, don't publish slam_update
+    --no-emit                       compute + render only, don't publish SLAM events
     --duration S                    run for S seconds then exit (default: forever)
 
-Relay note: the hub currently whitelists relayed events; `slam_update` needs
-server-core to relay ui→uis (see status/lidar-pi.md). Until then the emit is a
-harmless no-op and the map PNG is the proof.
+Relay note: the hub relays `slam_map`/`slam_pose` robot->ui (ROBOT_EVENTS in
+web/server/index.js). This node connects as `ui` so it can *receive* lidar_scan,
+and emits the SLAM events back; the hub relays them to the dashboards.
 """
 import argparse
 import logging
@@ -42,10 +43,12 @@ class SlamNode:
         self.map_every = map_every
         self.emit = emit
         self.emit_interval = 1.0 / emit_hz if emit_hz > 0 else 0.0
+        self.map_interval = 1.0 / 0.5   # slam_map capped at 0.5 Hz per schema
         self.slam = Slam()
         self._sio = None
         self._n = 0
         self._last_emit = 0.0
+        self._last_map_emit = 0.0
         self._running = True
 
     def connect(self):
@@ -78,13 +81,26 @@ class SlamNode:
         self._n += 1
 
         now = time.time()
-        if self.emit and self._sio is not None and self._sio.connected \
-                and (now - self._last_emit) >= self.emit_interval:
-            try:
-                self._sio.emit("slam_update", self.slam.slam_update_payload(ts=int(now * 1000)))
-            except Exception as e:
-                log.warning("slam_update emit failed: %s", e)
-            self._last_emit = now
+        if self.emit and self._sio is not None and self._sio.connected:
+            x, y, th = self.slam.pose
+            if (now - self._last_emit) >= self.emit_interval:
+                try:
+                    self._sio.emit("slam_pose", {
+                        "ts": int(now * 1000),
+                        "x": round(float(x), 3),
+                        "y": round(float(y), 3),
+                        "theta": round(float(th), 4),   # radians
+                    })
+                except Exception as e:
+                    log.warning("slam_pose emit failed: %s", e)
+                self._last_emit = now
+            if (now - self._last_map_emit) >= self.map_interval:
+                try:
+                    self._sio.emit("slam_map", self.slam.grid.slam_map_payload(
+                        ts=int(now * 1000), center_xy=(x, y)))
+                except Exception as e:
+                    log.warning("slam_map emit failed: %s", e)
+                self._last_map_emit = now
 
         if self.map_every and self._n % self.map_every == 0:
             self._render()

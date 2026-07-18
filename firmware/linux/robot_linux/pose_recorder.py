@@ -1,4 +1,4 @@
-"""Interactive pose recorder/replayer — the P0 arm-bringup tool.
+"""Interactive pose recorder/replayer - the P0 arm-bringup tool.
 
 Jog joints from the keyboard, save named poses to poses.json, replay poses
 and sequences. Works against MockBridge (--sim, default off-hardware) or the
@@ -142,7 +142,7 @@ def main(argv=None):
         elif ch in ("q", "\x03"):  # q or Ctrl-C
             if dirty:
                 print()
-                if _prompt("unsaved poses — save? [y/N] ").lower() == "y":
+                if _prompt("unsaved poses - save? [y/N] ").lower() == "y":
                     store.save()
                     print(f"wrote {store.path}")
             print()

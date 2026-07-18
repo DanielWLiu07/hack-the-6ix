@@ -1,4 +1,4 @@
-# YOLO dataset config — paths relative to this file
+# YOLO dataset config - paths relative to this file
 path: data/dataset
 train: images/train
 val: images/val

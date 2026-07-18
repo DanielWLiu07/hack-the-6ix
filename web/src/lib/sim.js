@@ -2,6 +2,8 @@
 // testable with zero backend (enable with ?sim=1). Payloads follow the
 // shared schemas in root CLAUDE.md exactly.
 
+import { OccGrid } from './occgrid.js'
+
 const STATES = ['IDLE', 'SEEK', 'PICK', 'SORT']
 const FRUITS = ['apple', 'banana']
 const RIPENESS = ['ripe', 'unripe']
@@ -98,7 +100,12 @@ export function startSim(bus) {
     })
   }, 9000))
 
-  // lidar @2 Hz — rectangular room + a couple of obstacles, robot frame
+  // Persistent SLAM map, fed with the sim's ground-truth pose. Room is 4x3 m
+  // centered at origin, so center the grid there and it never clips.
+  const occ = new OccGrid({ res: 0.05, size: 128, cx: 0, cy: 0 })
+  let slamTick = 0
+
+  // lidar @2 Hz - rectangular room + a couple of obstacles, robot frame
   timers.push(setInterval(() => {
     const points = []
     const W = 4, H = 3
@@ -124,7 +131,17 @@ export function startSim(bus) {
       const la = a - heading
       points.push([+(r * Math.cos(la)).toFixed(3), +(r * Math.sin(la)).toFixed(3)])
     }
-    bus.push('lidar_scan', { ts: Date.now(), points })
+    const ts = Date.now()
+    bus.push('lidar_scan', { ts, points })
+
+    occ.integrate(pos.x, pos.y, heading, points)
+    bus.push('slam_pose', {
+      ts,
+      x: +pos.x.toFixed(3),
+      y: +pos.y.toFixed(3),
+      theta: +heading.toFixed(4),
+    })
+    if (slamTick++ % 4 === 0) bus.push('slam_map', occ.payload(ts))
   }, 500))
 
   // keep pos inside the room

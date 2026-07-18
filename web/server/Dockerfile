@@ -1,4 +1,4 @@
-# ht6-server on Cloud Run. Owned by deploy worker — server code untouched.
+# ht6-server on Cloud Run. Owned by deploy worker - server code untouched.
 FROM node:22-slim
 WORKDIR /app
 ENV NODE_ENV=production

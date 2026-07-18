@@ -15,16 +15,27 @@ export async function createMongoBackend({
   await client.connect();
   const db = client.db(dbName);
 
-  // Telemetry is a capped collection: fixed-size ring buffer server-side.
-  // Code 48 = NamespaceExists (already created on a previous run).
+  // Telemetry → a native Atlas **Time Series collection** (purpose-built for
+  // high-rate sensor data: automatic time-bucketing + columnar storage + TTL
+  // expiry). This is a deliberate "use Atlas properly" choice for the MongoDB
+  // track - not a plain collection. Falls back to a capped collection if the
+  // server is too old, and no-ops (code 48) if telemetry already exists in
+  // either form. See docs/MONGODB_AUTH0.md.
   try {
     await db.createCollection('telemetry', {
-      capped: true,
-      size: 5 * 1024 * 1024,
-      max: telemetryCap,
+      timeseries: { timeField: 'time', metaField: 'meta', granularity: 'seconds' },
+      expireAfterSeconds: 3600, // rolling ~1 h of history, like the old capped cap
     });
   } catch (err) {
-    if (err.code !== 48) throw err;
+    if (err.code === 48) {
+      // already exists (timeseries or capped) - fine
+    } else {
+      try {
+        await db.createCollection('telemetry', { capped: true, size: 5 * 1024 * 1024, max: telemetryCap });
+      } catch (e2) {
+        if (e2.code !== 48) throw e2;
+      }
+    }
   }
 
   const pickEvents = db.collection('pick_events');
@@ -39,15 +50,23 @@ export async function createMongoBackend({
     detections.createIndex({ ts: -1 }),
     detections.createIndex({ fruit: 1, ripeness: 1 }),
     commands.createIndex({ ts: -1 }),
+    // Auth0 operator attribution (optional field → sparse).
+    pickEvents.createIndex({ operator: 1 }, { sparse: true }),
+    commands.createIndex({ operator: 1 }, { sparse: true }),
   ]);
 
   const noId = { projection: { _id: 0 } };
+  // Telemetry reads also strip the Time Series internal fields so the API shape
+  // stays exactly the root-schema telemetry payload.
+  const noTsInternal = { projection: { _id: 0, time: 0, meta: 0 } };
 
   return {
     backend: 'mongo',
 
     async recordTelemetry(doc) {
-      await telemetry.insertOne({ ...doc });
+      // `time` (Date) is the Time Series timeField; `meta` groups by robot state.
+      // Both are ignored if telemetry fell back to a capped collection.
+      await telemetry.insertOne({ ...doc, time: new Date(doc.ts), meta: { state: doc.state } });
     },
 
     async recordDetection(doc) {
@@ -62,10 +81,11 @@ export async function createMongoBackend({
       await commands.insertOne({ ...doc });
     },
 
-    async getPicks({ limit = 50, fruit, ripeness, since } = {}) {
+    async getPicks({ limit = 50, fruit, ripeness, since, operator } = {}) {
       const q = {};
       if (fruit) q.fruit = fruit;
       if (ripeness) q.ripeness = ripeness;
+      if (operator) q.operator = operator; // Auth0-attributed picks (see MONGODB_AUTH0.md)
       if (since != null) q.ts = { $gte: since };
       return pickEvents.find(q, noId).sort({ ts: -1 }).limit(limit).toArray();
     },
@@ -74,22 +94,23 @@ export async function createMongoBackend({
       return detections.find({}, noId).sort({ ts: -1 }).limit(limit).toArray();
     },
 
-    async getCommands({ limit = 50 } = {}) {
-      return commands.find({}, noId).sort({ ts: -1 }).limit(limit).toArray();
+    async getCommands({ limit = 50, operator } = {}) {
+      const q = operator ? { operator } : {};
+      return commands.find(q, noId).sort({ ts: -1 }).limit(limit).toArray();
     },
 
     async getLatestTelemetry() {
-      const [row] = await telemetry.find({}, noId).sort({ ts: -1 }).limit(1).toArray();
+      const [row] = await telemetry.find({}, noTsInternal).sort({ ts: -1 }).limit(1).toArray();
       return row ?? null;
     },
 
-    // Pull the telemetry window ts-ascending and reduce in the app layer — the
+    // Pull the telemetry window ts-ascending and reduce in the app layer - the
     // capped collection is small and the walk (dt-per-state, e-stop transitions,
     // battery curve) is far clearer than a Mongo pipeline. Shape identical to
     // the memory backend via the shared computeActivity() helper.
     async getActivity({ since } = {}) {
       const q = since != null ? { ts: { $gte: since } } : {};
-      const rows = await telemetry.find(q, noId).sort({ ts: 1 }).toArray();
+      const rows = await telemetry.find(q, noTsInternal).sort({ ts: 1 }).toArray();
       return computeActivity(rows);
     },
 
@@ -230,7 +251,7 @@ export async function createMongoBackend({
     },
 
     // Harvest runs inferred from gaps between picks (see memory.js). Done in the
-    // app layer — pulling ts-ordered picks and walking them is simpler and
+    // app layer - pulling ts-ordered picks and walking them is simpler and
     // clearer than a window-function pipeline, and the pick set is small.
     async getSessions({ gapMs = 120000 } = {}) {
       const picks = await pickEvents

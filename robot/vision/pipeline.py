@@ -10,7 +10,7 @@ Serves on 0.0.0.0:PORT (default 8080):
 Env:
     CAMERA_INDEX  cv2.VideoCapture index (default 0)
     PORT          HTTP port (default 8080)
-    DETECTOR      hsv | onnx | auto (default auto — see detector.py)
+    DETECTOR      hsv | onnx | auto (default auto - see detector.py)
     FRAME_W/H     capture size request (default 640x480)
     JPEG_QUALITY  default 80
 
@@ -18,7 +18,7 @@ No camera attached (or --source synthetic): falls back to the synthetic scene
 generator so the stream + detections work end-to-end today.
 
 Detections are also printed to stdout as JSON lines (one per change) so a
-parent process (fw-linux) can consume them without HTTP if it prefers —
+parent process (fw-linux) can consume them without HTTP if it prefers -
 though the supported interface is `detector.load_detector()` in-process.
 """
 

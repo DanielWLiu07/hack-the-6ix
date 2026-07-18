@@ -18,7 +18,7 @@ import time
 try:
     import serial  # pyserial
 except ImportError:
-    sys.exit("pyserial missing — run: pip3 install pyserial")
+    sys.exit("pyserial missing - run: pip3 install pyserial")
 
 BAUD = 115200
 STATES = {0: "OK", 1: "OBSTACLE", 2: "WATCHDOG", 3: "ESTOP"}
@@ -29,7 +29,7 @@ def find_port() -> str:
         hits = sorted(glob.glob(pat))
         if hits:
             return hits[0]
-    sys.exit("no serial device found — plug the board in or pass --port")
+    sys.exit("no serial device found - plug the board in or pass --port")
 
 
 class Mcu:
@@ -115,7 +115,7 @@ def smoke(mcu: Mcu, only: str | None):
         print("\n== smoke: watchdog (arm, then no heartbeat 700 ms) ==")
         expect("W 1 arms watchdog", mcu.cmd("W 1").startswith("OK"), r)
         time.sleep(0.7)
-        st = mcu.status()   # Q is not a heartbeat — must NOT feed the watchdog
+        st = mcu.status()   # Q is not a heartbeat - must NOT feed the watchdog
         expect("state == WATCHDOG after silence", bool(st) and st["state"] == "WATCHDOG", r)
         expect("heartbeat recovers", mcu.heartbeat().strip() in ("OK 0", "OK 1"), r)
         expect("W 0 disarms", mcu.cmd("W 0").startswith("OK"), r)
@@ -132,7 +132,7 @@ def smoke(mcu: Mcu, only: str | None):
 
 # ----------------------------------------------------------------------- repl
 def repl(mcu: Mcu):
-    print("raw protocol REPL — BRIDGE.md §5. helpers: st, hb-loop. ctrl-d exits.")
+    print("raw protocol REPL - BRIDGE.md §5. helpers: st, hb-loop. ctrl-d exits.")
     while True:
         try:
             line = input("mcu> ").strip()

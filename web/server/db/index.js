@@ -33,7 +33,7 @@ export async function createDb({
   }
 
   // Downsample telemetry here so both backends store ≤1 Hz. Also stamp a ts on
-  // any doc that arrives without one — robots may send ts:0 before NTP sync.
+  // any doc that arrives without one - robots may send ts:0 before NTP sync.
   let lastTelemetryTs = -Infinity;
 
   const stamp = (doc) =>

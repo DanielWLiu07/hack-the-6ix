@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Host-side syntax check for the MCU sketch — no arduino-cli needed.
+# Host-side syntax check for the MCU sketch - no arduino-cli needed.
 # Generates minimal Arduino/Wire stubs and runs g++ -fsyntax-only over every
 # source file. NOT a substitute for a real arduino-cli compile (fw-tools'
 # flash.sh), but catches C++ errors instantly on any laptop.

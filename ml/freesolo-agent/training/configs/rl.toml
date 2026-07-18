@@ -1,0 +1,25 @@
+# FarmHand GRPO (RL) run - stage 2, runs AFTER sft.toml.
+# Optimizes environment.py's JSON-aware reward (score_response): exact action
+# match / clarify match = 1.0, schema-valid-but-wrong = 0.5, invalid = 0.0.
+# This is the "SFT -> RL" pipeline the Best-Model-Trained track rewards.
+#
+# ONLY run this once SFT has finished and you have filled init_from_adapter below
+# with the SFT run's adapter, so RL improves the fine-tuned model (not the base).
+# Decide whether it is worth it AFTER reading the SFT eval numbers: if SFT already
+# scores ~99% there is little headroom; if it misses a class of commands, RL helps.
+model = "Qwen/Qwen3.5-0.8B"
+algorithm = "grpo"
+seed = 42
+
+[environment]
+id = "hackthe6ixbanana/farmhand"
+
+[train]
+epochs = 1
+max_examples = 2349
+lora_rank = 32
+# Start from the SFT adapter (fill with the SFT run's adapter_ref / hf_repo after it finishes):
+init_from_adapter = ""
+# Optional guided decoding to force the two valid shapes (enable only if the schema
+# engine accepts anyOf; the reward already penalizes invalid JSON, so this is a bonus):
+# structured_outputs = '{"type":"object","anyOf":[{"required":["task"]},{"required":["clarify"]}]}'

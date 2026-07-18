@@ -1,4 +1,4 @@
-"""Unit tests for farmhand.py — run: python3 -m unittest test_farmhand -v"""
+"""Unit tests for farmhand.py - run: python3 -m unittest test_farmhand -v"""
 
 import json
 import unittest

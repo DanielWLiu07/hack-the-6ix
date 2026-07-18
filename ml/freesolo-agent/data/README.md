@@ -9,8 +9,8 @@ The teammate trains on Freesolo; this directory is the dataset + eval deliverabl
 |---|---|
 | `farmhand_train.jsonl` | 2,349 training examples, chat-JSONL |
 | `farmhand_val.jsonl` | 123 validation examples (5% split, same distribution) |
-| `eval_set.jsonl` | 30 hand-written held-out commands with expected actions — **never train on these** |
-| `farmhand_prefs.jsonl` | 600 preference pairs (chosen/rejected) for RL/DPO — **bonus** deliverable |
+| `eval_set.jsonl` | 30 hand-written held-out commands with expected actions - **never train on these** |
+| `farmhand_prefs.jsonl` | 600 preference pairs (chosen/rejected) for RL/DPO - **bonus** deliverable |
 | `generate_dataset.py` | Seeded generator (re-run → identical output; excludes eval texts) |
 | `generate_prefs.py` | Seeded preference-pair generator (reuses the SFT vocabulary) |
 | `eval.py` | Accuracy scorer: `--baseline` / `--endpoint URL` / `--predictions file` |
@@ -18,7 +18,7 @@ The teammate trains on Freesolo; this directory is the dataset + eval deliverabl
 
 ## The contract the model is trained to follow
 
-Every assistant output is **JSON, nothing else** — one of two shapes:
+Every assistant output is **JSON, nothing else** - one of two shapes:
 
 1. **Action** (all four keys always present; `"any"` = unspecified):
    ```json
@@ -26,7 +26,7 @@ Every assistant output is **JSON, nothing else** — one of two shapes:
    ```
 2. **Clarification / redirect** (ambiguous or off-topic input):
    ```json
-   {"clarify":"Which fruit — apples, bananas, or both?"}
+   {"clarify":"Which fruit - apples, bananas, or both?"}
    ```
    The client shows the question to the user; the user's answer continues the
    same conversation and the model then emits the action JSON.
@@ -49,12 +49,12 @@ Notes:
 - Surface noise throughout: typos (~12%), slang ("nanners", "snag"), casing,
   politeness wrappers, color phrasings
 
-## Preference pairs for RL/DPO (`farmhand_prefs.jsonl`) — bonus
+## Preference pairs for RL/DPO (`farmhand_prefs.jsonl`) - bonus
 
 600 `{prompt, chosen, rejected, reason}` rows (TRL conversational preference
 format: `prompt` and `chosen`/`rejected` are message lists). After SFT, a
 preference-optimization pass (DPO/KTO/ORPO) teaches the model to *prefer* the
-correct, machine-parseable action over the plausible-but-wrong alternative — the
+correct, machine-parseable action over the plausible-but-wrong alternative - the
 failure modes that actually cost us commands, since llm-client's strict validator
 silently drops anything that isn't valid schema JSON. `chosen` is always
 schema-valid; `rejected` is a realistic worse answer. Categories:
@@ -84,7 +84,7 @@ python3 export.py --format prompt-completion   # → export/farmhand_{train,val}
 python3 export.py --format alpaca
 ```
 
-Keep the system message — the JSON-only convention is defined there.
+Keep the system message - the JSON-only convention is defined there.
 
 ## Evaluating the trained model
 
@@ -97,5 +97,5 @@ python3 eval.py --baseline                               # regex baseline for co
 Prints a markdown table (exact-match + per-field accuracy) for the Devpost
 writeup. The regex baseline scores **28/30 (93.3%)**; its misses are the
 idiomatic cases only the LLM handles ("bring me some bananas ripe or not" →
-`filter:any`, "come back to the charging station" → `zone:home`) — and the
+`filter:any`, "come back to the charging station" → `zone:home`) - and the
 baseline can't do multi-turn clarification at all, which is the demo story.

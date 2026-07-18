@@ -2,7 +2,7 @@
 
 Consumes the ultralytics YOLOv8 ONNX convention:
     input : (1, 3, H, W) float32, RGB, 0-1  (H/W read from the model)
-    output: (1, 4 + num_classes, N) — cxcywh boxes + per-class scores
+    output: (1, 4 + num_classes, N) - cxcywh boxes + per-class scores
 
 Expected files (defaults; override with env MODEL_PATH / CLASSES_PATH):
     ml/ripeness/export/model.onnx
@@ -44,15 +44,30 @@ class ONNXDetector:
         self.session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
         inp = self.session.get_inputs()[0]
         self.input_name = inp.name
-        # shape like [1, 3, 320, 320]; fall back to 320 if dynamic
-        h, w = inp.shape[2], inp.shape[3]
-        self.in_h = h if isinstance(h, int) else 320
-        self.in_w = w if isinstance(w, int) else 320
 
         with open(classes_path) as f:
-            self.classes = json.load(f)
-        # "apple_ripe" -> ("apple", "ripe")
-        self.class_map = [tuple(c.split("_", 1)) for c in self.classes]
+            meta = json.load(f)
+        # classes.json is either the current dict schema
+        #   {"classes":[...], "imgsz":320, "class_map":{"apple_ripe":{"fruit":..,"ripeness":..}}}
+        # or a legacy plain array  ["apple_ripe", "apple_unripe", ...].
+        if isinstance(meta, dict):
+            self.classes = meta["classes"]
+            cmap = meta.get("class_map")
+            if isinstance(cmap, dict):
+                self.class_map = [(cmap[c]["fruit"], cmap[c]["ripeness"])
+                                  for c in self.classes]
+            else:  # dict without class_map -> split the "<fruit>_<ripeness>" names
+                self.class_map = [tuple(c.split("_", 1)) for c in self.classes]
+            meta_imgsz = meta.get("imgsz")
+        else:
+            self.classes = meta
+            self.class_map = [tuple(c.split("_", 1)) for c in self.classes]
+            meta_imgsz = None
+
+        # input shape like [1, 3, 320, 320]; fall back to classes.json imgsz, then 320
+        h, w = inp.shape[2], inp.shape[3]
+        self.in_h = h if isinstance(h, int) else (meta_imgsz or 320)
+        self.in_w = w if isinstance(w, int) else (meta_imgsz or 320)
 
     def _letterbox(self, img):
         h, w = img.shape[:2]

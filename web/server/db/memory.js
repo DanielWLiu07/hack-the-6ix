@@ -36,10 +36,11 @@ export function createMemoryBackend({ telemetryCap = 5000 } = {}) {
       if (commands.length > COMMAND_CAP) commands.shift();
     },
 
-    async getPicks({ limit = 50, fruit, ripeness, since } = {}) {
+    async getPicks({ limit = 50, fruit, ripeness, since, operator } = {}) {
       let out = pickEvents;
       if (fruit) out = out.filter((p) => p.fruit === fruit);
       if (ripeness) out = out.filter((p) => p.ripeness === ripeness);
+      if (operator) out = out.filter((p) => p.operator === operator);
       if (since != null) out = out.filter((p) => p.ts >= since);
       return out.slice(-limit).reverse(); // newest first
     },
@@ -48,11 +49,12 @@ export function createMemoryBackend({ telemetryCap = 5000 } = {}) {
       return detections.slice(-limit).reverse();
     },
 
-    async getCommands({ limit = 50 } = {}) {
-      return commands.slice(-limit).reverse(); // newest first
+    async getCommands({ limit = 50, operator } = {}) {
+      const out = operator ? commands.filter((c) => c.operator === operator) : commands;
+      return out.slice(-limit).reverse(); // newest first
     },
 
-    // Most recent stored telemetry — a status-header snapshot + late-joiner
+    // Most recent stored telemetry - a status-header snapshot + late-joiner
     // hydration (the live socket is authoritative; this is the "on load" value).
     async getLatestTelemetry() {
       return telemetry.length ? telemetry[telemetry.length - 1] : null;

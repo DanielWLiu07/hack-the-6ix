@@ -1,6 +1,6 @@
-// sonar.h — HC-SR04 front ultrasonic, OBSTACLE reflex input.
+// sonar.h - HC-SR04 front ultrasonic, OBSTACLE reflex input.
 // Runs entirely on the MCU: obstacle < 15 cm gates forward drive in the same
-// loop pass — no Linux round-trip (<10 ms). Hysteresis per BRIDGE.md §2:
+// loop pass - no Linux round-trip (<10 ms). Hysteresis per BRIDGE.md §2:
 // trip below SONAR_STOP_CM, clear above SONAR_CLEAR_CM.
 #pragma once
 

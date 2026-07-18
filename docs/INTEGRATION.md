@@ -1,8 +1,8 @@
-# INTEGRATION.md — first power-on hardware runbook
+# INTEGRATION.md - first power-on hardware runbook
 
 **Owner: fw-tools.** This is the checklist for the moment the *real* robot
 arrives and gets powered for the first time. The whole software stack is
-already demoable on mocks (`scripts/demo.sh`) — this runbook is about bringing
+already demoable on mocks (`scripts/demo.sh`) - this runbook is about bringing
 up **physical** hardware **incrementally and safely**, one subsystem at a time,
 so a wiring mistake trips a fuse and not the demo.
 
@@ -12,10 +12,10 @@ motor spinning the wrong way into a table) are caught by testing each
 subsystem *in isolation, in bench mode, before* the arm has horns on it.
 
 References this runbook leans on:
-- `firmware/BRIDGE.md` — RPC + serial bench protocol, safety states (cited below)
-- `firmware/PINOUT.md` — pin map + PCA9685 channels + power gotchas
-- `docs/HARDWARE.md` — power tree (servo buck, caps, common ground)
-- `firmware/tools/` — `setup.sh`, `flash.sh`, `monitor.sh`, `bench.py`, `mock_mcu.py`
+- `firmware/BRIDGE.md` - RPC + serial bench protocol, safety states (cited below)
+- `firmware/PINOUT.md` - pin map + PCA9685 channels + power gotchas
+- `docs/HARDWARE.md` - power tree (servo buck, caps, common ground)
+- `firmware/tools/` - `setup.sh`, `flash.sh`, `monitor.sh`, `bench.py`, `mock_mcu.py`
 
 ---
 
@@ -26,7 +26,7 @@ POWER OFF  → wiring audit → rail check (multimeter, NO servos/motors yet)
    ↓
 FLASH MCU  → tools/flash.sh --check → tools/flash.sh
    ↓
-BENCH MODE (serial, watchdog disarmed) — each subsystem alone:
+BENCH MODE (serial, watchdog disarmed) - each subsystem alone:
    status → servos (zero FIRST, horns AFTER) → ultrasonic → watchdog → estop → drive
    ↓
 BRIDGE UP  → robot_node against REAL Bridge (not --sim): heartbeat + telemetry
@@ -37,7 +37,7 @@ FULL DEMO  → scripts/demo.sh with the real robot in place of the mock
 ```
 
 If any stage past "BENCH MODE" misbehaves during judging, jump to
-[§6 Rollback / panic](#6-rollback--panic) — the demo falls back to mocks in seconds.
+[§6 Rollback / panic](#6-rollback--panic) - the demo falls back to mocks in seconds.
 
 ---
 
@@ -45,7 +45,7 @@ If any stage past "BENCH MODE" misbehaves during judging, jump to
 
 - [ ] Wiring matches `firmware/PINOUT.md` pin-for-pin. Re-check the two dividers:
       **HC-SR04 ECHO** (5 V → 3.3 V, 1 kΩ series + 2 kΩ to GND) and the optional
-      **battery sense** on A0. All MCU header GPIO is **3.3 V** — nothing 5 V
+      **battery sense** on A0. All MCU header GPIO is **3.3 V** - nothing 5 V
       touches a pin bare.
 - [ ] **Common ground everywhere**: battery GND ↔ motor-driver GND ↔ servo-buck
       GND ↔ UNO Q GND. This is non-negotiable; a floating ground is the #1 cause
@@ -65,7 +65,7 @@ can (bring logic up first). Then measure:
 
 - [ ] UNO Q logic rail = **3.3 V** (±0.1).
 - [ ] Servo buck output = **5.0–5.2 V** under no load. Re-check it does **not**
-      sag below ~4.7 V when a single servo moves (§3d) — sag = brownout = the
+      sag below ~4.7 V when a single servo moves (§3d) - sag = brownout = the
       board resets mid-pick.
 - [ ] Motor driver VM = battery voltage (~11.1 V for 3S).
 - [ ] Battery sense (if populated) on A0 reads within the 3.3 V divider range.
@@ -74,7 +74,7 @@ can (bring logic up first). Then measure:
 
 ## 3. Bench-test each subsystem (serial, isolated)
 
-Flash the sketch, then talk to it over USB serial — **no Linux side, no Bridge**.
+Flash the sketch, then talk to it over USB serial - **no Linux side, no Bridge**.
 This is the safest way to exercise motion. Bench mode uses the single-letter
 protocol in **BRIDGE.md §5** (115200 baud, newline-terminated).
 
@@ -86,7 +86,7 @@ tools/flash.sh --check      # compile-only sanity first
 tools/flash.sh              # build + upload (auto FQBN/port)
 ```
 
-**Open the bench console:** `tools/monitor.sh` (raw serial) — or drive it
+**Open the bench console:** `tools/monitor.sh` (raw serial) - or drive it
 programmatically with `tools/bench.py`. The command→behavior contract is
 mirrored exactly by `tools/mock_mcu.py`, so if in doubt about an expected
 response, `python3 tools/mock_mcu.py --selftest` shows the reference transcript.
@@ -94,7 +94,7 @@ response, `python3 tools/mock_mcu.py --selftest` shows the reference transcript.
 > **Bench mode boots with the watchdog DISARMED** (BRIDGE.md §5) so human-paced
 > typing doesn't sit in `WATCHDOG`. Arm it only for the watchdog test (§3e).
 
-Safety-state cheat-sheet (BRIDGE.md §2) — every command replies `OK <state>`:
+Safety-state cheat-sheet (BRIDGE.md §2) - every command replies `OK <state>`:
 `0 OK · 1 OBSTACLE · 2 WATCHDOG · 3 ESTOP`. Priority ESTOP > WATCHDOG > OBSTACLE > OK.
 
 ### 3a. Boot + status
@@ -103,7 +103,7 @@ Safety-state cheat-sheet (BRIDGE.md §2) — every command replies `OK <state>`:
       `ST <state> <battery_mv> <j0..j4> <l_pct> <r_pct> <ultra_cm>`.
 - [ ] State is `0` (OK) at rest.
 
-### 3b. Servos — zero FIRST, horns AFTER
+### 3b. Servos - zero FIRST, horns AFTER
 - [ ] With **horns off**, `Z` (`zero_all`) → all 5 channels interpolate to 90°
       over 1.5 s. Confirm each output is holding mid-travel.
 - [ ] Power off, **install horns** at the neutral/centered mechanical pose, power
@@ -113,7 +113,7 @@ Safety-state cheat-sheet (BRIDGE.md §2) — every command replies `OK <state>`:
       never a snap. Repeat per joint with small deltas.
 - [ ] **Gripper clamp**: creep the gripper channel toward closed in small steps
       and find the angle where it grips a printed apple *without stalling*. That
-      angle bounds `GRIP_MIN_US`/`GRIP_MAX_US` in fw-mcu — full 180° strips the
+      angle bounds `GRIP_MIN_US`/`GRIP_MAX_US` in fw-mcu - full 180° strips the
       gears. Record the safe range.
 
 ### 3c. Ultrasonic reflex
@@ -130,13 +130,13 @@ Safety-state cheat-sheet (BRIDGE.md §2) — every command replies `OK <state>`:
 ### 3e. E-stop (latched)
 - [ ] `E` → state `3` (ESTOP). Confirm `D 1 1` is **ignored** (still `3`) and
       servo interpolation is frozen.
-- [ ] `C` (`clear_estop`) exits ESTOP. Motion does **not** auto-resume — the
+- [ ] `C` (`clear_estop`) exits ESTOP. Motion does **not** auto-resume - the
       host must re-command. Good.
 
 ### 3f. Drive motors (wheels still off the ground)
 - [ ] `D 0.3 0.3` → both wheels spin **forward** (forward = toward the gripper
       side, PINOUT.md). If a wheel runs backward, fix it in hardware (swap that
-      motor's two leads) or the single `M_L_INVERT`/`M_R_INVERT` `#define` —
+      motor's two leads) or the single `M_L_INVERT`/`M_R_INVERT` `#define` -
       **not** with scattered sign flips.
 - [ ] `D 0.3 -0.3` turns in place. `D 0 0` stops.
 
@@ -156,7 +156,7 @@ serial letters you just tested.
       .venv/bin/python -m robot_linux.robot_node --server http://<laptop>:3001
       ```
 - [ ] On the dashboard: `state` badge live, `arm[5]` tracks the real joints,
-      battery reads real millivolts (not 0). Heartbeat holds at 5 Hz — if the
+      battery reads real millivolts (not 0). Heartbeat holds at 5 Hz - if the
       node dies, the MCU trips `WATCHDOG` within 500 ms and the arm holds pose.
 - [ ] Fire an `estop` from the web UI → MCU latches `ESTOP`, motion dies
       immediately. Clear from the UI → recovers. This is the safety path judges
@@ -172,13 +172,13 @@ serial letters you just tested.
       Watch the servo rail for sag on the lift; if it browns out, slow the
       interpolation (larger `duration_ms`) or stiffen the buck/cap.
 - [ ] Confirm a `pick_event` lands on the dashboard with the right `bin` and
-      `success:true`. **Film this** — it's the backup demo.
+      `success:true`. **Film this** - it's the backup demo.
 
 ---
 
 ## 6. Rollback / panic
 
-If hardware misbehaves at the venue, you are never stuck — the software demo is
+If hardware misbehaves at the venue, you are never stuck - the software demo is
 self-sufficient. In rough order of escalation:
 
 1. **Hardware e-stop first.** Web UI `estop`, or `E` on the serial console, or
@@ -196,7 +196,7 @@ self-sufficient. In rough order of escalation:
    - server-core's **force-sim panic switch** (see `docs/DEPLOY.md`) can flip the
      hub to simulated telemetry live, without restarting anything, if the real
      robot drops mid-demo.
-4. **Recorded footage** of the canned pick (§5) is the final fallback — always
+4. **Recorded footage** of the canned pick (§5) is the final fallback - always
    have it filmed and ready to play.
 
 **To resume real hardware after a rollback:** power-cycle the MCU (clears any

@@ -1,4 +1,4 @@
-// GET /stream — MJPEG.
+// GET /stream - MJPEG.
 // If ROBOT_STREAM_URL is set (vision-infer's annotated MJPEG on :8080), proxy it.
 // Otherwise serve a generated moving test pattern so the dashboard <img> works today.
 

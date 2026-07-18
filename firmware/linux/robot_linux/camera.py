@@ -1,7 +1,7 @@
 """Camera abstraction: eye-in-hand camera on the arm.
 
 MockCamera renders a synthetic frame containing one "fruit" blob whose image
-position responds to arm joints — moving base yaw shifts the blob in x,
+position responds to arm joints - moving base yaw shifts the blob in x,
 moving shoulder shifts it in y. That closes the loop for visual-servoing
 ALIGN testing with zero hardware.
 """
@@ -28,7 +28,7 @@ class MockCamera(Camera):
 
     The fruit sits at a world angle (base_deg, shoulder_deg). Its position in
     the frame is the error between the arm's current joints and that world
-    angle, scaled — i.e. jogging the arm toward the fruit centers it, exactly
+    angle, scaled - i.e. jogging the arm toward the fruit centers it, exactly
     like a real eye-in-hand camera.
     """
 
@@ -49,15 +49,18 @@ class MockCamera(Camera):
         self.fruit = None  # (fruit, ripeness, color, base_deg, shoulder_deg)
         self.spawn_fruit()
 
-    def spawn_fruit(self, fruit=None, ripeness=None):
+    def spawn_fruit(self, fruit=None, ripeness=None, near_joints=None):
         choices = self.FRUITS
         if fruit:
             choices = [f for f in choices if f[0] == fruit] or self.FRUITS
         if ripeness:
             choices = [f for f in choices if f[1] == ripeness] or choices
         kind = self.rng.choice(choices)
-        # place fruit within +-15 deg of current arm pose so it's in view
-        joints = self.bridge.get_joints()
+        # Place fruit within +-15 deg of a reference pose so it's in view.
+        # near_joints lets the caller present the fruit relative to the arm's
+        # SEEK/rest pose rather than wherever it currently is (e.g. a bin pose
+        # after a drop, which SEEK's base sweep may not reach).
+        joints = near_joints if near_joints is not None else self.bridge.get_joints()
         base = joints[0] + self.rng.uniform(-15, 15)
         shoulder = joints[1] + self.rng.uniform(-12, 12)
         self.fruit = (*kind, base, shoulder)

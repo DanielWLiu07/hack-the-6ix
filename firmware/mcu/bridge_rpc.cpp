@@ -20,7 +20,7 @@ namespace bridge_rpc {
 static int rpc_set_drive(float l, float r) { return rpc::set_drive(l, r); }
 
 // BRIDGE.md §4 (VERIFIED) pins move_servos to 6 flat int args
-// (j0..j4, duration_ms) — flat scalars marshal trivially over MsgPack-RPC;
+// (j0..j4, duration_ms) - flat scalars marshal trivially over MsgPack-RPC;
 // conceptually still joints[5]+duration_ms. fw-linux's MockBridge packs the
 // same 6 scalars.
 static int rpc_move_servos(int j0, int j1, int j2, int j3, int j4,
@@ -49,7 +49,7 @@ void begin() {
   // provide_safe -> handler runs in the MAIN LOOP thread, so it may touch
   // drive/servo/safety state without locks (BRIDGE.md §4). estop is the one
   // exception: plain provide (separate thread) so it fires even if the
-  // control loop wedges — its handler cuts motor pins + latches the e-stop
+  // control loop wedges - its handler cuts motor pins + latches the e-stop
   // directly, which is safe precisely because a wedged loop isn't also
   // writing those outputs.
   Bridge.provide_safe("set_drive", rpc_set_drive);
@@ -69,7 +69,7 @@ void tick() {
   // pump here today. Kept so the main loop shape survives a library change.
 }
 
-#else  // !HAS_BRIDGE — bench-only build on a vanilla core
+#else  // !HAS_BRIDGE - bench-only build on a vanilla core
 
 void begin() {}
 void tick() {}

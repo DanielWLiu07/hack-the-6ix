@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bench.py — SLAM per-scan latency + memory benchmark.
+"""bench.py - SLAM per-scan latency + memory benchmark.
 
 The Qualcomm UNO Q track wants on-device numbers. This runs the deterministic
 synthetic workload through the exact SLAM pipeline and reports ms/scan (mean,

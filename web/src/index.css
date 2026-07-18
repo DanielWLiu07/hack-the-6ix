@@ -121,7 +121,8 @@ code {
 
 /* Landing scene is full-bleed: release the centered column only when the
    hero stage is mounted (all other pages keep the 1126px column). */
-#root:has(.hero-stage) {
+#root:has(.hero-stage),
+#root:has(.stage) {
   width: 100%;
   max-width: none;
   border-inline: 0;
