@@ -7,7 +7,9 @@
   "scripts": {
     "test": "node --test --test-concurrency=1 ./*.test.js",
     "test:conformance": "node --test ./conformance.test.js",
-    "test:robustness": "node --test ./robustness.test.js"
+    "test:robustness": "node --test ./robustness.test.js",
+    "test:integration": "node --test ./integration.test.js",
+    "test:base44": "node --test ./base44.test.js"
   },
   "dependencies": {
     "socket.io-client": "^4.7.5"

@@ -1,0 +1,5 @@
+# phone-lidar pipeline (process.py / make_sample.py)
+trimesh>=4.0
+numpy>=1.24
+# GLB optimization is done by @gltf-transform/cli via `npx --yes @gltf-transform/cli`
+# (Node/npx required; auto-downloads on first run). No Python binding needed.

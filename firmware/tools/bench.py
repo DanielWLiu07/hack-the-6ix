@@ -112,12 +112,13 @@ def smoke(mcu: Mcu, only: str | None):
         expect("clear_estop leaves 3", not mcu.clear_estop().strip().endswith("3"), r)
 
     if only in (None, "watchdog"):
-        print("\n== smoke: watchdog (no heartbeat 700 ms) ==")
-        mcu.heartbeat()
+        print("\n== smoke: watchdog (arm, then no heartbeat 700 ms) ==")
+        expect("W 1 arms watchdog", mcu.cmd("W 1").startswith("OK"), r)
         time.sleep(0.7)
         st = mcu.status()   # Q is not a heartbeat — must NOT feed the watchdog
         expect("state == WATCHDOG after silence", bool(st) and st["state"] == "WATCHDOG", r)
         expect("heartbeat recovers", mcu.heartbeat().strip() in ("OK 0", "OK 1"), r)
+        expect("W 0 disarms", mcu.cmd("W 0").startswith("OK"), r)
 
     if only in (None, "errors"):
         print("\n== smoke: error paths ==")

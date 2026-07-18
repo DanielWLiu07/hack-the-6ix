@@ -24,6 +24,16 @@ say "arduino-cli: $(arduino-cli version)"
 
 arduino-cli config init --overwrite >/dev/null 2>&1 || true
 
+# Move the sketchbook/libraries dir OUT of ~/Documents. On macOS that path is
+# under TCC (privacy) protection: `arduino-cli lib install` can leave a stale
+# partial dependency dir there that then blocks every later install with
+# "destination dir ... already exists", and a plain `ls` returns "Operation
+# not permitted". A repo-neutral dir under $HOME sidesteps both. (flash.sh /
+# monitor.sh read the same global config, so they pick this up automatically.)
+ARDUINO_USER_DIR="${ARDUINO_USER_DIR:-$HOME/.arduino-ht6}"
+say "setting arduino-cli user dir -> ${ARDUINO_USER_DIR} (avoids ~/Documents TCC block)"
+arduino-cli config set directories.user "${ARDUINO_USER_DIR}"
+
 # STM32duino board index — fallback target for compile-checking the sketch
 # when no UNO Q core / board is available on this machine.
 arduino-cli config set board_manager.additional_urls \
@@ -48,6 +58,15 @@ fi
 # --- 3. libraries fw-mcu needs ---------------------------------------------
 say "installing sketch libraries..."
 arduino-cli lib install "Adafruit PWM Servo Driver Library" || warn "PCA9685 lib install failed"
+# MCU<->Linux RPC library for the UNO Q (see ../BRIDGE.md §4). This one is
+# NOT optional: the UNO Q core's variant.h #errors out without it (no Serial),
+# so a silent failure here breaks EVERY compile. Fail loud.
+if ! arduino-cli lib install Arduino_RouterBridge; then
+  warn "Arduino_RouterBridge install FAILED — firmware/mcu will not compile."
+  warn "If the error is 'destination dir ... already exists', a stale partial"
+  warn "install is in the OLD user dir; this script now uses ${ARDUINO_USER_DIR}."
+  exit 1
+fi
 
 say "done. next: ./flash.sh (or see README.md for App Lab deploy path)"
 arduino-cli board list || true

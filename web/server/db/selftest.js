@@ -63,14 +63,37 @@ async function exercise(db, label) {
   console.log(`✓ ${label} backend passed`);
 }
 
-// Memory backend (always).
-await exercise(await createDb({ uri: undefined, quiet: true }), 'memory');
+// Memory backend (always). Force it independent of ambient env: passing
+// `uri: undefined` is NOT enough — destructuring defaults fire on undefined, so
+// createDb would fall back to process.env.MONGODB_URI and silently hit Mongo
+// (writing to the default `ht6` db). Clear the env for this call, then restore.
+const savedUri = process.env.MONGODB_URI;
+delete process.env.MONGODB_URI;
+const mem = await createDb({ quiet: true });
+assert.equal(mem.backend, 'memory', 'expected memory backend when no URI');
+await exercise(mem, 'memory');
+if (savedUri !== undefined) process.env.MONGODB_URI = savedUri;
 
 // Mongo backend (only when a URI is available).
 if (process.env.MONGODB_URI) {
+  const dbName = process.env.MONGODB_DB || `ht6_selftest_${Date.now()}`;
+  // Start from a clean slate so the exact-count assertions hold even if this DB
+  // name was used by a prior run. Clear via deleteMany (a readWrite privilege)
+  // rather than dropDatabase — Atlas least-privilege users (readWriteAnyDatabase,
+  // like our app's) can't dropDatabase, and it's the app's own role we test with.
+  // Only pick_events + detections need clearing; the assertions never depend on
+  // stored telemetry counts (and telemetry is capped, so deleteMany is illegal).
+  const { MongoClient } = await import('mongodb');
+  const client = new MongoClient(process.env.MONGODB_URI);
+  await client.connect();
+  const cleanDb = client.db(dbName);
+  await cleanDb.collection('pick_events').deleteMany({});
+  await cleanDb.collection('detections').deleteMany({});
+  await client.close();
+
   const db = await createDb({
     uri: process.env.MONGODB_URI,
-    dbName: process.env.MONGODB_DB || `ht6_selftest_${Date.now()}`,
+    dbName,
     quiet: true,
   });
   assert.equal(db.backend, 'mongo', 'expected mongo backend when MONGODB_URI set');

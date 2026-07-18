@@ -1,146 +1,128 @@
 #include "bench.h"
 
-#include "arm.h"
 #include "config.h"
-#include "drive.h"
+#include "rpc_handlers.h"
 #include "safety.h"
-#include "sonar.h"
 
 namespace bench {
 
 static char line[96];
 static uint8_t lineLen = 0;
 
-static void printStatus() {
-  float pose[NUM_JOINTS];
-  arm::currentPose(pose);
-  Serial.print(F("state="));
-  switch (safety::state()) {
-    case safety::RUN: Serial.print(F("RUN")); break;
-    case safety::WATCHDOG_STOP: Serial.print(F("WATCHDOG_STOP")); break;
-    case safety::ESTOP: Serial.print(F("ESTOP")); break;
+static void replyOk(int state) {
+  Serial.print(F("OK "));
+  Serial.println(state);
+}
+
+static void replyErr(int code, const char *msg) {
+  Serial.print(F("ERR "));
+  Serial.print(code);
+  Serial.print(F(" "));
+  Serial.println(msg);
+}
+
+static void replyStatus() {
+  int st[STATUS_LEN];
+  rpc::get_status(st);
+  Serial.print(F("ST"));
+  for (uint8_t i = 0; i < STATUS_LEN; i++) {
+    Serial.print(F(" "));
+    Serial.print(st[i]);
   }
-  Serial.print(F(" wd="));
-  Serial.print(safety::watchdogEnabled() ? 1 : 0);
-  Serial.print(F(" beat_ms="));
-  Serial.print(safety::msSinceHeartbeat());
-  Serial.print(F(" drive="));
-  Serial.print(drive::commandedL());
-  Serial.print(F(","));
-  Serial.print(drive::commandedR());
-  Serial.print(F(" arm="));
-  for (uint8_t j = 0; j < NUM_JOINTS; j++) {
-    Serial.print(pose[j], 1);
-    Serial.print(j < NUM_JOINTS - 1 ? F(",") : F(""));
-  }
-  Serial.print(F(" moving="));
-  Serial.print(arm::moving() ? 1 : 0);
-  Serial.print(F(" sonar_cm="));
-  Serial.print(sonar::lastCm(), 1);
-  Serial.print(F(" blocked="));
-  Serial.println(sonar::blocked() ? 1 : 0);
+  Serial.println();
 }
 
 static void printHelp() {
-  Serial.println(F("bench commands:"));
-  Serial.println(F("  h                  heartbeat (arms watchdog)"));
-  Serial.println(F("  w 0|1              watchdog disable/enable"));
-  Serial.println(F("  e                  e-stop (latched, servos limp)"));
-  Serial.println(F("  r                  clear e-stop"));
-  Serial.println(F("  d <l> <r>          tank drive, -1..1"));
-  Serial.println(F("  x                  stop drive"));
-  Serial.println(F("  s <j0..j4> <ms>    move 5 servos (deg) over ms"));
-  Serial.println(F("  j <idx> <delta>    jog one joint by delta deg"));
-  Serial.println(F("  z <ms>             go to home pose"));
-  Serial.println(F("  u                  read ultrasonic"));
-  Serial.println(F("  p                  print status line"));
+  Serial.println(F("# D <l> <r>                       set_drive (-1..1)"));
+  Serial.println(F("# S <j0> <j1> <j2> <j3> <j4> <ms> move_servos (deg, ms)"));
+  Serial.println(F("# H                               heartbeat"));
+  Serial.println(F("# E                               estop (latched)"));
+  Serial.println(F("# C                               clear_estop"));
+  Serial.println(F("# Q                               get_status -> ST ..."));
+  Serial.println(F("# Z                               zero_all (90 deg, 1500 ms)"));
+  Serial.println(F("# W <0|1>                        watchdog disarm/arm (bench only)"));
+}
+
+// Strict float parse; returns false on trailing garbage ("1.2x").
+static bool parseFloat(const char *tok, float *out) {
+  char *end = NULL;
+  double v = strtod(tok, &end);
+  if (end == tok || *end != '\0') return false;
+  *out = (float)v;
+  return true;
 }
 
 static void dispatch(char *s) {
-  // strtok-based parse: first token = command, rest = float args.
   char *tok = strtok(s, " \t");
   if (!tok) return;
-  char cmd = tok[0];
+  if (tok[1] != '\0') {
+    replyErr(3, "unknown command");
+    return;
+  }
+  char cmd = (char)toupper(tok[0]);
+
+  // Collect and strictly parse the numeric args.
   float a[8];
   uint8_t n = 0;
-  while (n < 8 && (tok = strtok(NULL, " \t")) != NULL) a[n++] = atof(tok);
+  while ((tok = strtok(NULL, " \t")) != NULL) {
+    if (n >= 8 || !parseFloat(tok, &a[n])) {
+      replyErr(2, "unparseable arg");
+      return;
+    }
+    n++;
+  }
 
   switch (cmd) {
-    case 'h':
-      safety::heartbeat();
-      Serial.println(F("ok beat"));
+    case 'D':
+      if (n != 2) { replyErr(1, "want: D <l> <r>"); return; }
+      replyOk(rpc::set_drive(a[0], a[1]));
       break;
-    case 'w':
-      safety::setWatchdogEnabled(n >= 1 && a[0] != 0);
-      Serial.println(F("ok wd"));
+    case 'S': {
+      if (n != NUM_JOINTS + 1) { replyErr(1, "want: S <j0..j4> <ms>"); return; }
+      int joints[NUM_JOINTS];
+      for (uint8_t j = 0; j < NUM_JOINTS; j++) joints[j] = (int)a[j];
+      replyOk(rpc::move_servos(joints, (int)a[NUM_JOINTS]));
       break;
-    case 'e':
-      safety::triggerEstop();
-      drive::stop();
-      arm::off();
-      Serial.println(F("ok ESTOP"));
+    }
+    case 'H':
+      if (n != 0) { replyErr(1, "want: H"); return; }
+      replyOk(rpc::heartbeat());
       break;
-    case 'r':
-      safety::clearEstop();
-      arm::engage();
-      Serial.println(F("ok run"));
+    case 'E':
+      if (n != 0) { replyErr(1, "want: E"); return; }
+      replyOk(rpc::estop());
       break;
-    case 'd':
-      if (n >= 2 && safety::motionAllowed()) {
-        drive::set(a[0], a[1]);
-        Serial.println(F("ok drive"));
-      } else {
-        Serial.println(F("err drive (args or stopped)"));
-      }
+    case 'C':
+      if (n != 0) { replyErr(1, "want: C"); return; }
+      replyOk(rpc::clear_estop());
       break;
-    case 'x':
-      drive::stop();
-      Serial.println(F("ok stop"));
+    case 'Q':
+      if (n != 0) { replyErr(1, "want: Q"); return; }
+      replyStatus();
       break;
-    case 's':
-      if (n >= NUM_JOINTS + 1 && safety::motionAllowed()) {
-        float joints[NUM_JOINTS];
-        for (uint8_t j = 0; j < NUM_JOINTS; j++) joints[j] = a[j];
-        bool ok = arm::moveTo(joints, (uint32_t)a[NUM_JOINTS]);
-        Serial.println(ok ? F("ok move") : F("ok move (clamped)"));
-      } else {
-        Serial.println(F("err move (args or stopped)"));
-      }
+    case 'Z':
+      if (n != 0) { replyErr(1, "want: Z"); return; }
+      replyOk(rpc::zero_all());
       break;
-    case 'j':
-      if (n >= 2 && safety::motionAllowed()) {
-        arm::jog((uint8_t)a[0], a[1]);
-        Serial.println(F("ok jog"));
-      } else {
-        Serial.println(F("err jog (args or stopped)"));
-      }
-      break;
-    case 'z':
-      if (safety::motionAllowed()) {
-        arm::moveTo(JOINT_HOME_DEG, n >= 1 ? (uint32_t)a[0] : 1500);
-        Serial.println(F("ok home"));
-      } else {
-        Serial.println(F("err home (stopped)"));
-      }
-      break;
-    case 'u':
-      Serial.print(F("sonar_cm="));
-      Serial.println(sonar::lastCm(), 1);
-      break;
-    case 'p':
-      printStatus();
+    case 'W':
+      // Bench-only knob (BRIDGE.md §5): bench boots DISARMED so a human at a
+      // serial monitor isn't stuck in WATCHDOG; W 1 arms + resets the timer.
+      if (n != 1) { replyErr(1, "want: W <0|1>"); return; }
+      safety::setWatchdogEnabled(a[0] != 0);
+      replyOk((int)safety::tick());
       break;
     case '?':
       printHelp();
+      replyOk((int)safety::state());
       break;
     default:
-      Serial.println(F("err unknown (try ?)"));
+      replyErr(3, "unknown command");
   }
 }
 
 void begin() {
   Serial.begin(BENCH_BAUD);
-  Serial.println(F("fw-mcu bench ready ('?' for help)"));
+  Serial.println(F("# uno-q-mcu bench " FW_VERSION));
 }
 
 void tick() {
@@ -156,9 +138,14 @@ void tick() {
       line[lineLen++] = c;
     } else {
       lineLen = 0;  // overflow — drop the line
-      Serial.println(F("err line too long"));
+      replyErr(2, "line too long");
     }
   }
+}
+
+void debug(const char *msg) {
+  Serial.print(F("# "));
+  Serial.println(msg);
 }
 
 }  // namespace bench

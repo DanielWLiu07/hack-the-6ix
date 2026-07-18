@@ -6,6 +6,8 @@ namespace drive {
 
 static float cmdL = 0, cmdR = 0;    // requested by RPC/bench
 static float outL = 0, outR = 0;    // slew-limited, actually applied
+static bool fwdInhibit = false;
+static uint32_t lastTickMs = 0;
 
 static float clamp1(float v) {
   if (v > 1.0f) return 1.0f;
@@ -29,14 +31,14 @@ static void writeMotor(int pinIn1, int pinIn2, int pinPwm, float v, bool invert)
 }
 
 void begin() {
-  pinMode(PIN_ML_IN1, OUTPUT);
-  pinMode(PIN_MR_IN1, OUTPUT);
+  pinMode(PIN_M_L_IN1, OUTPUT);
+  pinMode(PIN_M_R_IN1, OUTPUT);
 #if !DRIVE_PHASE_ENABLE
-  pinMode(PIN_ML_IN2, OUTPUT);
-  pinMode(PIN_MR_IN2, OUTPUT);
+  pinMode(PIN_M_L_IN2, OUTPUT);
+  pinMode(PIN_M_R_IN2, OUTPUT);
 #endif
-  pinMode(PIN_ML_PWM, OUTPUT);
-  pinMode(PIN_MR_PWM, OUTPUT);
+  pinMode(PIN_M_L_PWM, OUTPUT);
+  pinMode(PIN_M_R_PWM, OUTPUT);
   stop();
 }
 
@@ -47,9 +49,11 @@ void set(float l, float r) {
 
 void stop() {
   cmdL = cmdR = outL = outR = 0;
-  writeMotor(PIN_ML_IN1, PIN_ML_IN2, PIN_ML_PWM, 0, MOTOR_L_INVERT);
-  writeMotor(PIN_MR_IN1, PIN_MR_IN2, PIN_MR_PWM, 0, MOTOR_R_INVERT);
+  writeMotor(PIN_M_L_IN1, PIN_M_L_IN2, PIN_M_L_PWM, 0, M_L_INVERT);
+  writeMotor(PIN_M_R_IN1, PIN_M_R_IN2, PIN_M_R_PWM, 0, M_R_INVERT);
 }
+
+void setForwardInhibit(bool inhibit) { fwdInhibit = inhibit; }
 
 static float slew(float out, float cmd) {
   float d = cmd - out;
@@ -59,15 +63,21 @@ static float slew(float out, float cmd) {
 }
 
 void tick() {
-  outL = slew(outL, cmdL);
-  outR = slew(outR, cmdR);
-  writeMotor(PIN_ML_IN1, PIN_ML_IN2, PIN_ML_PWM, outL, MOTOR_L_INVERT);
-  writeMotor(PIN_MR_IN1, PIN_MR_IN2, PIN_MR_PWM, outR, MOTOR_R_INVERT);
+  uint32_t now = millis();
+  if (now - lastTickMs < DRIVE_TICK_MS) return;
+  lastTickMs = now;
+  float tl = cmdL, tr = cmdR;
+  if (fwdInhibit) {
+    if (tl > 0) tl = 0;
+    if (tr > 0) tr = 0;
+  }
+  outL = slew(outL, tl);
+  outR = slew(outR, tr);
+  writeMotor(PIN_M_L_IN1, PIN_M_L_IN2, PIN_M_L_PWM, outL, M_L_INVERT);
+  writeMotor(PIN_M_R_IN1, PIN_M_R_IN2, PIN_M_R_PWM, outR, M_R_INVERT);
 }
 
 float commandedL() { return cmdL; }
 float commandedR() { return cmdR; }
-
-bool movingForward() { return cmdL > DRIVE_DEADBAND || cmdR > DRIVE_DEADBAND; }
 
 }  // namespace drive

@@ -1,0 +1,14 @@
+# robot/vision runtime deps — pinned for reproducible UNO Q (aarch64 Debian) installs.
+#
+# HSV path needs only numpy + OpenCV. ONNX path additionally needs onnxruntime.
+# On the UNO Q / any headless ARM board use opencv-python-headless (no GUI/GTK
+# deps, smaller, no X11) — the pipeline never opens a cv2 window.
+#
+# Laptop dev can `pip install opencv-python` instead if you want cv2.imshow.
+
+numpy>=1.24,<2.0
+opencv-python-headless>=4.8,<5.0
+
+# ONNX inference (only imported if ml/ripeness/export/model.onnx exists).
+# onnxruntime ships aarch64 wheels; CPUExecutionProvider is what we use.
+onnxruntime>=1.16,<2.0

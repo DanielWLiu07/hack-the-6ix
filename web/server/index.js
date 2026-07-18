@@ -13,6 +13,8 @@ import { Server } from 'socket.io';
 import { createStore } from './store.js';
 import { streamHandler } from './stream.js';
 import { validators } from './schemas.js';
+import { forwardPickEvent, base44Enabled } from './base44.js';
+import { createPanicSwitch } from './panic.js';
 
 try { process.loadEnvFile(new URL('./.env', import.meta.url).pathname); } catch { /* no .env */ }
 
@@ -36,16 +38,47 @@ const CONTROL_EVENTS = ['drive', 'arm_pose', 'pick', 'estop', 'nl_command'];
 
 const counts = { robot: 0, ui: 0, agent: 0 };
 let lastTelemetry = null;
-let lastTelemetryStoredAt = 0;
+
+// Set of socket ids that are REAL robots (role=robot without the panic-sim tag).
+// The demo panic switch uses this to know if the real robot has died.
+const realRobots = new Set();
+
+// Demo panic switch: spawns/kills sim.js as a fallback data source if the real
+// robot dies mid-judging. Boot mode from FORCE_SIM env (off|on|auto|1|0).
+const panic = createPanicSwitch({
+  port: PORT,
+  getRealRobotCount: () => realRobots.size,
+  graceMs: Number(process.env.PANIC_GRACE_MS) || 4000,
+});
+const bootMode = ({ '1': 'on', on: 'on', auto: 'auto', '0': 'off', off: 'off', '': 'off' })[
+  (process.env.FORCE_SIM ?? '').toLowerCase()
+];
+if (bootMode && bootMode !== 'off') panic.setMode(bootMode, 'boot env FORCE_SIM');
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const normalizeRole = (r) => (r === 'farmhand' ? 'agent' : r);
 
 io.on('connection', (socket) => {
-  const rawRole = socket.handshake.auth?.role || socket.handshake.query?.role;
-  const role = ['robot', 'agent'].includes(rawRole) ? rawRole : 'ui';
+  const rawRole = normalizeRole(socket.handshake.auth?.role || socket.handshake.query?.role);
+  let role = ['robot', 'agent'].includes(rawRole) ? rawRole : 'ui';
+  const isSim = socket.handshake.auth?.sim === true; // panic-switch fallback sim
   socket.join(role + 's');
   counts[role]++;
-  console.log(`[hub] ${role} connected (${socket.id}) — robots:${counts.robot} uis:${counts.ui} agents:${counts.agent}`);
+  updateRealRobot(socket.id, role, isSim);
+  console.log(`[hub] ${role}${isSim ? ' (sim)' : ''} connected (${socket.id}) — robots:${counts.robot} uis:${counts.ui} agents:${counts.agent}`);
+
+  // llm-client's service registers post-connect: register {"role":"farmhand"}
+  socket.on('register', (payload = {}) => {
+    const next = ['robot', 'agent'].includes(normalizeRole(payload?.role)) ? normalizeRole(payload.role) : 'ui';
+    if (next === role) return;
+    socket.leave(role + 's');
+    counts[role]--;
+    role = next;
+    socket.join(role + 's');
+    counts[role]++;
+    updateRealRobot(socket.id, role, isSim);
+    console.log(`[hub] ${socket.id} re-registered as ${role}`);
+  });
 
   // late-joining dashboards get the last known robot state immediately
   if (role === 'ui' && lastTelemetry) socket.emit('telemetry', lastTelemetry);
@@ -57,15 +90,12 @@ io.on('connection', (socket) => {
       io.to('uis').emit(event, payload);
       if (event === 'telemetry') {
         lastTelemetry = payload;
-        const now = Date.now();
-        if (now - lastTelemetryStoredAt >= 1000) { // downsample to <=1 Hz
-          lastTelemetryStoredAt = now;
-          store.insertTelemetry(payload).catch(logStoreErr);
-        }
+        store.recordTelemetry(payload).catch(logStoreErr); // store self-downsamples to <=1 Hz
       } else if (event === 'detection') {
-        store.insertDetection(payload).catch(logStoreErr);
+        store.recordDetection(payload).catch(logStoreErr);
       } else if (event === 'pick_event') {
-        store.insertPickEvent(payload).catch(logStoreErr);
+        store.recordPickEvent(payload).catch(logStoreErr);
+        forwardPickEvent(payload); // → Base44 Orchard OS (no-op unless env-gated on)
       }
     });
   }
@@ -86,14 +116,48 @@ io.on('connection', (socket) => {
     });
   }
 
+  // FarmHand agent replies: nl_action {ts, text, ok, action|clarification|error}
+  // (contract proposed by llm-client). Echo to uis for display; forward the full
+  // nl_action to robots plus a mapped basic control event for fw-linux.
+  socket.on('nl_action', (payload) => {
+    if (role !== 'agent' || !isObj(payload) || typeof payload.ok !== 'boolean') return;
+    io.to('uis').emit('nl_action', payload);
+    if (!payload.ok || !isObj(payload.action)) return;
+    io.to('robots').emit('nl_action', payload);
+    const { task, fruit } = payload.action;
+    if (task === 'stop') io.to('robots').emit('estop', {});
+    else if (task === 'pick' || task === 'sort') {
+      io.to('robots').emit('pick', { target: fruit === 'apple' || fruit === 'banana' ? fruit : 'nearest' });
+    }
+  });
+
   socket.on('disconnect', () => {
     counts[role]--;
+    realRobots.delete(socket.id);
+    if (panic.mode === 'auto') panic.reconcile('robot disconnect');
     console.log(`[hub] ${role} disconnected (${socket.id})`);
   });
 });
 
+// Keep the realRobots set in sync with a socket's current role. A robot without
+// the panic-sim tag counts as "the real robot" for auto-failover.
+function updateRealRobot(id, role, isSim) {
+  if (role === 'robot' && !isSim) realRobots.add(id);
+  else realRobots.delete(id);
+  if (panic.mode === 'auto') panic.reconcile('robot membership change');
+}
+
 function logStoreErr(err) {
   console.warn('[store] write failed:', err.message);
+}
+
+let lastDropLog = 0;
+function dropInvalid(event, payload) {
+  const now = Date.now();
+  if (now - lastDropLog > 5000) { // rate-limited so a bad emitter can't spam the log
+    lastDropLog = now;
+    console.warn(`[hub] dropped invalid ${event}:`, JSON.stringify(payload)?.slice(0, 200));
+  }
 }
 
 // --- REST -------------------------------------------------------------------
@@ -104,6 +168,9 @@ app.get('/api/health', (_req, res) => {
     uptime_s: Math.round(process.uptime()),
     clients: { ...counts },
     robot_connected: counts.robot > 0,
+    real_robot_connected: realRobots.size > 0,
+    base44_forwarding: base44Enabled(),
+    force_sim: panic.status(),
   });
 });
 
@@ -117,10 +184,47 @@ app.get('/api/stats', async (_req, res) => {
 
 app.get('/api/picks', async (req, res) => {
   try {
+    const { fruit, ripeness, since } = req.query;
     const limit = Math.min(Number(req.query.limit) || 100, 1000);
-    res.json(await store.getPicks({ limit }));
+    res.json(await store.getPicks({ limit, fruit, ripeness, since: since ? Number(since) : undefined }));
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/detections', async (req, res) => {
+  try {
+    const limit = Math.min(Number(req.query.limit) || 50, 1000);
+    res.json(await store.getDetections({ limit }));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- demo panic switch ------------------------------------------------------
+// GET  /api/force-sim            -> current state
+// POST /api/force-sim {mode}     -> "off" | "on" | "auto"
+// POST /api/force-sim {on:bool}  -> simple button (on->"on", false->"off")
+// Guarded by X-Panic-Key header iff PANIC_KEY env is set.
+app.get('/api/force-sim', (_req, res) => res.json(panic.status()));
+
+app.post('/api/force-sim', (req, res) => {
+  const key = process.env.PANIC_KEY;
+  if (key && req.get('x-panic-key') !== key) {
+    return res.status(403).json({ error: 'bad or missing X-Panic-Key' });
+  }
+  const body = isObj(req.body) ? req.body : {};
+  let mode = body.mode;
+  if (mode === undefined && body.on !== undefined) mode = body.on ? 'on' : 'off';
+  if (mode === undefined) {
+    return res.status(400).json({ error: 'need {"mode":"off|on|auto"} or {"on":true|false}' });
+  }
+  try {
+    const state = panic.setMode(String(mode).toLowerCase(), 'api');
+    console.log('[hub] PANIC force-sim ->', JSON.stringify(state));
+    res.json(state);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
@@ -130,10 +234,13 @@ app.get('/stream', streamHandler);
 
 server.listen(PORT, () => {
   console.log(`[hub] listening on http://localhost:${PORT}  (stream: /stream, stats: /api/stats)`);
+  console.log(`[hub] Base44 pick_event forwarding: ${base44Enabled() ? 'ON' : 'off (set BASE44_WEBHOOK_URL to enable)'}`);
+  console.log(`[hub] demo panic switch: mode=${panic.mode}  (POST /api/force-sim {"mode":"off|on|auto"})`);
 });
 
 async function shutdown() {
   console.log('[hub] shutting down');
+  panic.shutdown();
   io.close();
   server.close();
   await store.close().catch(() => {});

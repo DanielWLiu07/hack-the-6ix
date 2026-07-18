@@ -135,7 +135,7 @@
 
 .loglist { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; }
 .loglist li {
-  display: flex; align-items: center; gap: 0.6rem;
+  display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; row-gap: 0.3rem;
   padding: 0.5rem 0.6rem; border-radius: 8px;
   background: var(--ui-panel-2); font-size: 0.83rem;
 }
@@ -195,4 +195,22 @@
   background: rgba(70,167,88,0.15); color: var(--ui-green); font-size: 1rem; cursor: pointer;
 }
 
-.lidar-canvas { height: min(70vh, 640px); border-radius: 12px; overflow: hidden; border: 1px solid var(--ui-border); background: #050806; }
+.lidar-canvas { position: relative; height: min(70vh, 640px); border-radius: 12px; overflow: hidden; border: 1px solid var(--ui-border); background: #050806; }
+.lidar-toggle { position: absolute; top: 10px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 8px; background: rgba(5, 8, 6, 0.72); border: 1px solid var(--ui-border); color: var(--ui-dim); font-size: 0.78rem; cursor: pointer; user-select: none; }
+.lidar-toggle input { cursor: pointer; accent-color: #46e068; }
+.lidar-toggle input:disabled { cursor: not-allowed; }
+
+/* analytics charts — thin marks, rounded data-ends, text in ink not series color */
+.vz-row { display: grid; grid-template-columns: 7.5rem 1fr; align-items: center; gap: 0.6rem; margin-bottom: 0.65rem; }
+.vz-label { font-size: 0.8rem; color: var(--ui-dim); font-family: var(--ui-mono); white-space: nowrap; }
+.vz-track { position: relative; height: 16px; }
+.vz-bar { height: 100%; border-radius: 0 4px 4px 0; transition: width 0.4s; min-width: 2px; }
+.vz-val { position: absolute; top: 50%; transform: translateY(-50%); font-size: 0.75rem; font-family: var(--ui-mono); color: var(--ui-text); white-space: nowrap; }
+.vz-val.inside { color: #0b140e; }
+.vz-legend { display: flex; gap: 1rem; margin-top: 0.75rem; font-size: 0.75rem; color: var(--ui-dim); }
+.vz-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 0.35rem; vertical-align: -1px; }
+.vz-stack { display: flex; height: 16px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--ui-panel); }
+.vz-stack-empty { flex: 1; background: var(--ui-panel-2); }
+.vz-stack-label { font-size: 0.85rem; margin-bottom: 0.35rem; color: var(--ui-text); }
+.vz-stack-nums { display: flex; justify-content: space-between; font-size: 0.72rem; font-family: var(--ui-mono); color: var(--ui-dim); margin-top: 0.3rem; }
+.vz-muted { color: var(--ui-faint); }

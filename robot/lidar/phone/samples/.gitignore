@@ -1,0 +1,8 @@
+# scratch dir for real/temporary scan files — don't commit large binaries
+*.glb
+*.gltf
+*.ply
+*.obj
+*.usdz
+*.bin
+!.gitignore

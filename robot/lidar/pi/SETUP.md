@@ -72,6 +72,7 @@ verify at the venue and update with
 | `ANGLE_OFFSET_DEG` | `0` | mounting rotation so 0° = robot forward |
 | `ANGLE_CCW` | `0` | set 1 if lidar mounted upside down |
 | `MIN_RANGE_M` / `MAX_RANGE_M` | `0.10` / `12.0` | range filter |
+| `LIDAR_MOCK` | `0` | set 1 to synthesize scans (no hardware / demo fallback) |
 
 ## Troubleshooting
 
@@ -84,3 +85,5 @@ verify at the venue and update with
   localhost.
 - **Motor not spinning (A1)**: needs the USB adapter's MOTOCTL jumper /
   5V supply; power from Buck #2 per `docs/HARDWARE.md`, never the servo rail.
+- **Lidar dead at demo time**: `LIDAR_MOCK=1 ./run.sh` streams a synthetic
+  4×4 m room with a moving obstacle through the exact same pipeline.

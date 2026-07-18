@@ -43,7 +43,7 @@ export function startSim(bus) {
       state = STATES[(STATES.indexOf(state) + 1) % STATES.length] || 'IDLE'
       stateAge = 0
       if (state === 'PICK' || state === 'SORT') {
-        armTarget = arm.map((j, i) => Math.max(0, Math.min(180, j + (Math.random() - 0.5) * 70)))
+        armTarget = arm.map((j) => Math.max(0, Math.min(180, j + (Math.random() - 0.5) * 70)))
       }
     }
     arm = arm.map((j, i) => j + (armTarget[i] - j) * 0.15)

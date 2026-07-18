@@ -10,12 +10,11 @@ static float target[NUM_JOINTS];
 static uint32_t moveStartMs = 0;
 static uint32_t moveDurMs = 0;
 static bool active = false;      // a move is in progress
-static bool energized = true;    // false after off(): no PWM output
 static uint32_t lastTickMs = 0;
 
-static float clampJoint(uint8_t j, float deg, bool *clamped) {
-  if (deg < JOINT_MIN_DEG[j]) { if (clamped) *clamped = true; return JOINT_MIN_DEG[j]; }
-  if (deg > JOINT_MAX_DEG[j]) { if (clamped) *clamped = true; return JOINT_MAX_DEG[j]; }
+static float clampJoint(uint8_t j, float deg) {
+  if (deg < JOINT_MIN_DEG[j]) return JOINT_MIN_DEG[j];
+  if (deg > JOINT_MAX_DEG[j]) return JOINT_MAX_DEG[j];
   return deg;
 }
 
@@ -26,7 +25,6 @@ static uint16_t degToMicros(float deg) {
 }
 
 static void writePose() {
-  if (!energized) return;
   for (uint8_t j = 0; j < NUM_JOINTS; j++) {
     pca9685::writeMicros(j, degToMicros(cur[j]));
   }
@@ -39,56 +37,32 @@ static float ease(float t) { return t * t * (3.0f - 2.0f * t); }
 void begin() {
   pca9685::begin(PCA9685_ADDR, SERVO_PWM_FREQ_HZ);
   for (uint8_t j = 0; j < NUM_JOINTS; j++) {
-    cur[j] = from[j] = target[j] = JOINT_HOME_DEG[j];
+    cur[j] = from[j] = target[j] = ZERO_ALL_DEG;
   }
-  energized = true;
   writePose();
 }
 
-bool moveTo(const float joints[NUM_JOINTS], uint32_t durationMs) {
-  bool clamped = false;
+void moveTo(const float joints[NUM_JOINTS], uint32_t durationMs) {
   float maxDelta = 0;
   for (uint8_t j = 0; j < NUM_JOINTS; j++) {
     from[j] = cur[j];
-    target[j] = clampJoint(j, joints[j], &clamped);
+    target[j] = clampJoint(j, joints[j]);
     float d = fabsf(target[j] - from[j]);
     if (d > maxDelta) maxDelta = d;
   }
   if (durationMs < SERVO_MIN_MOVE_MS) durationMs = SERVO_MIN_MOVE_MS;
+  if (durationMs > SERVO_MAX_MOVE_MS) durationMs = SERVO_MAX_MOVE_MS;
   // Stretch duration so no joint exceeds the speed cap.
   uint32_t minDur = (uint32_t)((maxDelta / SERVO_MAX_DEG_PER_TICK) * SERVO_TICK_MS);
   if (durationMs < minDur) durationMs = minDur;
   moveStartMs = millis();
   moveDurMs = durationMs;
   active = true;
-  engage();  // an explicit move re-energizes after a hard stop
-  return !clamped;
-}
-
-bool jog(uint8_t joint, float deltaDeg) {
-  if (joint >= NUM_JOINTS) return false;
-  float t[NUM_JOINTS];
-  for (uint8_t j = 0; j < NUM_JOINTS; j++) t[j] = active ? target[j] : cur[j];
-  t[joint] = cur[joint] + deltaDeg;
-  return moveTo(t, SERVO_MIN_MOVE_MS);
 }
 
 void hold() {
   active = false;
   for (uint8_t j = 0; j < NUM_JOINTS; j++) target[j] = cur[j];
-}
-
-void off() {
-  hold();
-  energized = false;
-  pca9685::allOff();
-}
-
-void engage() {
-  if (!energized) {
-    energized = true;
-    writePose();
-  }
 }
 
 void tick() {

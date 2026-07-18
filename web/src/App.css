@@ -42,4 +42,91 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
 .stat .value { font-size: 1.6rem; font-weight: 700; }
 .stat .label { font-size: 0.75rem; color: #8a978d; letter-spacing: 0.05em; }
 
-.note { color: #6f7d72; font-size: 0.85rem; margin-top: 1rem; }
+.note { color: #6f7d72; font-size: 0.85rem; margin-top: 1rem; max-width: 34rem; }
+
+.cta-row { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-top: 0.5rem; }
+.cta {
+  padding: 0.75rem 1.4rem;
+  border-radius: 10px;
+  border: 1px solid #2b3a2f;
+  color: #d7e2d9;
+  text-decoration: none;
+  font-size: 0.95rem;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.15s, background 0.15s;
+}
+.cta:hover { border-color: #46a758; background: rgba(70, 167, 88, 0.1); }
+.cta.primary {
+  border-color: #46a758;
+  background: rgba(70, 167, 88, 0.18);
+  color: #eaf5ec;
+  font-weight: 600;
+}
+
+/* ── Painterly landing (iframe embed / r3f orchard backdrop + overlay) ── */
+
+.hero-stage {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: #dcd6c4; /* paper — shows while the scene loads */
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Fullscreen backdrops fill the stage and sit behind the overlay. */
+.hero-embed,
+.orchard-canvas,
+.hero-fallback {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+
+/* Static gradient shown if WebGL is unavailable or the r3f chunk is loading. */
+.hero-fallback {
+  background:
+    radial-gradient(ellipse at 60% 25%, #e6e0cf 0%, #d3cdb8 45%, #c4c9b6 100%);
+}
+
+.orchard-load {
+  position: absolute;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%);
+  padding: 0.5rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(238, 235, 222, 0.8);
+  color: #4a5a48;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  z-index: 2;
+}
+
+/* The ONLY thing over the pure scene: a tiny, low-opacity corner link out.
+   Sits above the backdrop but is small enough to leave the scene fully usable. */
+.scene-chip {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 4;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  color: #26332a;
+  background: rgba(240, 237, 224, 0.55);
+  border: 1px solid rgba(90, 110, 88, 0.3);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  opacity: 0.5;
+  transition: opacity 0.15s, background 0.15s;
+}
+.scene-chip:hover {
+  opacity: 1;
+  background: rgba(240, 237, 224, 0.9);
+}

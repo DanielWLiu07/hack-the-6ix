@@ -25,3 +25,13 @@
 - .github/workflows/web-build.yml: on push/PR touching web/** → npm ci, lint, build (Node 22). Lint verified exit 0 locally (warnings only), build green — CI will pass on first push.
 - DEPLOY.md updated: ngrok (installed) is the tunnel plan; cloudflared is not on this laptop.
 - All 4 assigned tasks done or blocked-on-venue. Standing by: watching web-frontend status → build-verify + `vercel deploy --prod --yes` at each milestone. Prod: https://hack-the-6ix-chi.vercel.app
+
+## [restart] WIP — resuming after crash; frontend milestone detected, redeploying
+- Restarted worker deploy. Re-read assignments + BROADCAST (phase-2 has no new deploy directive; VITE_SERVER_URL still venue-deferred as before). No long-running processes owned by me (build+deploy role) — nothing to restart.
+- Vercel authed (danielwliu07), project linked. `npm run build` passes clean (vite 8.1.5).
+- Frontend has advanced since my last prod deploy (22:06 was 191 kB single chunk; now 339 kB main + code-split 902 kB LidarView chunk = lidar/three.js + teleop landed). Redeploying prod now.
+
+## [restart+] DONE — prod redeployed with latest frontend, verified
+- `vercel deploy --prod --yes` → dpl_273r3ra3WgmejrYgUbWa24EA9Xj9, READY, target production. Remote build clean.
+- Verified prod alias **https://hack-the-6ix-chi.vercel.app** resolves to that deployment (vercel inspect). `/` → 200, `/teleop` SPA rewrite → 200, our Vite bundle served. (Bundle hash differs from local build — Vercel builds remotely, expected.)
+- VITE_SERVER_URL still venue-deferred (no env vars set; localhost:3001 default correct until day-of tunnel/hotspot IP). Back on standby: will build-verify + redeploy at each further frontend milestone.

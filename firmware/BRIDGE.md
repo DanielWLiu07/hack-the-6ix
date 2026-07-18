@@ -93,41 +93,51 @@ want instant obstacle events, we'll add a Bridge notification `on_state(state)`
 - Never queue motion commands while DOWN — drop them. Stale motion is worse
   than no motion.
 
-## 4. App Lab Bridge binding (the real transport)
+## 4. App Lab Bridge binding (the real transport) — VERIFIED on-desk
 
-The UNO Q's Arduino App Lab runtime ships an RPC bridge between the Linux
-container and the sketch. Register each call in §3 by **exactly these string
-names**: `"set_drive"`, `"move_servos"`, `"heartbeat"`, `"estop"`,
-`"clear_estop"`, `"get_status"`, `"zero_all"`.
-
-Sketch side (shape per App Lab's RPC examples):
+**MCU side** (verified by fw-tools against the shipped libraries, 17 Jul):
+the bridge is the **`Arduino_RouterBridge`** library (Library Manager,
+tested v0.4.3) — a Zephyr wrapper of `Arduino_RPClite` speaking
+**MsgPack-RPC** to an rpclib-compatible router on the Linux side. FQBN
+`arduino:zephyr:unoq` (core `arduino:zephyr` 0.56.0) compiles on a desktop
+via `tools/flash.sh --check`, no board needed.
 
 ```cpp
-#include <Arduino.h>
-// App Lab bridge header per the installed runtime's RPC example
-Bridge.provide("set_drive", set_drive);      // float,float -> int
-Bridge.provide("move_servos", move_servos);  // array[5],int -> int
-// ... one provide() per call in §3
+#include <Arduino_RouterBridge.h>
+
+void setup() {
+  Bridge.begin();
+  // provide_safe -> handler runs in the MAIN LOOP thread (where the 20 ms
+  // control tick lives), so handlers can touch motion state without locks.
+  // Plain provide() runs in a SEPARATE thread — don't use it for anything
+  // that mutates drive/servo state.
+  Bridge.provide_safe("set_drive", set_drive);        // (float,float)->int
+  Bridge.provide_safe("move_servos", move_servos);    // (int×5, int)->int
+  Bridge.provide_safe("heartbeat", heartbeat);        // ()->int
+  Bridge.provide("estop", estop_handler);             // plain provide: must
+                                                      // fire even if loop hangs
+  Bridge.provide_safe("clear_estop", clear_estop);
+  Bridge.provide_safe("get_status", get_status);      // ()->MsgPack::arr_t<int>[10]
+  Bridge.provide_safe("zero_all", zero_all);
+}
 ```
 
-Python side (fw-linux):
+Note `provide_safe` handlers only run when the main loop services the bridge
+— keep the loop tick ≤ 20 ms so RPC latency stays inside the §3 50 ms budget.
+`estop` uses plain `provide` (separate thread) intentionally: it must work
+even if the control loop wedges; its handler only sets a `volatile bool`.
 
-```python
-from arduino.app_utils import Bridge   # per App Lab runtime
-state = Bridge.call("heartbeat")       # blocking call, returns int
-```
+**Wire signatures**: `move_servos` takes **6 flat int args**
+`(j0,j1,j2,j3,j4,duration_ms)` — flat scalars marshal trivially on both
+sides; conceptually it's still `joints[5] + duration_ms`. `get_status`
+returns a 10-element MsgPack int array (`MsgPack::arr_t<int>`), order per §3.
 
-> ⚠️ **Verify the exact API names** (`Bridge.provide` / `Bridge.call` /
-> import path) against the RPC example bundled with the App Lab version
-> installed on our UNO Q before writing lots of code — Arduino has renamed
-> these between releases. **The §1–§3 semantic contract is normative; this
-> section's identifiers are descriptive.** Whoever touches the board first
-> (likely fw-tools during setup) posts the confirmed names in their status
-> file; both firmware workers then align.
-
-Until the board is in hand, fw-linux codes against a `MockBridge` with the §3
-signatures, and fw-mcu structures the sketch so each RPC handler is a plain
-function — bindable to either App Lab Bridge or the serial parser below.
+**Linux side**: the router is rpclib/MsgPack-RPC compatible; App Lab's
+Python wrapper (`arduino.app_utils` / `app_bridge` — exists only on the
+board's Debian image, exact import TBC on first board contact) or, worst
+case, a plain Python `msgpack-rpc` client against the router socket.
+fw-linux: keep the transport behind your `MockBridge` interface so swapping
+in the real client is one file.
 
 ## 5. Serial bench protocol (fallback + bench-test transport)
 
@@ -145,8 +155,15 @@ E                              estop
 C                              clear_estop
 Q                              get_status
 Z                              zero_all
+W <0|1>                        watchdog disarm/arm (bench-only, see below)
 ?                              help (list commands, non-normative)
 ```
+
+**Bench mode boots with the watchdog DISARMED** (else a human typing at
+<2 Hz lives in `WATCHDOG` and every motion command is ignored). `W 1` arms it
+(and resets its timer) for testing the watchdog path; `W 0` disarms. This
+knob exists **only** in the serial bench transport — under App Lab Bridge the
+watchdog is always armed, there is no `W` RPC.
 
 ### Responses (MCU → host)
 

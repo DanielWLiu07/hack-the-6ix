@@ -9,8 +9,12 @@ import { io } from 'socket.io-client';
 
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3001';
 const LIDAR_ON = process.env.SIM_LIDAR !== '0';
+// When the hub spawns us as its demo panic-switch fallback it sets SIM_TAG=panic.
+// We flag the connection so the hub's auto-failover never counts this stand-in
+// as "the real robot came back". Harmless (just a marker) when run manually.
+const IS_PANIC_SIM = process.env.SIM_TAG === 'panic';
 
-const socket = io(SERVER_URL, { auth: { role: 'robot' } });
+const socket = io(SERVER_URL, { auth: { role: 'robot', sim: IS_PANIC_SIM } });
 
 const FRUITS = ['apple', 'apple', 'banana']; // apples slightly more common
 const RIPENESS = ['ripe', 'ripe', 'unripe'];

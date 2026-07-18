@@ -1,0 +1,15 @@
+# Heavy artifacts — regenerate with make_synth.py / train.py / export.py.
+# Keep the code + classes.json + dataset.yaml in git, not the bytes.
+data/dataset/
+data/real/
+data/roboflow_raw/
+runs/
+*.pt
+yolov8n.pt
+infer_test_out.jpg
+__pycache__/
+*.pyc
+
+# Exception: the deployable model IS the deliverable — track it so firmware/linux
+# can pull it. (Un-ignore export/.)
+!export/

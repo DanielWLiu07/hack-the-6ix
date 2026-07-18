@@ -1,11 +1,16 @@
-// safety.h — heartbeat watchdog + latched e-stop.
+// safety.h — BRIDGE.md §2 safety state machine.
 //
-// Two distinct stop levels:
-//  * WATCHDOG_STOP — no heartbeat from Linux for HEARTBEAT_TIMEOUT_MS.
-//    Drive is zeroed, arm HOLDS its pose (fruit is not dropped). Auto-clears
-//    when heartbeats resume.
-//  * ESTOP — explicit estop() (RPC, bench, or sonar has no say here). Drive
-//    zeroed, arm PWM cut. LATCHED: only clear_estop() releases it.
+// One composite state, priority ESTOP > WATCHDOG > OBSTACLE > OK; the
+// underlying flags stay individually tracked so get_status() can report a
+// pending obstacle even while e-stopped.
+//
+//  0 OK        normal
+//  1 OBSTACLE  ultrasonic < 15 cm; forward drive zeroed, arm unaffected.
+//              Auto-clears above 25 cm (hysteresis, owned by sonar module).
+//  2 WATCHDOG  no heartbeat for 500 ms; drive -> 0, servos HOLD pose.
+//              Auto-clears on next heartbeat.
+//  3 ESTOP     estop() received; drive -> 0, interpolation frozen. LATCHED —
+//              only clear_estop() exits.
 #pragma once
 
 #include <Arduino.h>
@@ -13,29 +18,32 @@
 namespace safety {
 
 enum State : uint8_t {
-  RUN = 0,
-  WATCHDOG_STOP = 1,
-  ESTOP = 2,
+  OK = 0,
+  OBSTACLE = 1,
+  WATCHDOG = 2,
+  ESTOP = 3,
 };
 
 void begin();
 
-// Feed the watchdog (called by the Bridge heartbeat RPC or bench 'h').
+// Feed the watchdog timer. Does NOT arm it — arming is transport-specific
+// (BRIDGE.md §5): App Lab Bridge arms at begin(), bench arms only via 'W 1'.
 void heartbeat();
 
-// Enable/disable the watchdog. Disabled by default at boot so the bench can
-// exercise motors without a Linux side; the first heartbeat() arms it.
 void setWatchdogEnabled(bool en);
 bool watchdogEnabled();
+
+// Sonar module reports its hysteresis-filtered obstacle flag here each poll.
+void setObstacle(bool blocked);
 
 void triggerEstop();
 void clearEstop();
 
-// Evaluate timers; returns current state. Call every loop pass.
+// Recompute and return the composite state. Call every loop pass.
 State tick();
-
 State state();
-// True when motion commands are allowed through.
+
+// True when drive/arm motion commands are accepted (OK or OBSTACLE).
 bool motionAllowed();
 uint32_t msSinceHeartbeat();
 

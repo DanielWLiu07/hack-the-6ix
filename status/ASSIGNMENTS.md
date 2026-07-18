@@ -84,10 +84,15 @@ You are one of 14 Claude workers in tmux panes. The master Claude (pane `master.
 3. `bench.py`: FPS benchmark harness (report for laptop now; UNO Q later — Qualcomm track needs on-device numbers).
 4. Coordinate with fw-linux via status files on the detector import interface.
 
-## lidar-pi (pane lidar.1) — owns `robot/lidar/pi/`
-1. Lidar reader package supporting RPLIDAR-style serial protocols (`pyrplidar`), polar→cartesian, downsample ≤360 pts, Socket.IO emit `lidar_scan` 2 Hz to `SERVER_URL`.
-2. `run.sh` + auto-restart loop + `SETUP.md` for flashing onto the Pi (venue hotspot config).
-3. No lidar attached yet → device autodetect + clean NO_DEVICE error path, unit test the math.
+## lidar-pi (pane lidar.1) — owns `robot/lidar/pi/` and `robot/lidar/phone/`
+There are TWO lidar systems — don't conflate them:
+- **RPLIDAR C1** (2D 360°, on the robot via Pi) → SLAM / live occupancy mapping → `lidar_scan` events
+- **iPhone lidar** (handheld) → colored 3D reconstruction of the world/scene → static mesh in the web 3D view
+1. Lidar reader package targeting the **RPLIDAR C1** protocol (`pyrplidar`/rplidar-sdk), polar→cartesian, downsample ≤360 pts, Socket.IO emit `lidar_scan` 2 Hz to `SERVER_URL`. ✅ done
+2. `run.sh` + auto-restart loop + `SETUP.md` for the Pi (venue hotspot config). ✅ done
+3. Device autodetect + NO_DEVICE path + unit tests. ✅ done
+4. **Phone-lidar pipeline** (`robot/lidar/phone/`): ingest an iPhone lidar scan export (Polycam/Scaniverse → GLB or PLY with vertex color/texture) → `process.py` to decimate/optimize (target <15 MB) → output `web/public/world.glb` conventions doc for web-frontend, who renders it as the colored 3D world with the live C1 scan overlaid. Include a sample/synthetic GLB so web-frontend can build before a real phone scan exists.
+5. Stretch: Record3D or WebXR live RGBD streaming from the phone instead of static export.
 
 ## lidar-sim (pane lidar.2) — owns `robot/lidar/sim/`
 1. `sim.py`: synthetic room + moving robot generating realistic `lidar_scan` events to the server — unblocks web-frontend's 3D view TODAY.

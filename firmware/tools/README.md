@@ -8,6 +8,7 @@
 | `flash.sh` | Compile + upload `firmware/mcu`. `--check` = compile only. Env: `PORT`, `ARDUINO_FQBN`, `SKETCH`. |
 | `monitor.sh` | Serial monitor @ 115200 (BRIDGE.md §5). Env: `PORT`, `BAUD`. |
 | `bench.py` | Python client for the serial bench protocol — interactive REPL + automated smoke test of every RPC. `python3 bench.py --help`. |
+| `mock_mcu.py` | Mock MCU serving BRIDGE.md §5 on a pty — executable spec for fw-mcu, hardware-free integration target for fw-linux. `--selftest` runs bench.py against it (18/18 green). |
 
 ## UNO Q board setup notes
 
@@ -17,15 +18,16 @@ STM32U585 (MCU side). How code gets on each:
 1. **Normal path — Arduino App Lab.** App Lab runs against the board (USB-C,
    or on the board itself since the Linux side has a desktop). An App Lab
    "app" bundles the MCU sketch + the Linux Python; App Lab flashes the
-   STM32 through the on-board bridge — desktop arduino-cli is *not* the
-   primary flasher for this board.
-2. **This repo's layout still keeps them separate** (`mcu/` sketch,
-   `linux/` Python) so both are testable off-board; wiring them into an App
-   Lab app is a copy/symlink job we do at the venue.
-3. **`flash.sh --check`** exists so fw-mcu gets compile feedback on the
-   laptop with no board attached (generic STM32U585 target — same Cortex-M33
-   family; App-Lab-specific headers like the Bridge may need a `#ifdef`
-   guard, that's fine, guard them with `#if __has_include(...)`).
+   STM32 through the on-board bridge.
+2. **Desktop toolchain WORKS for the MCU side** (verified 17 Jul): core
+   `arduino:zephyr` 0.56.0, FQBN **`arduino:zephyr:unoq`**, plus libraries
+   `Arduino_RouterBridge` (the Bridge RPC — see ../BRIDGE.md §4) and
+   `Adafruit PWM Servo Driver Library`. `setup.sh` installs all of it;
+   a scratch blink sketch compiles clean (63 KB / 768 KB flash).
+3. **`flash.sh --check`** gives fw-mcu compile feedback with no board
+   attached, against the real `unoq` FQBN. This repo keeps `mcu/` and
+   `linux/` separate so both are testable off-board; bundling into an App
+   Lab app is a copy job at the venue.
 4. **First time on the real board** (whoever gets it, likely at the venue):
    - Power via USB-C (bench) — the 5V buck rail is only needed for servos.
    - Connect: `adb devices` should list the Linux side; App Lab discovers it.

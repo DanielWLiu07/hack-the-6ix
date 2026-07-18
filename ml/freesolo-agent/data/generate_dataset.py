@@ -8,11 +8,11 @@ Action schema (all four keys always present, "any" = unspecified):
   {"task":"pick|sort|stop|drive","fruit":"apple|banana|any",
    "filter":"ripe|unripe|any","zone":"any|left|right|forward|backward|home"}
 
-Assistant convention:
-  - actionable command  -> assistant outputs ONLY the compact JSON
-  - ambiguous command   -> assistant asks ONE short clarifying question,
-                           user answers, assistant outputs the JSON
-  - off-topic request   -> assistant briefly redirects (plain text, no JSON)
+Assistant convention (model ALWAYS outputs JSON — llm-client parses both shapes):
+  - actionable command  -> assistant outputs ONLY the compact action JSON
+  - ambiguous command   -> assistant outputs {"clarify":"<one short question>"},
+                           user answers, assistant outputs the action JSON
+  - off-topic request   -> assistant outputs {"clarify":"<brief redirect>"}
 
 Usage: python3 generate_dataset.py  (writes farmhand_train.jsonl / farmhand_val.jsonl)
 """
@@ -31,10 +31,14 @@ SYSTEM_PROMPT = (
     "fruit-picking robot. Convert the user's command into exactly one JSON action: "
     '{"task":"pick|sort|stop|drive","fruit":"apple|banana|any",'
     '"filter":"ripe|unripe|any","zone":"any|left|right|forward|backward|home"}. '
-    "Output ONLY the JSON, nothing else. If the command is ambiguous, ask one short "
-    "clarifying question instead of guessing. If the request is unrelated to the robot, "
-    "briefly say what you can help with."
+    "Output ONLY the JSON, nothing else. If the command is ambiguous, do not guess: "
+    'output {"clarify":"<one short question>"} instead. If the request is unrelated '
+    'to the robot, output {"clarify":"<brief note about what you can do>"}.'
 )
+
+
+def clarify_str(question):
+    return json.dumps({"clarify": question}, separators=(",", ":"))
 
 
 def action(task, fruit="any", filt="any", zone="any"):
@@ -414,7 +418,7 @@ def main():
             ans = rng.choice(FRUIT_ANSWERS[fruit])
             ex = chat([
                 {"role": "user", "content": t},
-                {"role": "assistant", "content": rng.choice(CLARIFY_FRUIT_Q)},
+                {"role": "assistant", "content": clarify_str(rng.choice(CLARIFY_FRUIT_Q))},
                 {"role": "user", "content": ans},
                 {"role": "assistant", "content": action_str(action("pick", fruit, filt))},
             ])
@@ -433,7 +437,7 @@ def main():
                         "Should I sort apples, bananas, or everything?"])
         ex = chat([
             {"role": "user", "content": t},
-            {"role": "assistant", "content": q},
+            {"role": "assistant", "content": clarify_str(q)},
             {"role": "user", "content": ans},
             {"role": "assistant", "content": action_str(action("sort", fruit))},
         ])
@@ -447,7 +451,7 @@ def main():
         ans = rng.choice(ZONE_ANSWERS[zone])
         ex = chat([
             {"role": "user", "content": t},
-            {"role": "assistant", "content": rng.choice(CLARIFY_ZONE_Q)},
+            {"role": "assistant", "content": clarify_str(rng.choice(CLARIFY_ZONE_Q))},
             {"role": "user", "content": ans},
             {"role": "assistant", "content": action_str(action("drive", zone=zone))},
         ])
@@ -458,7 +462,7 @@ def main():
     def mk_offtopic():
         t = surface(rng, rng.choice(OFFTOPIC), prefix=rng.random() < 0.3)
         ex = chat([{"role": "user", "content": t},
-                   {"role": "assistant", "content": rng.choice(OFFTOPIC_REPLIES)}])
+                   {"role": "assistant", "content": clarify_str(rng.choice(OFFTOPIC_REPLIES))}])
         return ex, t
     fill(40, mk_offtopic)
 

@@ -41,9 +41,12 @@ We're choosing **Best Environmental** (per team decision). Note the tradeoff hon
 - **ElevenLabs** (earbuds + credits): give FarmHand a voice — robot announces picks / responds to commands via conversational agent. ~2h of work, only if Tier 1–2 are done.
 - **MLH Gemini**: only if we genuinely need it (e.g. generating the Freesolo training set) — don't force it.
 
+### Tier 2b — Base44 Venture Builder ($2,000 CAD) — IN
+
+- **Base44** (parts list said "Base22" — it's Base44): separate companion product built ON base44.com — **"Orchard OS"**, the SaaS layer where orchard operators book robotic harvest runs and watch live ROI, fed by a REAL webhook from our robot's server. Full build brief + paste-ready prompts + demo script: `docs/BASE44.md`. One teammate owns it (~4–6 h).
+
 ### Explicitly skipping
 
-- **Base44** (note: parts list said "Base22" — it's Base44): requires building the product *in* Base44's platform; conflicts with our custom React app. Skip unless we spin a tiny companion tool.
 - QNX (different hardware path than UNO Q — can't do both well), Chexy/Unifold/Solana/BGA (fintech/payments — no fit), Stay22, CORTEX, Backboard, Phoebe, Presage, Warp.
 
 ## Devpost submission checklist

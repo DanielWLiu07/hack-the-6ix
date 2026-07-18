@@ -7,22 +7,23 @@ namespace drive {
 
 void begin();
 
-// Set the commanded speed. Values are clamped to [-1,1]. The command is
-// slew-limited in tick(), so this is safe to call at any rate.
+// Set the commanded speed. Values are clamped to [-1,1]. Last write wins
+// (BRIDGE.md §1); the output is slew-limited in tick().
 void set(float l, float r);
 
-// Immediately zero both motors AND the pending command (reflex/e-stop path).
+// Immediately zero both motors AND the pending command (stop/e-stop path).
 void stop();
 
-// Run from the main loop; applies slew limiting and writes PWM.
+// OBSTACLE reflex (BRIDGE.md §2): while inhibited, forward (positive)
+// components are zeroed at the output; reverse stays allowed.
+void setForwardInhibit(bool inhibit);
+
+// Run from the main loop; every DRIVE_TICK_MS applies slew + inhibit and
+// writes PWM.
 void tick();
 
-// Last commanded (pre-slew) values, for telemetry.
+// Last commanded (pre-slew) values, for get_status.
 float commandedL();
 float commandedR();
-
-// True if the current command tries to move the base forward (used to gate
-// the ultrasonic reflex — reversing away from an obstacle must stay allowed).
-bool movingForward();
 
 }  // namespace drive

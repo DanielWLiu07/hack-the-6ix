@@ -4,21 +4,23 @@
 
 namespace safety {
 
-static State cur = RUN;
+// Written by the estop RPC handler (Bridge separate-thread, plain provide) and
+// read by tick() in the main loop — volatile for cross-thread visibility.
+static volatile bool estopLatched = false;
+static bool obstacle = false;
 static bool wdEnabled = false;
 static uint32_t lastBeatMs = 0;
+static State cur = OK;
 
 void begin() {
-  cur = RUN;
+  estopLatched = false;
+  obstacle = false;
   wdEnabled = false;
   lastBeatMs = millis();
+  cur = OK;
 }
 
-void heartbeat() {
-  lastBeatMs = millis();
-  // First heartbeat from Linux arms the watchdog automatically.
-  wdEnabled = true;
-}
+void heartbeat() { lastBeatMs = millis(); }
 
 void setWatchdogEnabled(bool en) {
   wdEnabled = en;
@@ -27,24 +29,28 @@ void setWatchdogEnabled(bool en) {
 
 bool watchdogEnabled() { return wdEnabled; }
 
-void triggerEstop() { cur = ESTOP; }
+void setObstacle(bool blocked) { obstacle = blocked; }
+
+void triggerEstop() { estopLatched = true; cur = ESTOP; }
 
 void clearEstop() {
-  if (cur == ESTOP) {
-    cur = RUN;
-    lastBeatMs = millis();  // grace period before the watchdog re-trips
-  }
+  estopLatched = false;
+  lastBeatMs = millis();  // grace period before the watchdog re-trips
 }
 
 State tick() {
-  if (cur == ESTOP) return cur;  // latched — timers don't matter
   bool starved = wdEnabled && (millis() - lastBeatMs > HEARTBEAT_TIMEOUT_MS);
-  cur = starved ? WATCHDOG_STOP : RUN;
+  if (estopLatched) cur = ESTOP;
+  else if (starved) cur = WATCHDOG;
+  else if (obstacle) cur = OBSTACLE;
+  else cur = OK;
   return cur;
 }
 
 State state() { return cur; }
-bool motionAllowed() { return cur == RUN; }
+
+bool motionAllowed() { return cur == OK || cur == OBSTACLE; }
+
 uint32_t msSinceHeartbeat() { return millis() - lastBeatMs; }
 
 }  // namespace safety

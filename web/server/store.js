@@ -1,151 +1,93 @@
-// Persistence layer behind a single interface.
+// Persistence: prefers the db worker's module (web/server/db — Mongo/Atlas with
+// in-memory fallback, self-downsampling, tested against real mongod). If that
+// module is ever missing/broken, a minimal built-in memory store with the SAME
+// interface keeps the stack booting.
 //
-// Store interface (db worker: implement this in web/server/db/index.js as
-// `export async function createStore(uri)` returning the same shape — the hub
-// auto-prefers your module over the built-ins below, see createStore() at bottom):
-//
-//   init(): Promise<void>
-//   insertTelemetry(doc): Promise<void>   // hub downsamples to <=1 Hz before calling
-//   insertDetection(doc): Promise<void>
-//   insertPickEvent(doc): Promise<void>
-//   getPicks({ limit }): Promise<doc[]>   // newest first
-//   getStats(): Promise<{
-//     counts: { byFruit, byRipeness, byBin },   // objects of name -> count
-//     picks: { total, success, successRate },
-//     wasteAvoidedKg
-//   }>
-//   close(): Promise<void>
-//
-// Collections: pick_events, detections, telemetry (telemetry capped/downsampled).
+// Interface + /api/stats response shape: web/server/db/README.md (authoritative).
+//   recordTelemetry(t)  recordDetection(d)  recordPickEvent(p)
+//   getStats()  getPicks({limit,fruit,ripeness,since})  getDetections({limit})
+//   close()   .backend -> 'mongo' | 'memory' | 'memory-fallback'
 
 const WASTE_KG_PER_PICK = Number(process.env.WASTE_KG_PER_PICK || 0.15);
+const CO2E_PER_KG_WASTE = 2.5;
 
-const CAPS = { telemetry: 3600, detections: 5000, pick_events: 5000 };
+class FallbackMemoryStore {
+  backend = 'memory-fallback';
+  #telemetry = [];
+  #detections = [];
+  #picks = [];
+  #lastTelemetryTs = 0;
 
-function computeStatsFromPicks(picks) {
-  const byFruit = {};
-  const byRipeness = {};
-  const byBin = {};
-  let success = 0;
-  for (const p of picks) {
-    if (p.fruit) byFruit[p.fruit] = (byFruit[p.fruit] || 0) + 1;
-    if (p.ripeness) byRipeness[p.ripeness] = (byRipeness[p.ripeness] || 0) + 1;
-    if (p.bin) byBin[p.bin] = (byBin[p.bin] || 0) + 1;
-    if (p.success) success++;
+  async recordTelemetry(t) {
+    const now = Date.now();
+    if (now - this.#lastTelemetryTs < 1000) return false; // <=1 Hz
+    this.#lastTelemetryTs = now;
+    this.#telemetry.push(t);
+    if (this.#telemetry.length > 5000) this.#telemetry.shift();
+    return true;
   }
-  const total = picks.length;
-  return {
-    counts: { byFruit, byRipeness, byBin },
-    picks: {
-      total,
-      success,
-      successRate: total ? +(success / total).toFixed(3) : 0,
-    },
-    wasteAvoidedKg: +(success * WASTE_KG_PER_PICK).toFixed(2),
-  };
-}
+  async recordDetection(d) {
+    this.#detections.push(d);
+    if (this.#detections.length > 2000) this.#detections.shift();
+  }
+  async recordPickEvent(p) { this.#picks.push(p); }
 
-export class MemoryStore {
-  constructor() {
-    this.telemetry = [];
-    this.detections = [];
-    this.pick_events = [];
+  async getPicks({ limit = 50, fruit, ripeness, since } = {}) {
+    let out = this.#picks;
+    if (fruit) out = out.filter((p) => p.fruit === fruit);
+    if (ripeness) out = out.filter((p) => p.ripeness === ripeness);
+    if (since) out = out.filter((p) => p.ts >= since);
+    return out.slice(-limit).reverse();
   }
-  async init() {}
-  #push(arr, cap, doc) {
-    arr.push(doc);
-    if (arr.length > cap) arr.splice(0, arr.length - cap);
-  }
-  async insertTelemetry(doc) { this.#push(this.telemetry, CAPS.telemetry, doc); }
-  async insertDetection(doc) { this.#push(this.detections, CAPS.detections, doc); }
-  async insertPickEvent(doc) { this.#push(this.pick_events, CAPS.pick_events, doc); }
-  async getPicks({ limit = 100 } = {}) {
-    return this.pick_events.slice(-limit).reverse();
+  async getDetections({ limit = 50 } = {}) {
+    return this.#detections.slice(-limit).reverse();
   }
   async getStats() {
-    return computeStatsFromPicks(this.pick_events);
+    const picks = this.#picks;
+    const totals = { picks: picks.length, successes: 0, failures: 0, success_rate: 0 };
+    const by_fruit = {};
+    const by_ripeness = {};
+    const by_bin = {};
+    let durationSum = 0;
+    for (const p of picks) {
+      p.success ? totals.successes++ : totals.failures++;
+      by_fruit[p.fruit] = by_fruit[p.fruit] || { picks: 0, successes: 0 };
+      by_fruit[p.fruit].picks++;
+      if (p.success) by_fruit[p.fruit].successes++;
+      by_ripeness[p.ripeness] = (by_ripeness[p.ripeness] || 0) + 1;
+      by_bin[p.bin] = (by_bin[p.bin] || 0) + 1;
+      durationSum += p.duration_ms || 0;
+    }
+    if (totals.picks) totals.success_rate = +(totals.successes / totals.picks).toFixed(3);
+    const by_class = {};
+    for (const d of this.#detections) {
+      const k = `${d.fruit}_${d.ripeness}`;
+      by_class[k] = (by_class[k] || 0) + 1;
+    }
+    const waste = +(totals.successes * WASTE_KG_PER_PICK).toFixed(2);
+    return {
+      backend: this.backend,
+      totals,
+      by_fruit,
+      by_ripeness,
+      by_bin,
+      avg_pick_duration_ms: totals.picks ? Math.round(durationSum / totals.picks) : 0,
+      detections: { total: this.#detections.length, by_class },
+      waste_avoided_kg: waste,
+      co2e_avoided_kg: +(waste * CO2E_PER_KG_WASTE).toFixed(2),
+    };
   }
   async close() {}
 }
 
-export class MongoStore {
-  constructor(uri) {
-    this.uri = uri;
-    this.client = null;
-    this.db = null;
-  }
-  async init() {
-    const { MongoClient } = await import('mongodb');
-    this.client = new MongoClient(this.uri, { serverSelectionTimeoutMS: 5000 });
-    await this.client.connect();
-    this.db = this.client.db(process.env.MONGODB_DB || 'ht6');
-    await Promise.all([
-      this.db.collection('pick_events').createIndex({ ts: -1 }),
-      this.db.collection('pick_events').createIndex({ fruit: 1, ripeness: 1 }),
-      this.db.collection('detections').createIndex({ ts: -1 }),
-      this.db
-        .createCollection('telemetry', {
-          capped: true,
-          size: 5 * 1024 * 1024,
-          max: CAPS.telemetry,
-        })
-        .catch(() => {}), // already exists
-    ]);
-  }
-  async insertTelemetry(doc) { await this.db.collection('telemetry').insertOne({ ...doc }); }
-  async insertDetection(doc) { await this.db.collection('detections').insertOne({ ...doc }); }
-  async insertPickEvent(doc) { await this.db.collection('pick_events').insertOne({ ...doc }); }
-  async getPicks({ limit = 100 } = {}) {
-    return this.db
-      .collection('pick_events')
-      .find({}, { projection: { _id: 0 } })
-      .sort({ ts: -1 })
-      .limit(limit)
-      .toArray();
-  }
-  async getStats() {
-    const picks = await this.db
-      .collection('pick_events')
-      .find({}, { projection: { _id: 0 } })
-      .toArray();
-    return computeStatsFromPicks(picks);
-  }
-  async close() { await this.client?.close(); }
-}
-
-/**
- * Pick the best available store:
- * 1. web/server/db/index.js `createStore(uri)` if the db worker has shipped it
- * 2. MongoStore if MONGODB_URI is set
- * 3. MemoryStore fallback (always works)
- */
 export async function createStore() {
-  const uri = process.env.MONGODB_URI;
   try {
-    const dbModule = await import('./db/index.js');
-    if (typeof dbModule.createStore === 'function') {
-      const store = await dbModule.createStore(uri);
-      await store.init?.();
-      console.log('[store] using web/server/db module');
-      return store;
-    }
+    const { createDb } = await import('./db/index.js');
+    const db = await createDb({ uri: process.env.MONGODB_URI });
+    console.log(`[store] using web/server/db module (backend: ${db.backend})`);
+    return db;
   } catch (err) {
-    if (err.code !== 'ERR_MODULE_NOT_FOUND') {
-      console.warn('[store] db module failed to load, falling back:', err.message);
-    }
+    console.warn('[store] db module unavailable, using built-in fallback:', err.message);
+    return new FallbackMemoryStore();
   }
-  if (uri) {
-    const store = new MongoStore(uri);
-    try {
-      await store.init();
-      console.log('[store] using MongoDB');
-      return store;
-    } catch (err) {
-      console.warn('[store] MongoDB unreachable, falling back to memory:', err.message);
-    }
-  }
-  const store = new MemoryStore();
-  await store.init();
-  console.log('[store] using in-memory store');
-  return store;
 }

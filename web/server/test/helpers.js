@@ -7,7 +7,12 @@ export const SERVER_URL = process.env.SERVER_URL || "http://localhost:3001";
 // convention server-core picks ("role" query / auth) is covered. If the hub
 // just broadcasts to everyone, role is ignored and tests still work.
 export function connect(role = "browser", opts = {}) {
-  return io(SERVER_URL, {
+  return connectTo(SERVER_URL, role, opts);
+}
+
+// Same as connect() but to an explicit hub URL (used for private test hubs).
+export function connectTo(url, role = "browser", opts = {}) {
+  return io(url, {
     transports: ["websocket"],
     reconnection: false,
     timeout: 3000,
@@ -75,4 +80,42 @@ export const SAMPLES = {
   pick: { target: "nearest" },
   estop: {},
   nl_command: { text: "pick all ripe apples" },
+  nl_action: { ts: 1752768000000, text: "pick all ripe apples", ok: true, action: { task: "pick", fruit: "apple", filter: "ripe", zone: "any" } },
 };
+
+// Spawn a private, isolated hub (server-core's index.js) on `port`, with Base44
+// forwarding forced OFF so test pick_events never reach the real Orchard OS
+// webhook. Resolves { proc, url, close() } once the hub is accepting sockets.
+// Used by integration tests that need determinism + write side effects the
+// shared :3001 hub can't safely provide.
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+const SERVER_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+export async function spawnHub(port = 3999, ms = 8000) {
+  const proc = spawn("node", ["index.js"], {
+    cwd: SERVER_DIR,
+    env: { ...process.env, PORT: String(port), BASE44_WEBHOOK_URL: "", BASE44_SECRET: "" },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  const url = `http://localhost:${port}`;
+  let out = "";
+  proc.stdout.on("data", (d) => { out += d.toString(); });
+  proc.stderr.on("data", (d) => { out += d.toString(); });
+
+  const start = Date.now();
+  while (Date.now() - start < ms) {
+    try {
+      const res = await fetch(`${url}/api/health`);
+      if (res.ok) {
+        const health = await res.json();
+        return { proc, url, health, close: () => new Promise((r) => { proc.once("exit", r); proc.kill("SIGTERM"); }) };
+      }
+    } catch { /* not up yet */ }
+    await sleep(150);
+  }
+  proc.kill("SIGKILL");
+  throw new Error(`private hub on :${port} did not come up in ${ms}ms. Output:\n${out}`);
+}

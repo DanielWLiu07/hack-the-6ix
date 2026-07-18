@@ -1,13 +1,19 @@
 #!/usr/bin/env python3
-"""Venue burst-capture + HSV auto-label for the real 3D-printed props.
+"""Venue capture + HSV auto-label for the real 3D-printed props.
 
-Workflow (per class, ~2 min each):
-    hold/place ONE fruit class in view of the arm camera, then
+TWO intake paths, same auto-label + review + merge + finetune loop:
+
+A) File drop (humans photograph props with a phone/camera → drop into raw/):
+    put photos in raw/apple_ripe/, raw/apple_unripe/, ... (one fruit per photo),
+    then read raw/README.md, then
+    python3 capture.py --ingest         # HSV auto-boxes every raw/<class>/*.jpg
+
+B) Live burst (arm camera in front of one fruit at a time):
     python3 capture.py --label apple_ripe --n 80
-    → captures 80 frames (varied angles: move the fruit/camera during burst),
-      auto-boxes the fruit by HSV color, writes YOLO images+labels into
-      data/real/, and saves an annotated preview per frame in data/real/preview/
-      — flip through previews, delete bad frames+labels, done.
+    → captures 80 frames (move the fruit/camera during the burst).
+
+Both write YOLO images+labels into data/real/ and an annotated preview per frame
+in data/real/preview/ — flip through previews, delete bad pairs, done.
 
 Then merge into the training set and finetune (~30 min total loop):
     python3 capture.py --merge          # copies data/real → data/dataset (90/10 split)
@@ -28,7 +34,9 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parent
 REAL = ROOT / "data" / "real"
+RAW = ROOT / "raw"
 CLASSES = ["apple_ripe", "apple_unripe", "banana_ripe", "banana_unripe"]
+IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
 
 # HSV ranges (OpenCV H:0-179) for the printed prop colors — tune at venue if
 # needed by running with --debug-mask and watching the mask window.
@@ -102,6 +110,62 @@ def burst(label, n, delay, debug_mask):
           f"delete bad pairs from images/+labels/, then --merge")
 
 
+def ingest():
+    """Auto-label every photo dropped in raw/<class>/ → data/real/ (YOLO format).
+
+    Humans sort phone/camera photos into raw/apple_ripe/, raw/banana_unripe/, ...
+    (one fruit per photo, see raw/README.md). This HSV-boxes each by its class
+    color — no live camera needed. Photos where no blob is found are reported so
+    a human can re-shoot or hand-label them; nothing is silently dropped.
+    """
+    (REAL / "images").mkdir(parents=True, exist_ok=True)
+    (REAL / "labels").mkdir(parents=True, exist_ok=True)
+    (REAL / "preview").mkdir(parents=True, exist_ok=True)
+
+    total_saved = 0
+    failures = []  # (class, filename) where HSV found no fruit
+    for label in CLASSES:
+        cls = CLASSES.index(label)
+        src_dir = RAW / label
+        if not src_dir.is_dir():
+            continue
+        imgs = sorted(p for p in src_dir.iterdir()
+                      if p.suffix.lower() in IMG_EXTS)
+        saved = 0
+        for p in imgs:
+            frame = cv2.imread(str(p))
+            if frame is None:
+                failures.append((label, p.name + " (unreadable)"))
+                continue
+            box, _ = auto_box(frame, label)
+            if box is None:
+                failures.append((label, p.name))
+                continue
+            x0, y0, x1, y1 = box
+            H, W = frame.shape[:2]
+            stem = f"raw_{label}_{p.stem}"
+            cv2.imwrite(str(REAL / "images" / f"{stem}.jpg"), frame)
+            with open(REAL / "labels" / f"{stem}.txt", "w") as f:
+                f.write(f"{cls} {(x0+x1)/2/W:.6f} {(y0+y1)/2/H:.6f} "
+                        f"{(x1-x0)/W:.6f} {(y1-y0)/H:.6f}\n")
+            prev = frame.copy()
+            cv2.rectangle(prev, (x0, y0), (x1, y1), (255, 255, 255), 2)
+            cv2.putText(prev, label, (x0, max(12, y0 - 4)), 0, 0.6, (255, 255, 255), 2)
+            cv2.imwrite(str(REAL / "preview" / f"{stem}.jpg"), prev)
+            saved += 1
+        total_saved += saved
+        print(f"  {label}: {saved}/{len(imgs)} labeled")
+
+    print(f"\ningested {total_saved} labeled frames into {REAL}")
+    if failures:
+        print(f"{len(failures)} photo(s) had no detectable fruit "
+              f"(re-shoot with a contrasting background, or hand-label):")
+        for label, name in failures:
+            print(f"  - raw/{label}/{name}")
+    print("Next: review data/real/preview/, delete bad pairs from images/+labels/, "
+          "then `python3 capture.py --merge`")
+
+
 def merge(val_frac=0.1):
     imgs = sorted((REAL / "images").glob("*.jpg"))
     assert imgs, "nothing captured yet"
@@ -127,10 +191,14 @@ if __name__ == "__main__":
     ap.add_argument("--n", type=int, default=80)
     ap.add_argument("--delay", type=float, default=0.15)
     ap.add_argument("--debug-mask", action="store_true")
+    ap.add_argument("--ingest", action="store_true",
+                    help="auto-label existing photos in raw/<class>/ (no camera)")
     ap.add_argument("--merge", action="store_true")
     args = ap.parse_args()
-    if args.merge:
+    if args.ingest:
+        ingest()
+    elif args.merge:
         merge()
     else:
-        assert args.label, "need --label <class> or --merge"
+        assert args.label, "need --label <class>, --ingest, or --merge"
         burst(args.label, args.n, args.delay, args.debug_mask)

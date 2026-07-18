@@ -129,6 +129,50 @@ export function validateNlCommand(p) {
   return errs;
 }
 
+// nl_action — FarmHand LLM reply. NOT in root CLAUDE.md; contract owned by
+// llm-client (see status/llm-client.md 22:05) and consumed by server-core's hub
+// (index.js). Shape: {ts, text, ok, <one of action|clarification|error>}.
+//   action:        {task, fruit, filter, zone} — every key required (llm-client 22:11)
+//   clarification: string (ok:true, no action — hub echoes to ui, does NOT forward to robot)
+//   error:         string (ok:false — never forwarded to robot)
+const NL_TASKS = ["pick", "sort", "stop", "drive"];
+const NL_FRUITS = ["apple", "banana", "any"];
+const NL_FILTERS = ["ripe", "unripe", "any"];
+const NL_ZONES = ["any", "left", "right", "forward", "backward", "home"];
+
+export function validateNlAction(p) {
+  const errs = [];
+  if (!checkKeys(p, ["ts", "text", "ok", "action", "clarification", "error"], errs)) return errs;
+  req(p, "ts", isNum, "number (epoch ms)", errs);
+  req(p, "text", (v) => typeof v === "string", "string (echo of original command)", errs);
+  req(p, "ok", (v) => typeof v === "boolean", "boolean", errs);
+
+  const has = (k) => k in p && p[k] !== undefined;
+  const outcomes = ["action", "clarification", "error"].filter(has);
+  if (outcomes.length !== 1) {
+    errs.push(`nl_action must carry exactly one of action|clarification|error, got [${outcomes.join(",") || "none"}]`);
+  }
+
+  if (has("action")) {
+    if (p.ok !== true) errs.push(`action present but ok is ${p.ok} (must be true)`);
+    if (checkKeys(p.action, ["task", "fruit", "filter", "zone"], errs)) {
+      req(p.action, "task", (v) => NL_TASKS.includes(v), `one of ${NL_TASKS.join("|")}`, errs);
+      req(p.action, "fruit", (v) => NL_FRUITS.includes(v), `one of ${NL_FRUITS.join("|")}`, errs);
+      req(p.action, "filter", (v) => NL_FILTERS.includes(v), `one of ${NL_FILTERS.join("|")}`, errs);
+      req(p.action, "zone", (v) => NL_ZONES.includes(v), `one of ${NL_ZONES.join("|")}`, errs);
+    }
+  }
+  if (has("clarification")) {
+    if (p.ok !== true) errs.push(`clarification present but ok is ${p.ok} (must be true)`);
+    if (typeof p.clarification !== "string" || !p.clarification.length) errs.push(`clarification must be a non-empty string`);
+  }
+  if (has("error")) {
+    if (p.ok !== false) errs.push(`error present but ok is ${p.ok} (must be false)`);
+    if (typeof p.error !== "string" || !p.error.length) errs.push(`error must be a non-empty string`);
+  }
+  return errs;
+}
+
 // event name → validator, for both directions
 export const validators = {
   telemetry: validateTelemetry,
@@ -140,6 +184,7 @@ export const validators = {
   pick: validatePick,
   estop: validateEstop,
   nl_command: validateNlCommand,
+  nl_action: validateNlAction,
 };
 
 export const ROBOT_TO_WEB_EVENTS = ["telemetry", "detection", "pick_event", "lidar_scan"];

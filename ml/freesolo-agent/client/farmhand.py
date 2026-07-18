@@ -8,9 +8,10 @@ Modes (picked automatically):
   - FARMHAND_URL set   -> POST the text to the teammate's trained model endpoint
   - FARMHAND_URL unset -> built-in regex rules (works today, no network)
 
-Action schema (matches root CLAUDE.md + llm-data's dataset spec):
+Action schema (matches root CLAUDE.md + llm-data's dataset spec, see
+status/llm-data.md 22:12 — validated output always carries all 4 keys):
   {"task": "pick|sort|stop|drive", "fruit": "apple|banana|any",
-   "filter": "ripe|unripe|any", "zone": "<optional str>"}
+   "filter": "ripe|unripe|any", "zone": "any|left|right|forward|backward|home"}
 
 Public API:
   handle(text) -> envelope dict:
@@ -33,8 +34,8 @@ import urllib.request
 TASKS = {"pick", "sort", "stop", "drive"}
 FRUITS = {"apple", "banana", "any"}
 FILTERS = {"ripe", "unripe", "any"}
+ZONES = {"any", "left", "right", "forward", "backward", "home"}
 ALLOWED_KEYS = {"task", "fruit", "filter", "zone"}
-MAX_ZONE_LEN = 64
 MAX_CLARIFICATION_LEN = 200
 
 
@@ -44,7 +45,7 @@ def validate_action(obj):
     """Return (action_dict, None) if valid, else (None, error_string).
 
     Strict: unknown keys, wrong types, or out-of-enum values are rejected.
-    Missing fruit/filter default to "any".
+    Missing fruit/filter/zone default to "any"; output always has all 4 keys.
     """
     if not isinstance(obj, dict):
         return None, "action is not an object"
@@ -60,13 +61,10 @@ def validate_action(obj):
     filt = obj.get("filter", "any")
     if filt not in FILTERS:
         return None, "invalid filter: %r" % (filt,)
-    action = {"task": task, "fruit": fruit, "filter": filt}
-    if "zone" in obj:
-        zone = obj["zone"]
-        if not isinstance(zone, str) or not zone or len(zone) > MAX_ZONE_LEN:
-            return None, "invalid zone"
-        action["zone"] = zone
-    return action, None
+    zone = obj.get("zone", "any")
+    if zone not in ZONES:
+        return None, "invalid zone: %r" % (zone,)
+    return {"task": task, "fruit": fruit, "filter": filt, "zone": zone}, None
 
 
 def _normalize_model_output(obj):
@@ -101,6 +99,20 @@ _RE_BANANA = re.compile(r"\b(bananas?|nanas?)\b", re.I)
 _RE_ANY_FRUIT = re.compile(r"\b(both|everything|all (of )?(the )?fruits?|any(thing)?)\b", re.I)
 _RE_UNRIPE = re.compile(r"\b(unripe|not\s+ripe|green|raw|unready)\b", re.I)
 _RE_RIPE = re.compile(r"\bripe\b", re.I)
+_ZONE_RES = [
+    ("home", re.compile(r"\b(home|base|dock)\b", re.I)),
+    ("backward", re.compile(r"\b(back(ward)?s?|reverse)\b", re.I)),
+    ("forward", re.compile(r"\b(forwards?|ahead|straight)\b", re.I)),
+    ("left", re.compile(r"\bleft\b", re.I)),
+    ("right", re.compile(r"\bright\b", re.I)),
+]
+
+
+def _mock_zone(t):
+    for zone, rx in _ZONE_RES:
+        if rx.search(t):
+            return zone
+    return "any"
 
 
 def mock_model(text):
@@ -135,7 +147,7 @@ def mock_model(text):
     elif _RE_SORT.search(t):
         task = "sort"
     elif _RE_DRIVE.search(t):
-        return json.dumps({"task": "drive"})
+        return json.dumps({"task": "drive", "zone": _mock_zone(t)})
     else:
         return json.dumps(
             {"clarify": "I can pick, sort, drive, or stop — what would you like?"}
@@ -143,7 +155,9 @@ def mock_model(text):
 
     if fruit is None:
         return json.dumps({"clarify": "Which fruit — apples, bananas, or both?"})
-    return json.dumps({"task": task, "fruit": fruit, "filter": filt})
+    return json.dumps(
+        {"task": task, "fruit": fruit, "filter": filt, "zone": _mock_zone(t)}
+    )
 
 
 # ------------------------------------------------------------ endpoint model

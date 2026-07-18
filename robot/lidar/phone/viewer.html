@@ -1,0 +1,206 @@
+<!doctype html>
+<!--
+  viewer.html — standalone 3D lidar viewer (executable conventions).
+
+  Loads the phone-scanned colored world (world.glb) AND overlays the live
+  RPLIDAR C1 `lidar_scan` ring in the SAME frame, with decay. This is the
+  reference web-frontend copies into the dashboard's lidar view, and doubles
+  as offline demo-backup footage.
+
+  Run:
+    cd robot/lidar/phone && python3 -m http.server 8091
+    open http://localhost:8091/viewer.html
+
+  Query params (all optional):
+    ?server=http://localhost:3001     hub Socket.IO URL (live C1 scans)
+    ?world=http://localhost:5173/world.glb   the phone-scanned GLB (Vite serves web/public)
+    ?height=0.15                      C1 sensor mount height (m) — where the ring floats
+    ?demo=1                           force synthetic rotating ring (no hub needed)
+
+  If no live scan arrives within 3 s it auto-falls back to a synthetic ring so
+  the demo never looks dead.
+-->
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>C1 + phone lidar — 3D viewer</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b0e14; overflow: hidden; }
+  #hud {
+    position: fixed; top: 10px; left: 10px; z-index: 10;
+    font: 12px/1.5 ui-monospace, Menlo, monospace; color: #cdd6f4;
+    background: rgba(17,21,30,.82); padding: 10px 12px; border-radius: 8px;
+    border: 1px solid #2a3348; pointer-events: none; white-space: pre;
+  }
+  #hud b { color: #89dceb; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:middle; }
+  .on { background:#a6e3a1; } .off { background:#f38ba8; }
+</style>
+<div id="hud">loading…</div>
+
+<script src="https://unpkg.com/socket.io-client@4.7.5/dist/socket.io.min.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const q = new URLSearchParams(location.search);
+const SERVER = q.get('server') || 'http://localhost:3001';
+const WORLD  = q.get('world')  || 'http://localhost:5173/world.glb';
+const SENSOR_H = parseFloat(q.get('height') || '0.15');   // C1 mount height (m)
+const FORCE_DEMO = q.get('demo') === '1';
+const DECAY_MS = 2500;            // how long a point lingers
+const MAX_POINTS = 360 * 8;       // ~8 scans of history
+
+const hud = document.getElementById('hud');
+
+// ---- scene ---------------------------------------------------------------
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0e14);
+scene.fog = new THREE.Fog(0x0b0e14, 8, 22);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 100);
+camera.position.set(3.2, 2.6, 3.4);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.6, -1.2);
+controls.enableDamping = true;
+
+scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x30302a, 1.15));
+const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(3, 6, 2); scene.add(key);
+const grid = new THREE.GridHelper(10, 20, 0x2a3348, 0x1a2030); scene.add(grid);
+// robot origin marker (forward = -Z)
+const axes = new THREE.AxesHelper(0.4); scene.add(axes);
+
+// ---- phone world (GLB) ---------------------------------------------------
+let worldOk = false;
+new GLTFLoader().load(WORLD,
+  (gltf) => { scene.add(gltf.scene); worldOk = true; },
+  undefined,
+  (err) => { console.warn('world.glb load failed', err); worldOk = false; }
+);
+
+// ---- live C1 ring (points with decay) ------------------------------------
+// robot frame (x_fwd, y_left, meters) -> three.js (X,Y,Z) = (-y, SENSOR_H, -x)
+const positions = new Float32Array(MAX_POINTS * 3);
+const colors    = new Float32Array(MAX_POINTS * 3);
+const born      = new Float64Array(MAX_POINTS);   // ms timestamp per point
+let head = 0, filled = 0;
+
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+pGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+const pMat = new THREE.PointsMaterial({ size: 0.06, vertexColors: true,
+  transparent: true, depthWrite: false, sizeAttenuation: true });
+const points = new THREE.Points(pGeo, pMat);
+scene.add(points);
+
+const HOT = new THREE.Color(0x89dceb);   // fresh scan color
+
+function addScan(pts, nowMs) {
+  for (const p of pts) {
+    const x = p[0], y = p[1];
+    const i = head * 3;
+    positions[i]   = -y;
+    positions[i+1] = SENSOR_H;
+    positions[i+2] = -x;
+    colors[i] = HOT.r; colors[i+1] = HOT.g; colors[i+2] = HOT.b;
+    born[head] = nowMs;
+    head = (head + 1) % MAX_POINTS;
+    filled = Math.min(filled + 1, MAX_POINTS);
+  }
+  pGeo.attributes.position.needsUpdate = true;
+}
+
+function fadePoints(nowMs) {
+  for (let k = 0; k < filled; k++) {
+    const age = nowMs - born[k];
+    const t = Math.max(0, 1 - age / DECAY_MS);   // 1 fresh -> 0 gone
+    const i = k * 3;
+    // fade cyan -> deep blue as it ages, and dim toward black
+    colors[i]   = HOT.r * t;
+    colors[i+1] = HOT.g * t;
+    colors[i+2] = (HOT.b * t) + (1 - t) * 0.15;
+  }
+  pGeo.attributes.color.needsUpdate = true;
+}
+
+// ---- data source: live hub, else synthetic demo ring ---------------------
+let connected = false, scanCount = 0, lastPts = 0, gotLive = false;
+
+function startLive() {
+  if (typeof io === 'undefined') { startDemo('socket.io failed to load'); return; }
+  const sock = io(SERVER, { transports: ['websocket', 'polling'] });
+  sock.on('connect', () => { connected = true; });
+  sock.on('disconnect', () => { connected = false; });
+  sock.on('lidar_scan', (m) => {
+    if (!m || !Array.isArray(m.points)) return;
+    gotLive = true; scanCount++; lastPts = m.points.length;
+    addScan(m.points, performance.now());
+  });
+}
+
+let demoMode = false, demoAngle = 0;
+function startDemo(reason) {
+  demoMode = true;
+  console.log('demo ring:', reason || 'no live data');
+}
+function demoScan(nowMs) {
+  // a plausible 4x3 m room ring + a moving "obstacle" blip
+  const pts = [];
+  for (let a = 0; a < 360; a += 2) {
+    const rad = a * Math.PI / 180;
+    // rectangular room distance
+    const cx = Math.cos(rad), cy = Math.sin(rad);
+    const half = Math.min(Math.abs(2 / (cx || 1e-6)), Math.abs(1.5 / (cy || 1e-6)));
+    let r = Math.min(half, 4);
+    // moving obstacle
+    const oa = demoAngle % (2 * Math.PI);
+    if (Math.abs(rad - oa) < 0.12) r = 1.2;
+    pts.push([r * cx, r * cy]);
+  }
+  demoAngle += 0.03;
+  addScan(pts, nowMs);
+}
+
+if (FORCE_DEMO) startDemo('forced via ?demo=1'); else startLive();
+// fall back to demo if nothing live arrives
+setTimeout(() => { if (!gotLive && !demoMode) startDemo('no live scan in 3s'); }, 3000);
+
+// ---- loop ----------------------------------------------------------------
+let lastDemo = 0;
+function tick(now) {
+  requestAnimationFrame(tick);
+  if (demoMode && now - lastDemo > 200) { demoScan(now); lastDemo = now; }
+  fadePoints(now);
+  controls.update();
+  renderer.render(scene, camera);
+
+  const src = demoMode ? 'DEMO (synthetic ring)'
+            : `<span class="dot ${connected ? 'on' : 'off'}"></span>${connected ? 'live hub' : 'connecting…'}`;
+  hud.innerHTML =
+    `<b>3D lidar viewer</b>\n` +
+    `world.glb : ${worldOk ? 'loaded' : '—'}\n` +
+    `C1 source : ${src}\n` +
+    `scans     : ${demoMode ? '∞' : scanCount}   pts/scan: ${demoMode ? 180 : lastPts}\n` +
+    `sensor h  : ${SENSOR_H.toFixed(2)} m   decay: ${(DECAY_MS/1000)}s\n` +
+    `frame     : +Y up, -Z fwd, +X right (m)`;
+}
+requestAnimationFrame(tick);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>

@@ -43,6 +43,13 @@ class Bridge(ABC):
     def is_moving(self) -> bool:
         return False
 
+    def battery_v(self) -> float:
+        """Pack voltage in volts. 0.0 = not sensed (telemetry reports it raw)."""
+        return 0.0
+
+    def clear_estop(self) -> None:
+        """Exit ESTOP. Default no-op for bridges without a latch."""
+
 
 class MockBridge(Bridge):
     """Simulates the MCU: servos interpolate linearly over duration_ms."""
@@ -57,6 +64,7 @@ class MockBridge(Bridge):
         self._drive = {"l": 0.0, "r": 0.0}
         self._estopped = False
         self.last_heartbeat = 0.0
+        self._battery_mv = 12200.0   # freshly charged 3S pack; drains on heartbeat
         self.calls = []  # (name, args) log for tests
 
     def _log(self, name, *args):
@@ -77,7 +85,7 @@ class MockBridge(Bridge):
         with self._lock:
             if self._estopped:
                 return
-            self._start = self.get_joints()
+            self._start = self._interp_unlocked()
             self._target = joints
             self._move_t0 = time.monotonic()
             self._move_dur = max(0.0, duration_ms / 1000.0)
@@ -85,6 +93,13 @@ class MockBridge(Bridge):
 
     def heartbeat(self):
         self.last_heartbeat = time.monotonic()
+        # simulate a slow discharge so the dashboard battery gauge moves
+        with self._lock:
+            self._battery_mv = max(10500.0, self._battery_mv - 0.4)
+
+    def battery_v(self):
+        with self._lock:
+            return round(self._battery_mv / 1000.0, 2)
 
     def estop(self):
         with self._lock:
@@ -146,6 +161,8 @@ class AppLabBridge(Bridge):
         self._rpc = _RPC()
         self._joints = [90.0] * config.NUM_JOINTS
         self._drive = {"l": 0.0, "r": 0.0}
+        self._battery_mv = 0
+        self._state = 0  # last MCU safety state from get_status (§2)
 
     def set_drive(self, l, r):  # pragma: no cover - hardware only
         self._drive = {"l": float(l), "r": float(r)}
@@ -162,6 +179,25 @@ class AppLabBridge(Bridge):
     def estop(self):  # pragma: no cover
         self._drive = {"l": 0.0, "r": 0.0}
         self._rpc.call("estop")
+
+    def clear_estop(self):  # pragma: no cover
+        self._rpc.call("clear_estop")
+
+    def get_status(self):  # pragma: no cover
+        """Poll the MCU: [state, battery_mv, j0..j4, l_pct, r_pct, ultra_cm] (§3)."""
+        st = list(self._rpc.call("get_status"))
+        self._state = int(st[0])
+        self._battery_mv = int(st[1])
+        self._joints = [float(v) for v in st[2:7]]
+        self._drive = {"l": st[7] / 100.0, "r": st[8] / 100.0}
+        return st
+
+    def battery_v(self):  # pragma: no cover
+        return round(self._battery_mv / 1000.0, 2)
+
+    def mcu_state(self):  # pragma: no cover
+        """Last MCU safety state code (§2); 3 == ESTOP overrides task state."""
+        return self._state
 
     def get_joints(self):  # pragma: no cover
         return list(self._joints)

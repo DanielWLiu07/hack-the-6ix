@@ -12,17 +12,22 @@ class TestValidateAction(unittest.TestCase):
             {"task": "pick", "fruit": "apple", "filter": "ripe"}
         )
         self.assertIsNone(err)
-        self.assertEqual(a, {"task": "pick", "fruit": "apple", "filter": "ripe"})
+        self.assertEqual(
+            a, {"task": "pick", "fruit": "apple", "filter": "ripe", "zone": "any"}
+        )
 
-    def test_defaults(self):
+    def test_defaults_all_four_keys(self):
         a, err = farmhand.validate_action({"task": "stop"})
         self.assertIsNone(err)
-        self.assertEqual(a, {"task": "stop", "fruit": "any", "filter": "any"})
+        self.assertEqual(
+            a, {"task": "stop", "fruit": "any", "filter": "any", "zone": "any"}
+        )
 
-    def test_zone(self):
-        a, err = farmhand.validate_action({"task": "drive", "zone": "row 3"})
-        self.assertIsNone(err)
-        self.assertEqual(a["zone"], "row 3")
+    def test_zone_enum(self):
+        for zone in ("any", "left", "right", "forward", "backward", "home"):
+            a, err = farmhand.validate_action({"task": "drive", "zone": zone})
+            self.assertIsNone(err)
+            self.assertEqual(a["zone"], zone)
 
     def test_rejects_unknown_key(self):
         a, err = farmhand.validate_action({"task": "pick", "speed": 9000})
@@ -42,7 +47,7 @@ class TestValidateAction(unittest.TestCase):
         for bad in (["pick"], "pick", None, 42,
                     {"task": "pick", "zone": 3},
                     {"task": "pick", "zone": ""},
-                    {"task": "pick", "zone": "x" * 100}):
+                    {"task": "pick", "zone": "row 3"}):
             a, err = farmhand.validate_action(bad)
             self.assertIsNone(a, bad)
 
@@ -55,13 +60,18 @@ class TestMockModel(unittest.TestCase):
 
     def test_pick_ripe_apples(self):
         a, _ = self._action("pick all ripe apples")
-        self.assertEqual(a, {"task": "pick", "fruit": "apple", "filter": "ripe"})
+        self.assertEqual(
+            a, {"task": "pick", "fruit": "apple", "filter": "ripe", "zone": "any"}
+        )
 
     def test_slang_and_typos(self):
         a, _ = self._action("yo grab every unripe nana")
-        self.assertEqual(a, {"task": "pick", "fruit": "banana", "filter": "unripe"})
+        self.assertEqual(
+            a, {"task": "pick", "fruit": "banana", "filter": "unripe", "zone": "any"}
+        )
         a, _ = self._action("get the aples that are green")
-        self.assertEqual(a, {"task": "pick", "fruit": "apple", "filter": "unripe"})
+        self.assertEqual(a["fruit"], "apple")
+        self.assertEqual(a["filter"], "unripe")
 
     def test_unripe_not_matched_as_ripe(self):
         a, _ = self._action("harvest unripe bananas")
@@ -73,7 +83,9 @@ class TestMockModel(unittest.TestCase):
 
     def test_sort(self):
         a, _ = self._action("sort the bananas")
-        self.assertEqual(a, {"task": "sort", "fruit": "banana", "filter": "any"})
+        self.assertEqual(
+            a, {"task": "sort", "fruit": "banana", "filter": "any", "zone": "any"}
+        )
 
     def test_both_fruits(self):
         a, _ = self._action("pick apples and bananas")
@@ -89,9 +101,13 @@ class TestMockModel(unittest.TestCase):
         self.assertIsNone(a)
         self.assertTrue(c)
 
-    def test_drive(self):
+    def test_drive_zones(self):
         a, _ = self._action("drive forward")
-        self.assertEqual(a["task"], "drive")
+        self.assertEqual((a["task"], a["zone"]), ("drive", "forward"))
+        a, _ = self._action("go back to home base")
+        self.assertEqual((a["task"], a["zone"]), ("drive", "home"))
+        a, _ = self._action("move left a bit")
+        self.assertEqual((a["task"], a["zone"]), ("drive", "left"))
 
     def test_empty_rejected(self):
         env = farmhand.handle("   ", url="")

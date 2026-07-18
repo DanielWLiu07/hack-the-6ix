@@ -78,6 +78,21 @@ else
   warn "/stream → HTTP ${CODE:-none} (P1 for demo; test pattern expected even without robot)"
 fi
 
+# 4b. Informational: /api/health surfaces the phase-2 wiring (agent + Base44).
+CODE=$(curl -s -o /tmp/check-stack-health.$$ -w '%{http_code}' --max-time 3 "$SERVER_URL/api/health")
+if [ "$CODE" = "200" ]; then
+  HEALTH=$(cat /tmp/check-stack-health.$$)
+  case "$HEALTH" in
+    *'"agent":0'*) warn "no FarmHand agent connected (nl_command→nl_action will get no reply until llm-client's service.py runs)" ;;
+    *'"agent":'*)  ok "FarmHand agent connected (NL command path live)" ;;
+  esac
+  case "$HEALTH" in
+    *'"base44_forwarding":true'*)  ok "Base44 pick_event forwarding ON (Orchard OS webhook wired)" ;;
+    *'"base44_forwarding":false'*) warn "Base44 forwarding off (set BASE44_WEBHOOK_URL to enable the Orchard OS demo)" ;;
+  esac
+fi
+rm -f /tmp/check-stack-health.$$
+
 # 5. Informational: frontend dev server
 if curl -s -o /dev/null --max-time 2 "$VITE_URL"; then
   ok "vite dev server up at $VITE_URL"

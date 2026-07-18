@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Auth0Provider } from '@auth0/auth0-react'
@@ -7,8 +7,10 @@ import App from './App.jsx'
 import Layout from './components/Layout.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Teleop from './pages/Teleop.jsx'
-import LidarView from './pages/LidarView.jsx'
 import Analytics from './pages/Analytics.jsx'
+
+// three.js is ~1 MB — only load it when the lidar page is opened
+const LidarView = lazy(() => import('./pages/LidarView.jsx'))
 import { RobotProvider } from './lib/robot.jsx'
 
 const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN
@@ -37,7 +39,14 @@ createRoot(document.getElementById('root')).render(
             <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/teleop" element={<Teleop />} />
-              <Route path="/lidar" element={<LidarView />} />
+              <Route
+                path="/lidar"
+                element={
+                  <Suspense fallback={<p className="empty">Loading 3D view…</p>}>
+                    <LidarView />
+                  </Suspense>
+                }
+              />
               <Route path="/analytics" element={<Analytics />} />
             </Route>
           </Routes>
