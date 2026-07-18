@@ -210,3 +210,18 @@ Nothing broke that needed a fix beyond the earlier style/punct cleanups (done). 
 OPD flash-1784381972-c9e21472 done ($0.33 GPU + teacher API). Deployed + evaled: canonical 28/30 (93.3%), stress 47/58 (81.0%). Did NOT beat GRPO (96.7%/81.0%) - tied on stress, slightly below on clean. GRPO stays the shipped/live model; OPD undeployed (only GRPO serving now). Live model verified working, 32 tests pass.
 Recorded honestly: DEVPOST eval table now shows all 3 algorithms (SFT/GRPO/OPD) with GRPO marked shipped; DEVPOST_SUBMISSION what's-next updated (all 3 ran, GRPO won). We report the full sweep, not just the winner.
 WIN posture: trained via SFT+GRPO+OPD (all 3 Freesolo algorithms), +34pt over baseline on realistic input (46.6->81.0, 58-case held-out), rigorous multi-metric eval + honest ablation, drives a real robot with a validated safety gate, tiny 0.8B edge model, fully reproducible (training/README). Idle-ready.
+
+## [freesolo-robotready] DONE - plug-and-play on the robot: min config, min debugging
+Focus: works perfectly on the robot with least config/debug. Delivered:
+- `client/selftest.py` - one-command PREFLIGHT: checks .env present, key not masked/truncated (catches the exact ellipsis-key bug we hit), mode resolved, trained model reachable + returns the RIGHT action, fallback works, hub reachable. Prints an actionable fix per failure; exit 0/1. Run before every demo. All 6 checks green now.
+- `service.py` WARMUP: fires one throwaway request on connect so the endpoint is pre-warmed -> first real command ~1s instead of ~2s cold-start. No awkward first-command demo lag. Never blocks startup.
+- demo.sh already auto-provisions the client venv (ensure_venv, fw-tools) - fresh clone = zero manual setup.
+- Rewrote client/README.md: minimal-config table (only key+URL+model needed, rest defaulted), preflight instructions, current schema/fallback/warmup. Removed stale content + a unicode style violation.
+Config surface is now: paste key + URL + model into .env, run selftest, done. 32 unit tests pass. Service live (warmup). Idle-ready.
+
+## [freesolo-chat] chat wired + endpoint keepalive fix
+- FarmHandChat component (web/src/components/FarmHandChat.jsx) built + web-extra added a 'pov' variant. Contract: emits nl_command, renders nl_action (action chip / clarify / reject). Self-contained, no mock data.
+- FOUND+FIXED: the Freesolo endpoint scales to zero when idle; a cold first request timed out -> fell back to rules (demo worked but showed rules, not the trained model). Added a KEEPALIVE loop in service.py (pings every 150s, FARMHAND_KEEPALIVE env) so the trained model stays warm (~730ms). Verified: command through hub now returns the TRAINED model, fallback=no.
+- Deployment confirmed healthy (GRPO flash-1784358461 ready, 0.9s warm).
+REMAINING (web-extra-1): render <FarmHandChat variant="pov" /> in web/src/pages/RobotPOV.jsx (component + service + endpoint all working; just needs the one line in their page). Service live w/ keepalive.
+API: the LLM is OUR model trained on Freesolo (Qwen3.5-0.8B, SFT+GRPO), served OpenAI-compatible; browser never calls it directly - goes through the hub + our service (key server-side).

@@ -161,3 +161,10 @@ Human: massively improve the data + graphs + UI. Added (all live-derived, no har
 - Vision/All-time panel: avg detection confidence + count + last-seen; swaps to server all-time totals when live (not sim).
 - Count-up bug clamped (k=max(0,...)); consumes detections from useRobot.
 `npm run build` ✓, `oxlint` ✓ clean, render-verified. Note: impact factors should be reconciled with @db's docs/IMPACT.md when it lands.
+
+## [13:10] DONE — deco polish: recognizable props, single-select, saved layout, beautified data
+- Fixed "super black" props: render every prop as a uniform LIGHT matte material (drop dark albedo/metal/emissive maps, keep normals) so mangaPass draws recognizable inked shapes. Verified (apple/magnifier/robot-arm/server all readable).
+- Fixed "multiselecting": disabled text-selection on the drag catcher + `body:has(.deco-catcher)` and preventDefault on catcher pointerdown, so dragging no longer highlights page text; selection stays single (object list).
+- Wired the human's exported "Copy layout" arrangement (8 props: server/magnifier/apple/robotarm on left, banana/haybale/crate/battery on right) as the DEFAULT_PLACEMENT auto-loaded default. catalogId->url via PALETTE key map. Props frame the data down the margins.
+- Data beautified: inverted screentone IMPACT hero with red offset shadow + red spot accents (live/SIM dot, FAIL badge, section tick), panel hover-lift, punchier TrendChart (peak bar + success area fill), section-label ticks. Density pass (consistent 1.3rem gaps, compact cards).
+`npm run build` ✓, `oxlint` ✓, all data live.
