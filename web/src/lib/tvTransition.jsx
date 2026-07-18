@@ -23,6 +23,7 @@ const COVER_MS = 60
 const HOLD_MIN_MS = 120 // minimum cover so a fast mount does not snap-reveal
 const HOLD_FALLBACK_MS = 2200 // reveal anyway if the page never signals arrival
 const REVEAL_MS = 640 // then clears (fades) over the destination
+const EXIT_COVER_MS = 140 // exit: only bridge the mount, then let the TV static show
 
 // Camera zoom-in / zoom-out duration (MonkeyStage TvZoom / TvZoomOut). Shared so
 // the exit static holds for exactly the pull-back, mirroring how the entry static
@@ -71,11 +72,12 @@ export default function TvTransitionProvider({ children }) {
           s.t0 = now
         }
       } else if (s.phase === 'exitHold') {
-        // Returning to the stage: hold full static for the whole camera pull-back
-        // (ZOOM_MS), then reveal - mirrors the entry, where the static covers the
-        // whole push-in before it clears.
+        // Returning to the stage: cover ONLY the mount for a beat, then reveal so
+        // the exited monitor's own static (rendered on that TV) shows as the
+        // camera pulls out of it. The fuzz is on the TV screen shrinking into the
+        // stage, not a full-screen overlay for the whole pull-back.
         s.op = 1
-        if (now - s.t0 >= ZOOM_MS) { s.phase = 'reveal'; s.t0 = now }
+        if (now - s.t0 >= EXIT_COVER_MS) { s.phase = 'reveal'; s.t0 = now }
       } else if (s.phase === 'hold') {
         // Stay fully covered until the destination page signals it has mounted
         // (arrived), so the static never clears over a blank loading screen (the

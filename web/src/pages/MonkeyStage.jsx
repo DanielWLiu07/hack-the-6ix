@@ -839,11 +839,11 @@ const NAV_TVS = [
   // Four text monitors, left to right, each placed independently.
   { to: '/pov', label: 'Robot', color: '#7cd4ff', pos: [-1.908, 0.953, 0.322], rot: [0, 0.688, 0.068], scale: 0.67 },
   { to: '/analytics', label: 'Data', color: '#c3a2ff', pos: [-0.616, 1.046, 0.365], rot: [0, 0.065, 0], scale: 0.6 },
-  { to: '/teleop', label: 'TeleOp', color: '#ff8fbf', pos: [0.604, 1.045, 0.365], rot: [0, -0.065, 0], scale: 0.6 },
+  { to: '/teleop', label: 'TeleOp', color: '#ffcf3f', pos: [0.604, 1.045, 0.365], rot: [0, -0.065, 0], scale: 0.6 },
   { to: '/harvest', label: 'Harvest', color: '#86e6a0', pos: [1.891, 0.948, 0.323], rot: [0, -0.688, -0.068], scale: 0.66 },
   {
     // POMME monitor - a text TV like the others, hand-placed.
-    to: '/', label: 'Pomme', color: '#ffcf3f',
+    to: '/', label: 'Pomme', color: '#ff4d43',
     pos: [0.011, -0.49, 1.02], rot: [-0.547, 0, 0], scale: 0.68,
   },
 ]
@@ -1144,7 +1144,7 @@ function tvFramingPose(item, fovDeg, width, height) {
 // Exit arrival: when we return to the stage after clicking INTO a monitor, start
 // the camera framed inside that monitor and ease out to the settled stage view,
 // mirroring the push-in. The static reveal (tvTransition) clears over it.
-function TvZoomOut({ to }) {
+function TvZoomOut({ to, onDone }) {
   const { camera, size } = useThree()
   const started = useRef(false)
   const done = useRef(false)
@@ -1172,12 +1172,12 @@ function TvZoomOut({ to }) {
     const e = 1 - Math.pow(1 - p, 3) // easeOutCubic
     camera.position.lerpVectors(framing.pos, home.current.pos, e)
     camera.quaternion.slerpQuaternions(framing.quat, home.current.quat, e)
-    if (p >= 1) done.current = true
+    if (p >= 1) { done.current = true; if (onDone) onDone() }
   })
   return null
 }
 
-function StageTVNav({ bind, onNav, edit, zoomTo, onReady, registry }) {
+function StageTVNav({ bind, onNav, edit, zoomTo, exitTo, onReady, registry }) {
   const items = useMemo(layoutTvs, [])
   return (
     <group>
@@ -1185,7 +1185,7 @@ function StageTVNav({ bind, onNav, edit, zoomTo, onReady, registry }) {
           or the manga pass renders them near-black on the black ceiling. */}
       <pointLight position={[0, TV_ARC.center[1] + 0.6, TV_ARC.center[2] + 2.4]} intensity={38} distance={9} decay={2} />
       {items.map((it) => (
-        <StageTV key={it.to} {...it} scale={it.scaleVal} labelZ={TV_ARC.labelZ} bind={bind} onNav={onNav} edit={edit} zoomActive={zoomTo === it.to} onReady={onReady} registry={registry} />
+        <StageTV key={it.to} {...it} scale={it.scaleVal} labelZ={TV_ARC.labelZ} bind={bind} onNav={onNav} edit={edit} zoomActive={zoomTo === it.to || exitTo === it.to} onReady={onReady} registry={registry} />
       ))}
     </group>
   )
@@ -1224,6 +1224,10 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
     pendingTvOut = null
     return v
   })
+  // Show the exited monitor's OWN static while the camera pulls out of it, then
+  // clear when the pull-back finishes - so the exit fuzz is on the TV screen
+  // (shrinking into the stage), not a full-screen overlay.
+  const [exitStatic, setExitStatic] = useState(tvOut)
   const spotTarget = useMemo(() => new THREE.Object3D(), [])
   // Shared handle so the camera intro drives the on-screen fuzz opacity.
   const fuzzRef = useRef({ opacity: 0 })
@@ -1437,7 +1441,7 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
         <CanvasGuard />
         <color attach="background" args={['#000000']} />
         <CameraIntro active={playIntro && !tvOut} fuzzRef={fuzzRef} />
-        {tvOut && <TvZoomOut to={tvOut} />}
+        {tvOut && <TvZoomOut to={tvOut} onDone={() => setExitStatic(null)} />}
         {/* The heavy scene (lights, backdrop, monkey, TV nav, props, manga
             post-process) renders only once the stage takes over (liveScene).
             On the landing it stays empty, so the stage does not add a third
@@ -1474,7 +1478,7 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
           <RadialLight bind={bind} groupRef={radialRef} />
           <Suspense fallback={null}>
             <Monkey bind={bind} poseRef={poseRef} mimic={mimic} mirror={mirror} />
-            {showNav && <StageTVNav bind={bind} onNav={editTV ? () => {} : startZoom} edit={editTV} zoomTo={zoomTo} onReady={onTvReady} registry={tvGroups} />}
+            {showNav && <StageTVNav bind={bind} onNav={editTV ? () => {} : startZoom} edit={editTV} zoomTo={zoomTo} exitTo={exitStatic} onReady={onTvReady} registry={tvGroups} />}
           </Suspense>
           {placed.map((inst) => {
             const catalog = CATALOG_BY_ID[inst.catalogId]
