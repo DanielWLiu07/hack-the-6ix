@@ -13,14 +13,11 @@ import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.j
 import { MangaPass } from '../lib/mangaPass.js'
 import { CanvasGuard, SAFE_DPR } from '../lib/canvasGuard.jsx'
 import { buildRig, applyPose } from '../lib/poseRig.js'
-import { useTvTransition } from '../lib/tvTransition.jsx'
+import { useTvTransition, tvExitState, ZOOM_MS } from '../lib/tvTransition.jsx'
 import { preloadRoute } from '../lib/routePreload.js'
 import { StageProp, PropBoundary } from '../components/StageProp.jsx'
 import { PROP_CATALOG, CATALOG_BY_ID, DEFAULT_PLACEMENT, FLOOR } from '../lib/stageProps.js'
 
-// Webcam pose capture is heavy (MediaPipe wasm), so it only loads when the
-// operator turns on mimic mode.
-const MimicCam = lazy(() => import('../components/MimicCam.jsx'))
 import '../App.css'
 
 // Fresh Meshy-generated cartoon monkey, arms out in a T-pose (a clean static
@@ -395,6 +392,10 @@ const _mv = new THREE.Vector3()
 const _mtarget = new THREE.Vector3()
 const _sh = new THREE.Vector3()
 const _n = new THREE.Vector3()
+const _hpw = new THREE.Vector3()
+const _ldir = new THREE.Vector3()
+const _bq2 = new THREE.Quaternion()
+const clampv = THREE.MathUtils.clamp
 // Cursor-point pose: the FOREARM aims exactly at the cursor target, while the
 // upper arm just loosely follows (elbow stays relaxed at the side). This reads as
 // a natural pointing gesture and can never fold behind the body the way a strict
@@ -544,10 +545,13 @@ function Monkey({ bind, poseRef, mimic, mirror }) {
       _hp.setFromMatrixPosition(_hm)
       head.position.set(_hp.x, _hp.y + headUp, _hp.z)
       if (!mimic && !animated) {
-        // No independent head pitch - the up-down comes only from the neck sway
-        // (so it stays in sync with the body). Add just a gentle yaw/roll for life.
-        const t = state.clock.elapsedTime
-        _e.set(0, Math.sin(t * 0.5) * 0.06, Math.sin(t * 0.6) * 0.03)
+        // Head gently biases toward the cursor. Driven straight off the pointer's
+        // screen position with SMALL clamps - a full look-at pitched it so far
+        // back the (bottomless) head showed its hollow underside. Up-tilt is kept
+        // especially small so the open bottom never faces the camera.
+        const yaw = clampv(state.pointer.x * 0.4, -0.4, 0.4)
+        const pitch = clampv(-state.pointer.y * 0.1, -0.07, 0.12) // up-tilt tiny
+        _e.set(pitch, yaw, 0, 'YXZ')
         head.quaternion.setFromEuler(_e)
       } else {
         head.quaternion.identity()
@@ -911,7 +915,7 @@ function TvZoom({ groupRef, onDone }) {
   const clock = useRef(0)
   const from = useRef(null)
   const to = useRef(null)
-  const DURATION = 0.85
+  const DURATION = ZOOM_MS / 1000 // shared with the exit pull-out so both match
   useFrame(() => {
     const g = groupRef.current
     if (!g || done.current) return
@@ -1148,7 +1152,7 @@ function TvZoomOut({ to }) {
   const done = useRef(false)
   const t = useRef(0)
   const home = useRef(null)
-  const DURATION = 1.0
+  const DURATION = ZOOM_MS / 1000 // same as the entry push-in
   const framing = useMemo(() => {
     const item = layoutTvs().find((it) => it.to === to)
     return item ? tvFramingPose(item, camera.fov, size.width, size.height) : null
@@ -1211,6 +1215,7 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
     preloadRoute(to)
     zoomGroupRef.current = group
     pendingTvOut = to // remember it so the return pulls back out of this monitor
+    tvExitState.pending = true // the return to /stage holds static for the pull-back
     setZoomTo(to)
   }, [zoomTo])
   // On mount, consume any pending "exit" monitor: if we arrived by clicking into
@@ -1229,8 +1234,9 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
   const [selected, setSelected] = useState(null)
   const [transformMode, setTransformMode] = useState('translate')
   // Mimic mode: the monkey copies the operator's body via the webcam pose.
-  const [mimic, setMimic] = useState(false)
-  const [mirror, setMirror] = useState(false)
+  // Webcam "mimic me" mode was removed; the mascot just plays its idle/pose.
+  const mimic = false
+  const mirror = false
   const poseRef = useRef(null)
 
   // Placeable lab props. `placed` only tracks WHICH props exist (add / place /
@@ -1516,22 +1522,6 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
           </div>
           <div className="stage-palette-note">Drops in front of the monkey - drag it into place.</div>
         </div>
-      )}
-      {/* Mimic control stays on the clean stage - it is a feature, not editing. */}
-      <div className="stage-editor stage-editor--mimic">
-        <button className={mimic ? 'is-active' : ''} onClick={() => setMimic((v) => !v)}>
-          {mimic ? 'stop mimic' : 'mimic me'}
-        </button>
-        {mimic && (
-          <button className={mirror ? 'is-active' : ''} onClick={() => setMirror((v) => !v)}>
-            mirror
-          </button>
-        )}
-      </div>
-      {mimic && (
-        <Suspense fallback={null}>
-          <MimicCam poseRef={poseRef} mirror={mirror} />
-        </Suspense>
       )}
       {/* The transform panel (with copy) shows in the editor, and also on the
           clean stage when the radial light is picked - so it can be copied. */}

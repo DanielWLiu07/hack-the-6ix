@@ -1,0 +1,13 @@
+/* Page tune-in static. Covers the whole viewport (including page chrome) while
+   the arriving page mounts, then fades. Above page content and the back button,
+   below the tv-static page-transition overlay. */
+.arrival-fuzz {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2147483300;
+  pointer-events: none;
+  image-rendering: pixelated;
+  display: block;
+}

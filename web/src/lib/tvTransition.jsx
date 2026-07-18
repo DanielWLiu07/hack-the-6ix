@@ -14,9 +14,24 @@ export function useTvTransition() {
   return useContext(TvCtx) || { tvNavigate: () => {} }
 }
 
-const COVER_MS = 260 // static ramps in to fully cover the screen
+// The clicked monitor's in-scene fuzz (TvStaticMesh) already fills the screen by
+// the time the camera zoom finishes, so the overlay does NOT ramp in - it snaps
+// straight to full static (static -> static is a seamless handoff, no visible
+// blend seam). COVER_MS is just long enough to paint one opaque frame before we
+// swap the route behind it.
+const COVER_MS = 60
 const HOLD_MS = 400 // stays fully covered while the new page mounts/paints
 const REVEAL_MS = 640 // then clears (fades) over the destination
+
+// Camera zoom-in / zoom-out duration (MonkeyStage TvZoom / TvZoomOut). Shared so
+// the exit static holds for exactly the pull-back, mirroring how the entry static
+// covers the whole push-in.
+export const ZOOM_MS = 850
+
+// Set by MonkeyStage when it dives INTO a monitor: the next /stage arrival is a
+// TV exit (a camera pull-out plays), so the overlay must stay fully covered for
+// the whole pull-back and only THEN clear - the same shape as the entry.
+export const tvExitState = { pending: false }
 
 export default function TvTransitionProvider({ children }) {
   const navigate = useNavigate()
@@ -44,14 +59,22 @@ export default function TvTransitionProvider({ children }) {
       const s = state.current
       const now = performance.now()
       if (s.phase === 'cover') {
-        s.op = Math.min(1, (now - s.t0) / COVER_MS)
-        if (s.op >= 1) {
+        // Snap to full static (no ramp) so the overlay continues the in-scene TV
+        // fuzz seamlessly instead of blending in over it.
+        s.op = 1
+        if (now - s.t0 >= COVER_MS) {
           // fully covered: swap the route behind the static, then hold + reveal
           // guard the arrival-reveal only when this navigate targets the stage
           if (s.to != null) { s.guard = s.to === '/stage'; navigate(s.to); s.to = null }
           s.phase = 'hold'
           s.t0 = now
         }
+      } else if (s.phase === 'exitHold') {
+        // Returning to the stage: hold full static for the whole camera pull-back
+        // (ZOOM_MS), then reveal - mirrors the entry, where the static covers the
+        // whole push-in before it clears.
+        s.op = 1
+        if (now - s.t0 >= ZOOM_MS) { s.phase = 'reveal'; s.t0 = now }
       } else if (s.phase === 'hold') {
         // Keep the screen fully covered while the destination mounts/paints, so
         // the reveal FADES over the real new page rather than a blank loading
@@ -89,7 +112,14 @@ export default function TvTransitionProvider({ children }) {
     const s = state.current
     if (location.pathname !== '/stage') return
     if (s.guard) { s.guard = false; return }
-    s.phase = 'reveal'
+    // A TV exit (dived into a monitor, now pulling back out) holds full static for
+    // the pull-back before revealing; a plain visit just tunes in immediately.
+    if (tvExitState.pending) {
+      tvExitState.pending = false
+      s.phase = 'exitHold'
+    } else {
+      s.phase = 'reveal'
+    }
     s.t0 = performance.now()
     s.op = 1
     startRef.current()

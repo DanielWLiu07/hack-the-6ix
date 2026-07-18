@@ -12,6 +12,7 @@
   --line: rgba(23, 25, 20, 0.3);
   --line-soft: rgba(23, 25, 20, 0.16);
   --green: #2f6b34;
+  --red: #e5484d; /* Battery, not Blood spot accent */
   --mono: var(--ui-mono);
   --halftone: radial-gradient(var(--ink) 1.1px, transparent 1.45px);
 
@@ -103,7 +104,12 @@
   z-index: 3;
   pointer-events: auto;
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
+/* while editing, don't let a drag highlight/select the page text */
+body:has(.deco-catcher) { user-select: none; -webkit-user-select: none; }
 .deco-catcher:active { cursor: grabbing; }
 
 .deco-row2 { display: flex; gap: 0.4rem; align-items: center; margin: 0.55rem 0; }
@@ -140,13 +146,24 @@
   border-radius: 4px;
   box-shadow: 4px 4px 0 var(--ink);
   padding: 1.1rem 1.25rem;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
+.az-panel:hover { transform: translate(-1px, -1px); box-shadow: 6px 6px 0 var(--ink); }
 .az-panel > h3 {
   margin: 0 0 0.8rem;
   font: 800 0.66rem var(--mono);
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ink-2);
+}
+.az-panel > h3::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  margin-right: 0.5rem;
+  vertical-align: 0.16em;
+  background: var(--ink);
 }
 
 /* ---- title (kicker + heavy mono title, like teleop) ----------------- */
@@ -322,6 +339,29 @@
 .az-kv > div:last-child { border-bottom: none; }
 .az-kv span { font: 600 0.68rem var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
 .az-kv b { font: 800 1.15rem var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* ---- beautify: inverted screentone impact hero + accents ------------ */
+.az-impact {
+  background-color: var(--ink);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1.3px);
+  background-size: 6px 6px;
+  color: var(--paper);
+  box-shadow: 5px 5px 0 var(--red);
+}
+.az-impact:hover { box-shadow: 7px 7px 0 var(--red); }
+.az-impact > h3 { color: rgba(255, 255, 255, 0.55); }
+.az-impact > h3::before { background: var(--red); }
+.az-impact .az-imp b { color: var(--paper); text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
+.az-impact .az-imp b i { color: rgba(255, 255, 255, 0.5); }
+.az-impact .az-imp span { color: rgba(255, 255, 255, 0.62); }
+
+/* trends: peak bar + soft area under the success line */
+.az-chart .bar.peak { opacity: 0.9; }
+.az-chart .succ-fill { fill: var(--ink); opacity: 0.06; }
+
+/* red spot accents */
+.az-feed .st.n { color: var(--red); border-color: var(--red); }
+.az-live:not(.stale) .sq { background: var(--red); box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18); }
 
 /* ---- motion --------------------------------------------------------- */
 @keyframes az-flash {

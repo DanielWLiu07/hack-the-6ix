@@ -35,6 +35,27 @@ const PALETTE = [
 ]
 const labelOf = (url) => PALETTE.find((p) => p.url === url)?.label ?? 'Prop'
 const heightOf = () => 1
+const byKey = Object.fromEntries(PALETTE.map((p) => [p.key, p.url]))
+
+// Saved arrangement (exported from the editor's "Copy layout").
+const DEFAULT_PLACEMENT = [
+  { catalogId: 'server', position: [-5.788, -4.207, 0], rotation: [-0.342, 0.498, -0.062], scale: 2.36 },
+  { catalogId: 'magnifier', position: [-5.954, -1.123, 0], rotation: [-0.382, 0.798, -0.962], scale: 1.64 },
+  { catalogId: 'apple', position: [-4.951, 0.144, 0], rotation: [0.338, 0.278, 0], scale: 1 },
+  { catalogId: 'robotarm', position: [-5.34, 2.731, 0], rotation: [-2.482, -2.022, 0.218], scale: 1.64 },
+  { catalogId: 'banana', position: [4.764, 0.973, 0], rotation: [0, 1.738, 1.938], scale: 1.62 },
+  { catalogId: 'haybale', position: [5.481, -3.525, 0], rotation: [0, -0.742, 0.158], scale: 1 },
+  { catalogId: 'crate', position: [5.297, -2.401, 0], rotation: [0, -0.902, 0], scale: 1.18 },
+  { catalogId: 'battery', position: [4.885, -0.847, 0], rotation: [0.258, 1.738, 0.938], scale: 1.22 },
+]
+const presetObjects = () =>
+  DEFAULT_PLACEMENT.filter((p) => byKey[p.catalogId]).map((p) => ({
+    id: ++_uid,
+    url: byKey[p.catalogId],
+    pos: [...p.position],
+    rot: [...p.rotation],
+    scale: p.scale,
+  }))
 
 let _uid = 0
 const mkObj = (url, over = {}) => ({
@@ -99,15 +120,24 @@ function Prop({ url, pos, rot, scale, onDown }) {
   const { scene } = useGLTF(url)
   const model = useMemo(() => {
     const m = scene.clone(true)
-    // Meshy models are metallic PBR; with no environment map, metal renders pure
-    // black on a real GPU. De-metallize (clone materials so we don't mutate the
-    // cache) so the lights actually shade them and mangaPass gets real tone.
+    // Meshy models are dark metallic PBR; through mangaPass they read as solid
+    // black. Render every prop as a uniform LIGHT matte material (drop the dark
+    // albedo/metal/emissive maps, keep normals for surface detail) so the lights
+    // shade the shape and mangaPass draws a recognizable inked line drawing.
+    // Clone materials so the useGLTF cache is untouched.
     m.traverse((o) => {
       if (!o.isMesh || !o.material) return
       const fix = (mat) => {
         const c = mat.clone()
         if ('metalness' in c) c.metalness = 0
-        if ('roughness' in c) c.roughness = Math.max(0.5, c.roughness ?? 0.5)
+        if ('metalnessMap' in c) c.metalnessMap = null
+        if ('roughness' in c) c.roughness = 0.7
+        if ('roughnessMap' in c) c.roughnessMap = null
+        if ('map' in c) c.map = null // drop the dark colour texture
+        if ('color' in c && c.color) c.color.set('#cfcfcf')
+        if ('emissive' in c && c.emissive) c.emissive.setScalar(0)
+        if ('emissiveMap' in c) c.emissiveMap = null
+        if ('aoMap' in c) c.aoMap = null
         c.needsUpdate = true
         return c
       }
@@ -319,7 +349,7 @@ function DecoEditor(props) {
 }
 
 export default function Deco() {
-  const [objects, setObjects] = useState([]) // start empty; add props from the editor
+  const [objects, setObjects] = useState(presetObjects) // load the saved arrangement
   const [selId, setSelId] = useState(null)
   const [pick, setPick] = useState(PALETTE[0].key)
   const [placing, setPlacing] = useState(false)
@@ -418,7 +448,14 @@ export default function Deco() {
       {/* transparent input layer while editing: drags the selected prop without
           hiding the data (the 3D canvas stays behind at z0) */}
       {placing && (
-        <div className="deco-catcher" onPointerDown={grabSelected} aria-hidden />
+        <div
+          className="deco-catcher"
+          onPointerDown={(e) => {
+            e.preventDefault()
+            grabSelected()
+          }}
+          aria-hidden
+        />
       )}
       <DecoEditor
         objects={objects}

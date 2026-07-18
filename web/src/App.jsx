@@ -228,11 +228,128 @@ function ClassicHero() {
 
 // Probe the self-hosted scene, verifying it's the real scene and not the SPA
 // shell fallback. While probing, show paper (no dead-iframe flash).
+// Full-screen tune-in static for the landing-to-stage handoff. The stage's own
+// fuzz cannot cover the cut, because the stage WebGL canvas mounts fresh on the
+// handoff (to avoid three live GL contexts) and needs a beat to init - so the
+// landing would visibly cut to the mounting stage before that fuzz appears. This
+// 2D-canvas overlay lives at the App level and starts covering IMMEDIATELY when
+// the handoff begins, on a wall clock, then fades as the stage settles under it.
+function StageArrivalFuzz({ active }) {
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!active) return undefined
+    const canvas = ref.current
+    if (!canvas) return undefined
+    const ctx = canvas.getContext('2d')
+    let w = 2
+    let h = 2
+    const resize = () => {
+      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 7))
+      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 7))
+    }
+    resize()
+    window.addEventListener('resize', resize)
+    // Ramp IN over the still-visible landing (like a TV losing signal), hold
+    // fully covered while the stage swaps in behind it, then fade OUT to the
+    // stage. COVER must match stageCovered's delay so the landing unmounts and
+    // the stage mounts exactly when the fuzz is fully opaque.
+    const COVER = 340 // ms fade-in 0 -> 1 over the landing
+    const HOLD = 420 // ms fully covered while the stage mounts
+    const FADE = 950 // ms fade-out over the settled stage
+    const t0 = performance.now()
+    let raf = 0
+    const draw = () => {
+      const img = ctx.createImageData(w, h)
+      const d = img.data
+      for (let i = 0; i < d.length; i += 4) {
+        const v = (Math.random() * 255) | 0
+        d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
+      }
+      ctx.putImageData(img, 0, 0)
+    }
+    draw()
+    canvas.style.opacity = '0'
+    const loop = () => {
+      const el = performance.now() - t0
+      const op = el < COVER
+        ? el / COVER
+        : el < COVER + HOLD
+          ? 1
+          : Math.max(0, 1 - (el - COVER - HOLD) / FADE)
+      if (op <= 0.001 && el > COVER + HOLD) { canvas.style.opacity = '0'; return }
+      draw()
+      canvas.style.opacity = String(op)
+      raf = requestAnimationFrame(loop)
+    }
+    raf = requestAnimationFrame(loop)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', resize)
+    }
+  }, [active])
+  if (!active) return null
+  return <canvas ref={ref} className="stage-arrival-fuzz" aria-hidden="true" />
+}
+
+function GithubIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true" fill="currentColor">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
+    </svg>
+  )
+}
+
+function DevpostIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <path d="M8 2.5h8L21.5 8v8L16 21.5H8L2.5 16V8z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <text x="12" y="16" textAnchor="middle" fontSize="11" fontWeight="700" fontFamily="system-ui, sans-serif" fill="currentColor">D</text>
+    </svg>
+  )
+}
+
+// Project links, bottom-left of the landing. TODO: replace the Devpost href with
+// the real submission URL once it exists.
+const LANDING_LINKS = [
+  { label: 'GitHub', href: 'https://github.com/DanielWLiu07/hack-the-6ix', Icon: GithubIcon },
+  { label: 'Devpost', href: 'https://devpost.com/', Icon: DevpostIcon },
+]
+
+function LandingLinks() {
+  return (
+    <nav className="landing-links" aria-label="Project links">
+      {LANDING_LINKS.map(({ label, href, Icon }) => (
+        <a
+          key={label}
+          className="landing-link"
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={label}
+          aria-label={label}
+        >
+          <Icon />
+        </a>
+      ))}
+    </nav>
+  )
+}
+
 function Landing() {
   const [mode, setMode] = useState(null) // null | 'scene' | 'orchard'
   const [authBoardOpen, setAuthBoardOpen] = useState(false)
   const [authBoardPinned, setAuthBoardPinned] = useState(false)
   const [stageActive, setStageActive] = useState(false)
+  // Flips true once the arrival fuzz has ramped over the landing. The landing
+  // visuals stay until then and the stage mounts only then, so the WebGL context
+  // swap is hidden behind the fuzz and the fuzz fades IN over the real landing
+  // scene rather than snapping on. Delay matches COVER in StageArrivalFuzz.
+  const [stageCovered, setStageCovered] = useState(false)
+  useEffect(() => {
+    if (!stageActive) return undefined
+    const id = setTimeout(() => setStageCovered(true), 340)
+    return () => clearTimeout(id)
+  }, [stageActive])
   const [loginRevealed, setLoginRevealed] = useState(false)
   // Global, persistent session (survives navigation + refresh): see lib/auth.jsx.
   const { operator, login, logout: handleLogout } = useOperator()
@@ -399,17 +516,19 @@ function Landing() {
   if (mode === null) return <main className="hero-stage" />
   return (
     <main className={`hero-stage ${loginRevealed ? 'login-in' : ''}`}>
+      <StageArrivalFuzz active={stageActive} />
+      {!stageCovered && <LandingLinks />}
       {/* The manga stage sits underneath the landing from first paint; the route,
           WebGL canvas, and mascot never remount. The apple ascent cross-fades to
           it (a plain opacity fade, see .landing-stage-layer) at its settled pose. */}
-      <div className={`landing-stage-layer ${stageActive ? 'is-active' : ''}`}>
+      <div className={`landing-stage-layer ${stageCovered ? 'is-active' : ''}`}>
         {/* The stage's WebGL canvas is NOT mounted during the landing. Keeping it
             alive next to the painterly scene iframe and the robot splat meant
             three heavy WebGL contexts at once, which crashed the GPU and left the
             stage black after the handoff. Mount it only when the stage takes over
             (the same fresh-mount path as a direct /stage visit, which is stable);
             the fuzz intro covers the brief load. */}
-        {stageActive && (
+        {stageCovered && (
           <Suspense fallback={null}>
             <MonkeyStage showNav playIntro liveScene />
           </Suspense>
@@ -419,7 +538,7 @@ function Landing() {
         <>
           {/* Unmount once the stage takes over so this scene's WebGL context is
               freed - the stage painting's live scene is the only one left. */}
-          {!stageActive && (
+          {!stageCovered && (
             <iframe
               ref={sceneRef}
               className="hero-embed"
@@ -461,12 +580,12 @@ function Landing() {
           />
         </Suspense>
       )}
-      {!stageActive && (
+      {!stageCovered && (
         <Suspense fallback={null}>
           <RobotRollIn />
         </Suspense>
       )}
-      {!stageActive && (
+      {!stageCovered && (
         <LandingAccountControl
           operator={operator}
           onLogout={handleLogout}

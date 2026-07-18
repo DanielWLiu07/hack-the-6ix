@@ -34,21 +34,16 @@ const RIG_YAW = 0.654 // scene rig yaw: screen-right axis in world XZ
 const FLOOR_Y = -0.95 // scene ground plane
 const CART_LIFT = 0.55 // raise the cart centre so its base sits on the floor (tune)
 const WORLD_SCALE = 0.9 // shrink the 2.4u splat to scene scale (tune)
-const TARGET = [-3.45, 0.2, 0.28] // end location (a bit more left of the apple)
-const DRIVE_DIST = 6 // how far in FRONT (toward the camera) it starts
-const DRIVE_DUR = 2.2 // seconds to drive in
-const DRIVE_DELAY = 1.3 // seconds to WAIT after the apple slam before driving in
-// Entry from the viewer's side driving INTO the screen: START sits in the
-// foreground (toward the camera along the floor), drives away to TARGET facing
-// its travel direction, then U-turn drifts to point back at the camera.
-const INTO = (() => {
-  const dx = TARGET[0] - CAM_POS[0]
-  const dz = TARGET[2] - CAM_POS[2]
-  const len = Math.hypot(dx, dz) || 1
-  return [dx / len, dz / len] // into-scene direction along the floor
-})()
-const START = [TARGET[0] - INTO[0] * DRIVE_DIST, TARGET[1], TARGET[2] - INTO[1] * DRIVE_DIST]
-const TRAVEL_YAW = Math.atan2(INTO[0], INTO[1]) // heading while driving in (facing away)
+const TARGET = [-3.45, -0.05, 0.28] // end location (lowered a bit)
+const DRIVE_DIST = 10 // how far off-screen it starts (longer run = more momentum)
+const DRIVE_DUR = 2.8 // seconds to drive in
+const DRIVE_DELAY = 0 // drive in right as the apple slams (no wait)
+// Side entry: START sits off-screen along the floor (screen-left of TARGET). The
+// cart drives STRAIGHT toward TARGET facing its travel direction the whole way,
+// then turns to the final (camera-facing) heading at the end.
+const RIGHT = [Math.cos(RIG_YAW), 0, -Math.sin(RIG_YAW)] // screen-right axis in world
+const START = [TARGET[0] - RIGHT[0] * DRIVE_DIST, TARGET[1], TARGET[2] - RIGHT[2] * DRIVE_DIST]
+const TRAVEL_YAW = Math.atan2(RIGHT[0], RIGHT[2]) // heading while driving in (forward = travel dir)
 
 const TUNE = typeof window !== 'undefined' && window.location.search.includes('tunesplat')
 const easeOutCubic = (x) => 1 - Math.pow(1 - x, 3)
@@ -136,9 +131,10 @@ function RollingRobot({ fixRef, startRef }) {
     const pRaw = Math.min(Math.max(t, 0) / DRIVE_DUR, 1)
     const e = easeOutCubic(pRaw)
     const arriving = 1 - e
-    // Drive in facing away, then U-turn drift to point back at us over the last
-    // ~45% of the drive.
-    const turnP = easeOutCubic(Math.min(Math.max((pRaw - 0.55) / 0.45, 0), 1))
+    // Drive straight forward with power for the first ~35%, THEN ease the turn
+    // in gradually over the rest (smooth, not a snap) so it arrives facing final.
+    const tp = Math.min(Math.max((pRaw - 0.35) / 0.65, 0), 1)
+    const turnP = tp * tp * (3 - 2 * tp) // smoothstep after the forward lead-in
     if (g) {
       place(
         g,
@@ -226,15 +222,18 @@ function TunePanel({ fixRef }) {
 export default function RobotRollIn() {
   const fixRef = useRef({ rotation: [0, 0, 0], scale: 1, target: [...TARGET] })
   useMemo(() => { fixRef.current = { rotation: [...SPLAT_FIX.rotation], scale: SPLAT_FIX.scale, target: [...TARGET] } }, [])
-  // The cart waits off-screen until the apple slams the ground. The scene posts
-  // { phase: 'landed' } at that beat; a fallback timer covers orchard mode (no
-  // scene) or a dropped message. In tune mode it drives in immediately.
+  // The cart waits off-screen until the EXACT apple-impact frame. The scene posts
+  // { phase: 'slam' } only on real impact (not the early grow path), so the cart
+  // drives in right as the apple hits - not before. Fallback covers orchard mode
+  // (no scene) or a dropped message. In tune mode it drives in immediately.
   const started = useRef(TUNE)
   useEffect(() => {
     if (TUNE) return undefined
-    const onMsg = (e) => { if (e.data?.phase === 'landed') started.current = true }
+    const onMsg = (e) => { if (e.data?.phase === 'slam') started.current = true }
     window.addEventListener('message', onMsg)
-    const fallback = window.setTimeout(() => { started.current = true }, 4000)
+    // Long safety net ONLY for orchard mode (no scene) or a dropped message -
+    // well past any real apple slam, so a slow scene load never preempts it.
+    const fallback = window.setTimeout(() => { started.current = true }, 14000)
     return () => { window.removeEventListener('message', onMsg); window.clearTimeout(fallback) }
   }, [])
   return (

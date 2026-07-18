@@ -252,6 +252,32 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
 .landing-logout span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .landing-logout button { padding: .3rem .5rem; border: 1px solid #8b4a3a; border-radius: 4px; background: #b95042; color: #fff8e7; cursor: pointer; font: inherit; }
 
+/* Project links, bottom-left of the landing. Same paper aesthetic as the chips. */
+.landing-links {
+  position: absolute;
+  z-index: 5;
+  bottom: 1.25rem;
+  left: 1.25rem;
+  display: flex;
+  gap: 0.55rem;
+}
+.landing-link {
+  display: grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 4px 8px 6px 9px;
+  border: 1px solid rgba(81, 99, 62, 0.55);
+  background:
+    linear-gradient(120deg, rgba(255, 253, 240, 0.98), rgba(238, 231, 205, 0.96)),
+    repeating-linear-gradient(4deg, rgba(95, 78, 48, 0.045) 0 1px, transparent 1px 4px);
+  box-shadow: 2px 3px 0 rgba(75, 60, 37, 0.22), 0 8px 20px rgba(35, 44, 29, 0.2);
+  color: #365238;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.landing-link:hover { transform: translateY(-2px) rotate(-1deg); background: linear-gradient(120deg, #fffdf0, #f2ead0); }
+.landing-link:focus-visible { outline: 3px solid #f0c76d; outline-offset: 3px; }
+
 /* Login drop-in: the sign is hidden until the hero apple lands (scene posts
    'landed'; orchard/safety fallback reveals it on a timer), then it drops down
    into place. Scoped to the painterly stage so the static ClassicHero login is
@@ -416,6 +442,19 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
    painterly iframe, camera zoomed in. The zoom-out is driven entirely by the
    stage's r3f camera (CameraRig), so this layer carries no CSS transform, or
    the two would compound into a double zoom. */
+/* App-level tune-in static covering the landing-to-stage handoff. Above the
+   landing scene and the mounting stage, below the tv-static page transition. */
+.stage-arrival-fuzz {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2147483300;
+  pointer-events: none;
+  image-rendering: pixelated;
+  display: block;
+}
+
 .landing-stage-layer {
   position: absolute;
   inset: 0;

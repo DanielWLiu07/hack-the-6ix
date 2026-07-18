@@ -64,8 +64,10 @@
   }
 }
 
-body {
+html, body {
   margin: 0;
+  /* No rubber-band / bounce / pull-to-refresh past the page edges. */
+  overscroll-behavior: none;
 }
 
 #root {

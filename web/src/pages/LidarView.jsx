@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useRobot } from '../lib/robot.jsx'
 import LidarViewport, { LIDAR_DECAY_MS } from '../components/LidarViewport.jsx'
 import BackToStage from '../components/BackToStage.jsx'
+import ArrivalFuzz from '../components/ArrivalFuzz.jsx'
 
 export default function LidarView() {
   const { connected, sim } = useRobot()
@@ -10,6 +11,7 @@ export default function LidarView() {
 
   return (
     <section className="lidar-page">
+      <ArrivalFuzz />
       <BackToStage />
       <h2>Lidar Map</h2>
       {!connected && !sim && (

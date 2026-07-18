@@ -1,47 +1,50 @@
-/* Global persistent-session chip (see components/OperatorBadge.jsx). Fixed so
-   it rides over any page's own layout, top-right, above page chrome. */
+/* Global persistent-session chip (see components/OperatorBadge.jsx). Styled to
+   match the landing's sign-in/out chip (.landing-logout) exactly, so the account
+   UI reads identically on every page. Fixed top-right, above page chrome. */
 .operator-badge {
   position: fixed;
   z-index: 2147483000;
-  top: 0.85rem;
-  right: 0.85rem;
+  top: 1.25rem;
+  right: 1.25rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  max-width: min(340px, 44vw);
-  padding: 0.4rem 0.55rem 0.4rem 0.7rem;
-  border: 1px solid rgba(120, 140, 120, 0.35);
-  border-radius: 10px;
-  background: rgba(14, 20, 16, 0.82);
-  backdrop-filter: blur(6px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
-  color: #dfeee2;
+  gap: 0.65rem;
+  max-width: min(360px, calc(100vw - 2.5rem));
+  padding: 0.5rem 0.9rem 0.56rem;
+  border: 1px solid rgba(81, 99, 62, 0.55);
+  border-radius: 4px 8px 6px 9px;
+  background:
+    linear-gradient(120deg, rgba(255, 253, 240, 0.98), rgba(238, 231, 205, 0.96)),
+    repeating-linear-gradient(4deg, rgba(95, 78, 48, 0.045) 0 1px, transparent 1px 4px);
+  box-shadow: 2px 3px 0 rgba(75, 60, 37, 0.22), 0 8px 20px rgba(35, 44, 29, 0.2);
+  color: #365238;
   font-family: system-ui, -apple-system, sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.75rem;
 }
+
+/* The landing chip has no status dot; hide it so the two read identically. */
 .operator-badge-dot {
-  flex: 0 0 auto;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: #46a758;
-  box-shadow: 0 0 6px rgba(70, 167, 88, 0.75);
+  display: none;
 }
+
 .operator-badge-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .operator-badge button {
   flex: 0 0 auto;
-  padding: 0.26rem 0.6rem;
-  border: 1px solid rgba(185, 80, 66, 0.6);
-  border-radius: 7px;
-  background: rgba(185, 80, 66, 0.22);
-  color: #ffe9e2;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid #8b4a3a;
+  border-radius: 4px;
+  background: #b95042;
+  color: #fff8e7;
   cursor: pointer;
   font: inherit;
-  font-size: 0.74rem;
   transition: background 0.15s ease;
 }
-.operator-badge button:hover { background: rgba(185, 80, 66, 0.4); }
+
+.operator-badge button:hover {
+  background: #a3453a;
+}

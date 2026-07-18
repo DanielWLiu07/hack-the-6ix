@@ -3,6 +3,7 @@ import { useRobot, useRobotEvent, SERVER_URL } from '../lib/robot.jsx'
 import RobotFringe from '../components/RobotFringe.jsx'
 import LidarViewport from '../components/LidarViewport.jsx'
 import BackToStage from '../components/BackToStage.jsx'
+import ArrivalFuzz from '../components/ArrivalFuzz.jsx'
 import '../pov.css'
 
 // Robot POV 
@@ -226,6 +227,7 @@ export default function RobotPOV() {
 
   return (
     <div className="pov-root" ref={rootRef}>
+      <ArrivalFuzz />
       <BackToStage />
    {/* active sensor view */}
       <div className="pov-main">{view}</div>

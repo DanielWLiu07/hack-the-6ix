@@ -1,6 +1,7 @@
 import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { useRobot, SERVER_URL } from '../lib/robot.jsx'
 import BackToStage from '../components/BackToStage.jsx'
+import ArrivalFuzz from '../components/ArrivalFuzz.jsx'
 import '../analytics.css'
 
 // Manga-shaded decoration scene + editor (background). Lazy so three/r3f stays
@@ -138,28 +139,36 @@ function Metric({ label, value, unit, sub, series, color, area = true, flash = f
   )
 }
 
-// Throughput bars + sort-success line over the window.
+// Throughput bars (peak highlighted) + a filled sort-success line.
 function TrendChart({ bars, line }) {
   const maxB = Math.max(1, ...bars)
   const n = bars.length || 1
   const bw = 100 / n
+  const peakI = bars.reduce((mi, v, i, a) => (v > a[mi] ? i : mi), 0)
+  const lineD =
+    line && line.length > 1
+      ? line
+          .map((v, i) => `${i ? 'L' : 'M'}${((i / (line.length - 1)) * 100).toFixed(2)} ${(37 - (v / 100) * 33).toFixed(2)}`)
+          .join(' ')
+      : null
   return (
     <svg className="az-chart" viewBox="0 0 100 42" preserveAspectRatio="none" aria-hidden>
-      <line className="axis" x1="0" y1="38" x2="100" y2="38" />
+      <line className="axis" x1="0" y1="37.5" x2="100" y2="37.5" />
       {bars.map((b, i) => {
         const hh = (b / maxB) * 34
         return (
-          <rect key={i} className="bar" x={i * bw + bw * 0.16} y={38 - hh} width={bw * 0.68} height={Math.max(0, hh)} />
+          <rect
+            key={i}
+            className={`bar${i === peakI && b > 0 ? ' peak' : ''}`}
+            x={i * bw + bw * 0.16}
+            y={37.5 - hh}
+            width={bw * 0.68}
+            height={Math.max(0, hh)}
+          />
         )
       })}
-      {line && line.length > 1 && (
-        <path
-          className="succ"
-          d={line
-            .map((v, i) => `${i ? 'L' : 'M'}${((i / (line.length - 1)) * 100).toFixed(2)} ${(37 - (v / 100) * 33).toFixed(2)}`)
-            .join(' ')}
-        />
-      )}
+      {lineD && <path className="succ-fill" d={`${lineD} L100 37.5 L0 37.5 Z`} />}
+      {lineD && <path className="succ" d={lineD} />}
     </svg>
   )
 }
@@ -330,6 +339,7 @@ export default function Analytics() {
 
   return (
     <div className="az">
+      <ArrivalFuzz />
       <BackToStage />
       {/* manga-shaded deco scene + editor (background) */}
       <HeroBoundary>

@@ -1,6 +1,7 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { useRobot, useRobotEvent } from '../lib/robot.jsx'
 import BackToStage from '../components/BackToStage.jsx'
+import ArrivalFuzz from '../components/ArrivalFuzz.jsx'
 import './teleop.css'
 
 const SpeechRecognitionCtor =
@@ -591,6 +592,7 @@ function TeleopInner() {
 export default function Teleop() {
   return (
     <>
+      <ArrivalFuzz />
       <BackToStage />
       <p className="simnote" style={{ marginBottom: '1rem' }}>
         {AUTH0_CONFIGURED
