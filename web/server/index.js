@@ -57,7 +57,11 @@ io.use(async (socket, next) => {
 // events flowing robot -> ui
 const ROBOT_EVENTS = ['telemetry', 'detection', 'pick_event', 'lidar_scan', 'slam_map', 'slam_pose'];
 // events flowing ui/agent -> robot
-const CONTROL_EVENTS = ['drive', 'arm_pose', 'pick', 'estop', 'nl_command'];
+// set_mode is the demo toggle: {autostart:false} pauses the robot's autonomous
+// SEEK/PICK/SORT cycle so an NL command visibly drives it on stage (otherwise
+// the autonomous loop masks whether a pick came from a command). The sim honors
+// it; fw-linux mirrors it on the real robot (contract in status/server-core.md).
+const CONTROL_EVENTS = ['drive', 'arm_pose', 'pick', 'estop', 'nl_command', 'set_mode'];
 
 const counts = { robot: 0, ui: 0, agent: 0 };
 let lastTelemetry = null;
@@ -70,6 +74,10 @@ let lastSlamPose = null;
 // pick_events (emitted later, by the robot) are attributed to them for the
 // audit trail. null in autonomous/dev-bypass mode (pick stays unattributed).
 let lastOperator = null;
+// Demo toggle state: last robot autonomy mode broadcast to robots (null until an
+// operator sets it, robots then default to autostart on). Replayed to robots
+// that (re)connect so a panic-spawned fallback sim inherits the current mode.
+let lastRobotMode = null; // { autostart: boolean }
 
 // Set of socket ids that are REAL robots (role=robot without the panic-sim tag).
 // The demo panic switch uses this to know if the real robot has died.
@@ -118,6 +126,8 @@ io.on('connection', (socket) => {
     if (lastSlamMap) socket.emit('slam_map', lastSlamMap);
     if (lastSlamPose) socket.emit('slam_pose', lastSlamPose);
   }
+  // a robot that (re)connects inherits the current demo autonomy mode
+  if (role === 'robot' && lastRobotMode) socket.emit('set_mode', lastRobotMode);
 
   for (const event of ROBOT_EVENTS) {
     socket.on(event, (payload) => {
@@ -152,6 +162,9 @@ io.on('connection', (socket) => {
         const r = Number(payload.r);
         if (!Number.isFinite(l) || !Number.isFinite(r)) return;
         payload = { l: Math.max(-1, Math.min(1, l)), r: Math.max(-1, Math.min(1, r)) };
+      } else if (event === 'set_mode') {
+        payload = { autostart: !!payload.autostart };
+        lastRobotMode = payload; // remember so reconnecting robots inherit it
       }
       io.to('robots').emit(event, payload);
       // FarmHand agent parses NL commands into structured control events
@@ -182,6 +195,12 @@ io.on('connection', (socket) => {
     const { task, fruit } = payload.action;
     if (task === 'stop') io.to('robots').emit('estop', {});
     else if (task === 'pick' || task === 'sort') {
+      // Basic-pick convenience mapping. It INTENTIONALLY drops ripeness/filter/
+      // zone and collapses the action to pick{target:fruit}. The full nl_action
+      // (all four fields) is already forwarded to robots above, and fw-linux's
+      // robot_node honors ripeness/filter from it (the rich path). This mapped
+      // `pick` is only a fallback for consumers that do NOT parse nl_action; do
+      // not rely on it for ripeness- or zone-aware picking.
       io.to('robots').emit('pick', { target: fruit === 'apple' || fruit === 'banana' ? fruit : 'nearest' });
     }
   });
@@ -200,6 +219,14 @@ function updateRealRobot(id, role, isSim) {
   if (role === 'robot' && !isSim) realRobots.add(id);
   else realRobots.delete(id);
   if (panic.mode === 'auto') panic.reconcile('robot membership change');
+}
+
+// Broadcast the demo autonomy mode to robots and remember it (REST path).
+function emitRobotMode(autostart) {
+  lastRobotMode = { autostart: !!autostart };
+  io.to('robots').emit('set_mode', lastRobotMode);
+  console.log(`[hub] robot mode -> autostart=${lastRobotMode.autostart}`);
+  return lastRobotMode;
 }
 
 function logStoreErr(err) {
@@ -225,6 +252,7 @@ app.get('/api/health', (_req, res) => {
     real_robot_connected: realRobots.size > 0,
     base44_forwarding: base44Enabled(),
     force_sim: panic.status(),
+    robot_mode: lastRobotMode ?? { autostart: true },
   });
 });
 
@@ -280,6 +308,21 @@ app.post('/api/force-sim', (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// demo autonomy toggle (makes NL causation visible on stage)
+// GET  /api/robot/mode                 -> current { autostart }
+// POST /api/robot/mode {autostart:bool} -> pause (false) / resume (true) autonomy
+// Pausing lets an NL command visibly drive the robot; the sim honors it and
+// fw-linux mirrors it on the real robot.
+app.get('/api/robot/mode', (_req, res) => res.json(lastRobotMode ?? { autostart: true }));
+
+app.post('/api/robot/mode', (req, res) => {
+  const body = isObj(req.body) ? req.body : {};
+  if (typeof body.autostart !== 'boolean') {
+    return res.status(400).json({ error: 'need {"autostart": true|false}' });
+  }
+  res.json(emitRobotMode(body.autostart));
 });
 
 app.get('/stream', streamHandler);

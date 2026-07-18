@@ -14,7 +14,7 @@ from robot_linux.camera import MockCamera
 from robot_linux.detector import Detection, MockDetector, _iou, _nms
 from robot_linux.poses import PoseStore
 from robot_linux.servoing import bbox_error, is_centered, servo_step
-from robot_linux.state_machine import IDLE, PickStateMachine, ESTOP
+from robot_linux.state_machine import IDLE, SEEK, PickStateMachine, ESTOP
 
 
 # speed high enough that every move duration (max 1400 ms) rounds to 0 ms via
@@ -173,6 +173,82 @@ def test_soak_short_run_all_success():
     assert s["success_rate"] == 1.0
     assert s["stalls"] == 0
     assert s["tick_errors"] == 0
+
+
+# demo command mode (await-command vs autonomous)
+
+def _node(seed=1, mode="await"):
+    from robot_linux.robot_node import RobotNode
+    b = MockBridge()
+    c = MockCamera(b, seed=seed)
+    d = MockDetector(c)
+    node = RobotNode(b, c, d, PoseStore(), "http://localhost:0", command_mode=mode)
+    return node, b, c
+
+
+def test_await_mode_idles_until_command_then_one_shot():
+    from robot_linux.robot_node import AWAIT
+    node, b, c = _node(mode=AWAIT)
+    node._apply_mode(AWAIT)
+    assert node.sm.state == IDLE and node.sm.continuous is False
+    # with no command the robot must NOT move on its own
+    for _ in range(80):
+        node.sm.tick()
+        b.heartbeat()
+    assert node.sm.state == IDLE
+
+    # a command presents the requested fruit and runs exactly one pick
+    picks = []
+    node.sm.on_emit = lambda k, v: picks.append(v) if k == "pick_event" else None
+    node.sm.speed = INSTANT
+    node._present_mock_fruit(fruit="apple")
+    node.sm.continuous = False
+    node.sm.start({"fruit": "apple"})
+    assert node.sm.state == SEEK
+    for _ in range(3000):
+        node.sm.tick()
+        b.heartbeat()
+        if node.sm.state == IDLE and picks:
+            break
+    assert len(picks) == 1
+    assert picks[0]["fruit"] == "apple"
+    assert node.sm.state == IDLE          # await one-shot returns to idle
+
+
+def test_auto_mode_runs_continuously():
+    from robot_linux.robot_node import AUTO
+    node, b, c = _node(mode=AUTO)
+    node._apply_mode(AUTO)
+    assert node.sm.state == SEEK and node.sm.continuous is True
+
+
+def test_set_mode_autostart_contract():
+    # server-core's contract: set_mode {autostart: bool}
+    from robot_linux.robot_node import AUTO, AWAIT, _norm_mode
+    node, b, c = _node(mode=AWAIT)
+    node._apply_mode(AUTO if True else AWAIT)     # autostart:true
+    assert node.command_mode == AUTO
+    node._apply_mode(AUTO if False else AWAIT)    # autostart:false
+    assert node.command_mode == AWAIT
+    assert _norm_mode("garbage") == AUTO          # unknown -> autonomous
+
+
+def test_present_mock_fruit_places_requested():
+    node, b, c = _node()
+    node._present_mock_fruit(fruit="banana", ripeness="ripe")
+    assert c.fruit_class() == ("banana", "ripe")
+    before = c.fruit
+    node._present_mock_fruit(fruit="nearest")     # unfiltered: keep current
+    assert c.fruit is before
+
+
+def test_await_mode_does_not_unlatch_estop():
+    from robot_linux.robot_node import AWAIT
+    node, b, c = _node(mode=AWAIT)
+    node.sm.estop()
+    assert node.sm.state == ESTOP
+    node._apply_mode(AWAIT)                        # must not stop() out of estop
+    assert node.sm.state == ESTOP and b.estopped
 
 
 def test_mock_bridge_clamps_and_estops():

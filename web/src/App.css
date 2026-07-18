@@ -342,11 +342,22 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
   top: 47%;
   left: 50%;
   transform: translate(-50%, -50%);
-  animation: scene-auth-in .5s cubic-bezier(.2, .8, .25, 1) both;
+  animation: scene-auth-in .5s cubic-bezier(.2, .85, .28, 1.08) both;
 }
+/* Grows up onto the sign with a soft overshoot. */
 @keyframes scene-auth-in {
-  from { opacity: 0; transform: translate(-50%, calc(-50% + 12px)); }
-  to   { opacity: 1; transform: translate(-50%, -50%); }
+  0%   { opacity: 0; transform: translate(-50%, calc(-50% + 22px)) scale(.9); }
+  55%  { opacity: 1; }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+/* Eases back off the sign instead of vanishing: fades, shrinks, drifts down. */
+.scene-auth-overlay.is-closing {
+  pointer-events: none;
+  animation: scene-auth-out .34s cubic-bezier(.45, 0, .75, .4) forwards;
+}
+@keyframes scene-auth-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to   { opacity: 0; transform: translate(-50%, calc(-50% + 16px)) scale(.88); }
 }
 /* No board to ride in the static ClassicHero fallback: center it as a modal. */
 .scene-auth-overlay.is-modal { position: fixed; z-index: 50; top: 50%; left: 50%; }
@@ -443,6 +454,20 @@ h1 { font-size: clamp(2.5rem, 7vw, 5rem); line-height: 1.05; }
 .stage-editor button.is-active {
   color: #101114;
   background: #f3ecdd;
+}
+
+.stage-editor-slider {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 4px;
+  color: rgba(255, 255, 255, .7);
+}
+.stage-editor-slider input[type="range"] {
+  width: 78px;
+  height: 4px;
+  accent-color: #f3ecdd;
+  cursor: pointer;
 }
 
 /* Live transform sliders for the selected stage object. */

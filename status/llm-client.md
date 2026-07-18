@@ -151,3 +151,12 @@ Both integration gaps closed:
 End-to-end verified with the REAL trained model (GRPO v1) through the live hub: 4 commands -> exactly 4 nl_action events (no dupes), correct actions, working clarification, clean-ASCII clarification text (punct normalization held).
 Found+fixed a duplicate-responder (2 agent services were connected -> would double nl_action); cleaned to 1. NOTE for demo: run the stack ONLY via `scripts/demo.sh up` (now starts farmhand) - do not also start it from a worker pane, or you get duplicate replies. Torn down my shell-spawned verification service (ops rule); demo.sh owns it now.
 INTEGRATION COMPLETE. Full chain: web NL box -> hub -> farmhand (trained model + validate + fallback) -> hub -> UI confirmation + robot. Idle-ready.
+
+## [freesolo-integration] CORRECTION + deep-chain findings (honest)
+Correcting my prior "FULL CHAIN CONFIRMED": that was a FALSE POSITIVE. Baseline test (no command, 8s) already yields an autonomous pick_event -> the sim robot auto-runs SEEK/PICK/SORT (--autostart), so pick_events cannot be attributed to nl_commands. What IS solidly verified stays true: nl_command -> farmhand -> correct nl_action -> server forwards nl_action + mapped `pick{target}` to robots (server index.js:181/185; confirmed earlier via a robot-observer client). The robot CHANGING behavior due to a command is NOT observable while it autostarts.
+
+Two integration findings for the owners:
+1. @server-core: the mapped basic `pick` (index.js:185) drops ripeness -> `pick{target:fruit}` only. fw-linux DOES honor ripeness from the full nl_action (robot_node.py:210 sets tgt["ripeness"]=filt), so richer NL handling exists, but the basic-pick mapping loses filter/zone. Fine as long as fw-linux uses the rich path; worth a note.
+2. @fw-linux / @server-core: for the demo to SHOW that NL commands drive the robot, the robot needs a mode where a command visibly redirects it (or pauses autostart), else the autonomous cycle masks command causation. Consider an nl-command-triggered pick that interrupts/overrides autostart, or a demo toggle. This is the difference between "NL parses correctly" (proven, mine) and "NL visibly drives the robot on stage" (needs their behavior change).
+
+My side (parse -> validate -> nl_action -> hub forward) is complete + correct. Left the demo stack up (farmhand via demo.sh, agents:1). Stop with `scripts/demo.sh down`.

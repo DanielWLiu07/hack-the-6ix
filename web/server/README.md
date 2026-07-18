@@ -37,7 +37,8 @@ or connect plain and emit `register {"role":"robot"|"farmhand"}` (`farmhand` ≡
 
 - **robot** -> hub -> all uis: `telemetry` `detection` `pick_event` `lidar_scan`.
   Payloads are schema-validated (see `schemas.js`); invalid ones are dropped silently.
-- **ui/agent** -> hub -> all robots: `drive` (clamped to [-1,1]) `arm_pose` `pick` `estop` `nl_command`.
+- **ui/agent** -> hub -> all robots: `drive` (clamped to [-1,1]) `arm_pose` `pick` `estop` `nl_command` `set_mode`.
+- `set_mode {autostart:bool}` is the demo toggle: `false` pauses the robot's autonomous cycle so an NL command visibly drives it (relayed to robots; the sim honors it, fw-linux mirrors it). Replayed to a robot that reconnects.
 - `nl_command` from a ui additionally goes to all **agent** clients.
 - **agent** replies `nl_action {ts, text, ok, action|clarification|error}` (llm-client's
   contract). Hub echoes `nl_action` to uis; when `ok && action` it also forwards
@@ -54,6 +55,7 @@ or connect plain and emit `register {"role":"robot"|"farmhand"}` (`farmhand` ≡
 - `GET /api/picks?limit=100&fruit=&ripeness=&since=` - newest-first pick_event docs
 - `GET /api/detections?limit=50` - newest-first detection docs
 - `GET|POST /api/force-sim` - demo panic switch (see below)
+- `GET|POST /api/robot/mode` - demo autonomy toggle; `POST {"autostart":false}` pauses the robot's auto cycle (curl/dashboard button), so an NL command is the only thing that moves it on stage. Current value also in `/api/health.robot_mode`.
 - `GET /stream` - MJPEG (robot proxy if `ROBOT_STREAM_URL` set, else test pattern) - use in an `<img src>`
 
 ## Base44 Orchard OS forwarding (`base44.js`)

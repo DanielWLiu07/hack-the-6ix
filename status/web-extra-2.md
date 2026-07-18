@@ -120,3 +120,8 @@ Note: gallery shows annotations only once REAL photos flow (sim writes .svg plac
 - Made the UNRIPE chip an outlined dashed chip (legible) vs RIPE solid ink.
 Build + oxlint + style sweep clean.
 
+## [04:55] DONE - real sample photos + Teleop design swap
+- **Real photos for testing**: seeded `web/public/samples/` with 16 real photos from the ripeness dataset (4 per class, correctly labeled). New "Load sample photos" button injects them as sample pick records -> they run through the browser model and draw real annotation boxes. Tests the full annotated gallery + lightbox now, before the robot streams live JPEGs. (raw/ intake dirs are empty, so dataset images are the only real fruit photos in-repo.)
+- **Storage answer**: photos are NOT in MongoDB. Image bytes -> Vercel Blob (when BLOB_READ_WRITE_TOKEN set) or hub /media; only image_url + pick metadata go into MongoDB Atlas (pick_events). Blob/media hold the file, Mongo holds the record + URL. Confirmed in server/sim.js + server/db/mongo.js.
+- **Teleop design swap**: restyled harvest.css from the Analytics comic-panel look to the TELEOP stage aesthetic - clean paper #f4f3ee + ink #14160f, monospace heavy weights, wide tracking, kicker + mono-900 title, ink-outlined #fffdf7 controls with solid-ink active states, flat 1.5px cards (no halftone/grain). Verified via headless. Build + style sweep clean.
+

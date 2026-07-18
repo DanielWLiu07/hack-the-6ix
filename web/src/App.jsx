@@ -216,52 +216,6 @@ function ClassicHero() {
   )
 }
 
-// Full-screen TV static over the whole landing as the apple is carried up. It
-// holds, then fades - by then the /stage POMME screen is full-screen and fuzzing
-// too, so the two static fields connect and the handoff is invisible.
-function LandingFuzz({ active, onDone }) {
-  const ref = useRef(null)
-  const doneRef = useRef(onDone)
-  doneRef.current = onDone
-  useEffect(() => {
-    if (!active) return undefined
-    const canvas = ref.current
-    const ctx = canvas.getContext('2d')
-    const resize = () => {
-      canvas.width = Math.max(2, Math.floor(window.innerWidth / 6))
-      canvas.height = Math.max(2, Math.floor(window.innerHeight / 6))
-    }
-    resize()
-    window.addEventListener('resize', resize)
-    const HOLD = 900, FADE = 550, TOTAL = HOLD + FADE
-    let raf = 0
-    let start = 0
-    const step = (now) => {
-      if (!start) start = now
-      const t = now - start
-      const op = t < HOLD ? 1 : Math.max(0, 1 - (t - HOLD) / FADE)
-      const w = canvas.width, h = canvas.height
-      const img = ctx.createImageData(w, h)
-      const d = img.data
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (Math.random() * 255) | 0
-        d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
-      }
-      ctx.putImageData(img, 0, 0)
-      canvas.style.opacity = String(op)
-      if (t >= TOTAL) { doneRef.current?.(); return }
-      raf = requestAnimationFrame(step)
-    }
-    raf = requestAnimationFrame(step)
-    return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener('resize', resize)
-    }
-  }, [active])
-  if (!active) return null
-  return <canvas ref={ref} className="landing-fuzz" aria-hidden="true" />
-}
-
 // Probe the self-hosted scene, verifying it's the real scene and not the SPA
 // shell fallback. While probing, show paper (no dead-iframe flash).
 function Landing() {
@@ -269,7 +223,6 @@ function Landing() {
   const [authBoardOpen, setAuthBoardOpen] = useState(false)
   const [authBoardPinned, setAuthBoardPinned] = useState(false)
   const [stageActive, setStageActive] = useState(false)
-  const [landingFuzz, setLandingFuzz] = useState(false)
   const [loginRevealed, setLoginRevealed] = useState(false)
   const [operator, setOperator] = useState(null)
   // Keep the board in the DOM through its exit animation instead of yanking it
@@ -374,10 +327,9 @@ function Landing() {
         // The hero apple just hit the floor: bring the login sign in on that beat.
         setLoginRevealed(true)
       } else if (d.phase === 'ascent') {
-        // Claw carries the apple up: fuzz the WHOLE landing screen, then hand off
-        // to /stage. The stage's POMME screen is full-screen and fuzzing at the
-        // start of its zoom-out, so the two static fields connect seamlessly.
-        setLandingFuzz(true)
+        // Claw carries the apple up: hand off to /stage. The fuzz lives only on
+        // the POMME screen there (see FuzzCanvas), driven by the camera intro -
+        // nothing full-screen on the landing.
         setStageActive(true)
         window.history.replaceState(window.history.state, '', '/stage')
       }
@@ -415,10 +367,26 @@ function Landing() {
     return () => window.removeEventListener('message', onAnchor)
   }, [])
 
+  // Drive the board mount/exit: open mounts it, closing plays the exit animation
+  // for its duration, then it unmounts. (matches scene-auth-out timing in CSS.)
+  useEffect(() => {
+    if (authBoardPinned) {
+      setBoardShown(true)
+      setBoardClosing(false)
+      return undefined
+    }
+    if (!boardShown) return undefined
+    setBoardClosing(true)
+    const id = setTimeout(() => {
+      setBoardShown(false)
+      setBoardClosing(false)
+    }, 340)
+    return () => clearTimeout(id)
+  }, [authBoardPinned, boardShown])
+
   if (mode === null) return <main className="hero-stage" />
   return (
     <main className={`hero-stage ${loginRevealed ? 'login-in' : ''}`}>
-      <LandingFuzz active={landingFuzz} onDone={() => setLandingFuzz(false)} />
       {/* The manga stage sits underneath the landing from first paint; the route,
           WebGL canvas, and mascot never remount. The apple ascent cross-fades to
           it (a plain opacity fade, see .landing-stage-layer) at its settled pose. */}
@@ -443,8 +411,11 @@ function Landing() {
               onLoad={wireSceneStart}
             />
           )}
-          {AUTH0_CONFIGURED && authBoardPinned && (
-            <div className="scene-auth-overlay" ref={authOverlayRef}>
+          {AUTH0_CONFIGURED && boardShown && (
+            <div
+              className={`scene-auth-overlay ${boardClosing ? 'is-closing' : ''}`}
+              ref={authOverlayRef}
+            >
               <AuthBoardPanel
                 operator={operator}
                 onLogin={handleLogin}

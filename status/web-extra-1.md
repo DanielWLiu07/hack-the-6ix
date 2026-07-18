@@ -121,3 +121,9 @@ Per human (too much focus on apples). banana.glb in the repo is a 357-byte HTML 
 ## [05:05] DONE, softened prop animation + added controller idle float
 - Toned the prop idle animation down/slower (bob 0.12->0.045, sway ~10deg->~3.5deg, freqs ~halved) per human ("too fast, too big").
 - Added a matching subtle idle float to the CONTROLLER (bob 0.04, sway ~2deg, slow). Animated the whole DualSense group (model + annotations together) so the callout lines stay locked to the buttons. Verified with two CDP frames ~1s apart: controller visibly floats/tilts, lines track it.
+
+## [05:20] DONE, stick-driven camera pan (parallax) + fixes
+- Re-added CameraRig to the stage: the joysticks/keyboard/on-screen drive now pan the camera for parallax (X/Y travel scaled up on the stage). Verified via CDP (held W+D -> scene pans).
+- FIXED annotation resize: locked camera Z to baseZ (removed the input-driven zoom). The drei Html callouts use distanceFactor, so only Z-distance changes their scale; with Z fixed they no longer grow/shrink when panning. Verified: labels identical size neutral vs driving.
+- Smoother: lowered pan damping (4 -> 2.4) so the camera eases gently.
+- Applied the human's latest DEFAULT_ITEMS layout values.

@@ -21,8 +21,9 @@ Everything runs against mocks with no hardware. `SERVER_URL` (env) or
 
 ```bash
 # Full robot node: SM + telemetry/detection/pick_event to the hub,
-# handles drive/arm_pose/pick/estop/nl_action. --autostart = demo picking loop.
-python -m robot_linux.robot_node --sim --autostart
+# handles drive/arm_pose/pick/estop/nl_action/set_mode.
+python -m robot_linux.robot_node --sim --autostart        # autonomous picking
+python -m robot_linux.robot_node --sim --await-command    # NL-demo mode
 
 # Pose recorder: jog joints from the keyboard, save named poses to poses.json
 python -m robot_linux.pose_recorder --sim
@@ -30,6 +31,23 @@ python -m robot_linux.pose_recorder --sim
 
 On real hardware drop `--sim`: the node uses `AppLabBridge` (App Lab Bridge RPC)
 and `CVCamera` (OpenCV), falling back to mocks if either is unavailable.
+
+### Demo command modes (make NL commands visibly drive the robot)
+
+The robot has two command modes so a spoken command demonstrably moves it on
+stage (otherwise the autonomous loop masks whether a command caused the pick):
+
+- **auto** (`--autostart`): continuously SEEK/PICK/SORT on its own.
+- **await** (`--await-command`, the default): sit IDLE until a command
+  (`nl_action` or `pick`) arrives, run exactly that one command, return to IDLE.
+  In sim, a filtered command (e.g. "pick a ripe banana") also presents the
+  requested fruit in the mock scene so there is always a matching target.
+
+Toggle live via the hub, using server-core's contract `set_mode {autostart: bool}`
+(`autostart:false` pauses autonomy into await, `true` resumes). The operator can
+flip it over REST: `curl -XPOST localhost:3001/api/robot/mode -d '{"autostart":false}'`.
+The hub replays the last `set_mode` to a robot on reconnect, so a mid-demo toggle
+survives a robot restart.
 
 ### Detector selection
 

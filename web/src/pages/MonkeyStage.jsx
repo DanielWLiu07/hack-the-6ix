@@ -24,7 +24,7 @@ import '../App.css'
 // Fresh Meshy-generated cartoon monkey, arms out in a T-pose (a clean static
 // mesh - no skinning weights to break). The rig/mimic code below no-ops when
 // there are no bones, so it just renders in this cheerful arms-up pose.
-const SUZANNE_FULLBODY_URL = '/assets/suzanne-fullbody-rigged.glb'
+const SUZANNE_FULLBODY_URL = '/assets/suzanne-rigged-tpose.glb'
 // the painted splash: a wide floating plane, hung upper-left, facing the camera
 const SPLASH = { w: 2.95, h: 1.85, pos: [0.034, -1.037, 0.312], rot: [0, 0, 0], scale: [0.59, 0.58, 0.59] }
 const MONKEY_POS = [0.086, -1.731, 0.764]
@@ -182,12 +182,13 @@ function Splash({ bind, fuzzRef }) {
         <planeGeometry args={[SPLASH.w, SPLASH.h]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
-      {/* static color screen */}
+      {/* static color screen - pinned z-index BELOW the fuzz */}
       <Html
         transform
         distanceFactor={distanceFactor}
         position={[0, 0, 0.01]}
         pointerEvents="none"
+        zIndexRange={[100, 100]}
         style={{ width: `${pixelWidth}px`, height: `${pixelHeight}px`, pointerEvents: 'none' }}
       >
         <img
@@ -197,14 +198,14 @@ function Splash({ bind, fuzzRef }) {
           style={{ width: '100%', height: '100%', display: 'block', objectFit: 'cover' }}
         />
       </Html>
-      {/* screen fuzz on top */}
+      {/* screen fuzz - pinned ABOVE the screen so it is actually visible */}
       {fuzzRef && (
         <Html
           transform
           distanceFactor={distanceFactor}
           position={[0, 0, 0.02]}
           pointerEvents="none"
-          zIndexRange={[300, 300]}
+          zIndexRange={[200, 200]}
           style={{ width: `${pixelWidth}px`, height: `${pixelHeight}px`, pointerEvents: 'none' }}
         >
           <FuzzCanvas w={pixelWidth} h={pixelHeight} fuzzRef={fuzzRef} />
@@ -238,6 +239,9 @@ function Monkey({ bind, poseRef, mimic, mirror }) {
   const rig = useMemo(() => buildRig(scene), [scene])
   const clipRoot = useRef(null)
   const { actions, names } = useAnimations(animations, clipRoot)
+  // Forcing a full T-pose stretches this rig's mesh (its skin weights can't take
+  // that much arm rotation). So leave the monkey in its clean authored pose and
+  // play its own idle clip; mimic mode still drives the bones live.
   useEffect(() => {
     const action = names.length ? actions[names[0]] : null
     if (!action) return undefined
@@ -247,7 +251,7 @@ function Monkey({ bind, poseRef, mimic, mirror }) {
       action.reset().setLoop(THREE.LoopRepeat, Infinity).play()
       action.timeScale = 0.85
     }
-    return () => action.stop()
+    return () => action?.stop()
   }, [actions, names, mimic])
 
   // Idle-animation wrapper: separate from the draggable outer group so the bob
@@ -456,7 +460,7 @@ function TransformSliders({ selected, getAll }) {
 // out-of-phase shimmer so the equipment reads as live/humming. Aimed back-down
 // from the camera side, so they light the props' faces without washing the
 // monkey.
-function BackdropLights({ active }) {
+function BackdropLights({ active, gainRef }) {
   const targetL = useMemo(() => new THREE.Object3D(), [])
   const targetR = useMemo(() => new THREE.Object3D(), [])
   const leftRef = useRef(null)
@@ -469,9 +473,10 @@ function BackdropLights({ active }) {
   useFrame((state, delta) => {
     if (active) t.current = Math.min(t.current + delta, DELAY + DURATION + 1)
     const ramp = easeOutCubic(Math.min(Math.max(t.current - DELAY, 0) / DURATION, 1))
+    const gain = gainRef?.current ?? 1
     const s = Math.sin(state.clock.elapsedTime * 4.5)
-    if (leftRef.current) leftRef.current.intensity = MAX_L * ramp * (0.93 + 0.07 * s)
-    if (rightRef.current) rightRef.current.intensity = MAX_R * ramp * (0.93 - 0.07 * s)
+    if (leftRef.current) leftRef.current.intensity = MAX_L * ramp * gain * (0.93 + 0.07 * s)
+    if (rightRef.current) rightRef.current.intensity = MAX_R * ramp * gain * (0.93 - 0.07 * s)
   })
   return (
     <>
@@ -542,29 +547,49 @@ const TV_ARC = {
   faceY: 0, // base yaw; flip by Math.PI if the TVs show their backs
   labelZ: 0.28, // label offset out from the TV centre toward the screen
   labelScale: 5, // drei Html distanceFactor (smaller = smaller label)
+  standCut: -0.55, // local Y below which the stand is deleted (screen starts at -0.534)
 }
 
 function StageTV({ label, color, to, position, rotation, scale, labelZ, bind, navigate }) {
   const { scene } = useGLTF(TV_URL)
   const model = useMemo(() => {
     const clone = scene.clone(true)
+    // The stand (base foot + thin neck) is all geometry below local y = -0.534,
+    // where the full-width screen panel begins. Delete those triangles so only the
+    // monitor remains - a hard geometry edit, not a render-time clip.
+    const CUT = TV_ARC.standCut
+    clone.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return
+      const geo = o.geometry.clone()
+      const pos = geo.attributes.position
+      const idx = geo.index
+      const triCount = idx ? idx.count / 3 : pos.count / 3
+      const kept = []
+      for (let t = 0; t < triCount; t++) {
+        const a = idx ? idx.getX(t * 3) : t * 3
+        const b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1
+        const c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2
+        if (Math.min(pos.getY(a), pos.getY(b), pos.getY(c)) > CUT) kept.push(a, b, c)
+      }
+      geo.setIndex(kept)
+      geo.computeVertexNormals()
+      o.geometry = geo
+      // Bright uniform self-illumination so the monitor reads white through the
+      // manga pass (its own texture is dark, which rendered it pitch black).
+      const mats = Array.isArray(o.material) ? o.material : [o.material]
+      mats.forEach((m) => {
+        m.emissive = new THREE.Color(0xcfcfcf)
+        m.emissiveMap = null
+        m.emissiveIntensity = 1
+        m.color = new THREE.Color(0xffffff)
+        m.needsUpdate = true
+      })
+    })
+    // Recentre the trimmed monitor on the group origin.
     const box = new THREE.Box3().setFromObject(clone)
     const centre = new THREE.Vector3()
     box.getCenter(centre)
-    clone.position.sub(centre) // recentre so the group origin is the TV centre
-    // The TV ships with a PBR material that needs strong light; up here above the
-    // stage lights the manga pass would render it pure black. Swap to an UNLIT
-    // material so the set reads bright regardless of scene lighting.
-    clone.traverse((o) => {
-      if (!o.isMesh || !o.material) return
-      const src = Array.isArray(o.material) ? o.material : [o.material]
-      const basics = src.map((m) => new THREE.MeshBasicMaterial({
-        map: m.map || null,
-        color: m.color ? m.color.clone() : new THREE.Color('#ffffff'),
-        toneMapped: false,
-      }))
-      o.material = Array.isArray(o.material) ? basics : basics[0]
-    })
+    clone.position.sub(centre)
     return clone
   }, [scene])
   const groupRef = useRef(null)
@@ -642,6 +667,9 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
   const spotTarget = useMemo(() => new THREE.Object3D(), [])
   // Shared handle so the camera intro drives the on-screen fuzz opacity.
   const fuzzRef = useRef({ opacity: 0 })
+  // Live multiplier on the backdrop-spot intensity (the toolbar slider writes
+  // here; BackdropLights reads it each frame, so no re-render while dragging).
+  const bgGain = useRef(1)
   const splash = useSplash()
   const [sceneAvailable, setSceneAvailable] = useState(false)
   const [selected, setSelected] = useState(null)
@@ -844,7 +872,16 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
             <meshBasicMaterial color="#cddcff" />
           </mesh>
         </group>
-        <BackdropLights active={playIntro} />
+        <BackdropLights active={playIntro} gainRef={bgGain} />
+        {/* Room backdrop: a wall behind everything so the void is a lit surface,
+            not a flat black clear. A light matte material catches the ambient +
+            backdrop spots; the manga pass then shades it into paper / tone bands
+            (with the spot pools whitening it) instead of pure ink. A small
+            emissive lift keeps it off pure black even where unlit. */}
+        <mesh position={[0, 1.4, -4.3]}>
+          <planeGeometry args={[30, 18]} />
+          <meshStandardMaterial color="#c8c8c2" roughness={1} emissive="#343432" emissiveIntensity={1} />
+        </mesh>
         <Suspense fallback={null}>
           <Splash bind={bind} fuzzRef={fuzzRef} />
           <Monkey bind={bind} poseRef={poseRef} mimic={mimic} mirror={mirror} />
@@ -883,6 +920,17 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
             mirror
           </button>
         )}
+        <label className="stage-editor-slider" title="Backdrop light intensity">
+          bg light
+          <input
+            type="range"
+            min="0"
+            max="3"
+            step="0.05"
+            defaultValue="1"
+            onInput={(e) => { bgGain.current = parseFloat(e.target.value) }}
+          />
+        </label>
       </div>
       {paletteOpen && (
         <div className="stage-palette" role="menu" aria-label="Place a prop">

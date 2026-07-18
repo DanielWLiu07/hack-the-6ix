@@ -37,8 +37,33 @@ def color_bucket(hue):
     return "other"
 
 
-def fruit_contours(bgr, min_area_frac=0.004):
-    """All colorful fruit blobs vs plain background (white/gray/black)."""
+def is_fruit_shape(c, img_shape):
+    """Reject non-fruit blobs (leaves, hands, clutter, full-frame backgrounds).
+
+    Real fruit is a solid, compact blob that fills most of its bounding box.
+    Measured separation on real photos: fruit sits at solidity >0.85 / extent
+    >0.65; foliage/blossoms/drawings fall well below. We do NOT reject frame-
+    filling blobs - a fruit legitimately fills the frame on close eye-in-hand
+    approach (that killed a valid close-up of green apples).
+    """
+    area = cv2.contourArea(c)
+    hull = cv2.contourArea(cv2.convexHull(c))
+    x, y, w, h = cv2.boundingRect(c)
+    solidity = area / max(hull, 1.0)      # convex + compact -> ~1 for fruit
+    extent = area / max(w * h, 1.0)       # fills its bbox -> high for fruit
+    (_, _), (rw, rh), _ = cv2.minAreaRect(c)
+    aspect = max(rw, rh) / max(1.0, min(rw, rh))
+    round_fruit = solidity >= 0.82 and extent >= 0.60           # apple / fruit pile
+    elongated_fruit = aspect >= 2.0 and solidity >= 0.5 and extent >= 0.35  # single banana
+    return round_fruit or elongated_fruit
+
+
+def fruit_contours(bgr, min_area_frac=0.004, gate=True):
+    """All colorful fruit blobs vs plain background (white/gray/black).
+
+    gate=True applies is_fruit_shape() so leaves/hands/clutter are not reported as
+    fruit. gate=False returns every colored blob (used for diagnostics/tuning).
+    """
     hsv = cv2.cvtColor(cv2.GaussianBlur(bgr, (5, 5), 0), cv2.COLOR_BGR2HSV)
     s, v = hsv[:, :, 1], hsv[:, :, 2]
     mask = ((s > 45) & (v > 35) & (v < 250)).astype(np.uint8) * 255
@@ -46,7 +71,10 @@ def fruit_contours(bgr, min_area_frac=0.004):
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
     cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     min_area = min_area_frac * bgr.shape[0] * bgr.shape[1]
-    return [c for c in cnts if cv2.contourArea(c) >= min_area], hsv
+    out = [c for c in cnts if cv2.contourArea(c) >= min_area]
+    if gate:
+        out = [c for c in out if is_fruit_shape(c, bgr.shape)]
+    return out, hsv
 
 
 def _classify_contour(c, hsv):

@@ -24,11 +24,29 @@
   min-height: calc(100vh - 3.4rem);
   padding: 2.6rem 0 3.5rem;
   color: var(--ink);
-  background-color: var(--page);
   font-family: var(--mono);
 }
 
+/* full-viewport manga-shader crust behind everything (background only) */
+.az-crust {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: var(--page);
+}
+.az-crust > div,
+.az-crust canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+}
+.az-crust canvas { opacity: 0.55; }
+
 .az-overlay {
+  position: relative;
+  z-index: 1;
   max-width: 1140px;
   margin: 0 auto;
   padding: 0 2.2rem;

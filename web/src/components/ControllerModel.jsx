@@ -580,8 +580,8 @@ function CameraRig({ stateRef, stage }) {
     // as the camera moves, and only Z distance changes their scale.
     const panX = stage ? 0.45 : 0.16
     const panY = stage ? 0.3 : 0.1
-    camera.position.x = THREE.MathUtils.damp(camera.position.x, (lx + rx) * panX, 4, dt)
-    camera.position.y = THREE.MathUtils.damp(camera.position.y, (ly + ry) * panY, 4, dt)
+    camera.position.x = THREE.MathUtils.damp(camera.position.x, (lx + rx) * panX, 2.4, dt)
+    camera.position.y = THREE.MathUtils.damp(camera.position.y, (ly + ry) * panY, 2.4, dt)
     camera.position.z = baseZ
     aim.set((lx + rx) * (stage ? 0.12 : 0.04), (ly + ry) * (stage ? 0.08 : 0.025), 0)
     camera.lookAt(aim)

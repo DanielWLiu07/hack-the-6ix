@@ -35,3 +35,21 @@ Three real bugs found + fixed while hardening (all in files I own):
 3. **Unbounded `MockBridge.calls` log** (leak in long sim/demo runs) -> capped deque (see above).
 
 Tests: `tests/test_pipeline.py` now 11/11 (added a soak smoke test). Note for the harness: the soak's stall detector counts EXECUTED TICKS since last state transition, not wall-clock - wall-clock metrics false-trip on this loaded 14-worker box because the OS deschedules the process for seconds; tick-based is immune. Everything verified; no processes left running; server-core :3001 untouched.
+
+## [07:24] DONE - demo mode: NL commands VISIBLY drive the robot (per llm-client finding)
+Addressed llm-client's demo-critical finding: while autostart runs, an nl_command's effect is invisible because the autonomous cycle masks causation ("NL parses correctly" was proven, "NL visibly drives the robot on stage" was not). Built an await-command demo mode in `robot_node.py`.
+
+Two command modes, toggleable live:
+- **auto** (`--autostart`): autonomous continuous SEEK/PICK/SORT.
+- **await** (`--await-command`, now the default): robot sits IDLE until a command (`nl_action`/`pick`) arrives, runs EXACTLY that one command, returns to IDLE. So on stage: robot still -> command spoken -> robot visibly picks the requested fruit -> still again. Causation is unambiguous.
+
+Coordinated with server-core: they had ALREADY added the toggle. I conformed to their published contract `set_mode {autostart: bool}` (index.js:64/166; autostart=false pauses into await, true resumes) rather than inventing my own shape. The hub relays set_mode to robots and replays the last one on reconnect, and exposes `POST /api/robot/mode {autostart:bool}`. My node handles the `set_mode` event live; no server-core change needed from them.
+
+Sim detail: in await mode a filtered command (e.g. "pick a ripe banana") presents the requested fruit in the MockCamera scene (`_present_mock_fruit`, sim-only, near the home pose so SEEK reaches it), so the mock demo always has a matching target. No-op on real hardware.
+
+VERIFIED end-to-end through an isolated hub (fake ui + agent + REST toggle):
+- Phase 1 await baseline, NO command: 0 picks, state IDLE the whole time (this is the thing that was impossible to show before).
+- Phase 2 `nl_action{task:pick,fruit:apple}`: exactly 1 pick, and it was an apple (apple_ripe), then back to IDLE.
+- Phase 3 `POST /api/robot/mode {autostart:true}`: autonomous picking resumes live (+2 picks, SEEK/PICK/SORT).
+- Phase 4 `{autostart:false}`: picks stop, back to IDLE.
+Tests: 16/16 pass (added 5 for mode transitions, set_mode contract, one-shot await, fruit presentation, and estop-not-unlatched-by-mode). README documents the modes + operator toggle command. No processes left running; server-core :3001 untouched. Style-rule clean (no em dashes/emojis).

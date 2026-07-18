@@ -34,6 +34,7 @@ const sim = {
   manualDriveUntil: 0,
   pendingFruit: null, // detection carried into the pick cycle
   pos: { x: 1.0, y: 1.0, heading: 0 }, // meters, inside a 6x4 room
+  autostart: true, // demo toggle: false pauses the autonomous cycle (set_mode)
 };
 
 const STATE_DURATION = { IDLE: 3000, SEEK: 4500, PICK: 5000, SORT: 3000 };
@@ -83,6 +84,14 @@ socket.on('estop', () => {
   }, 5000);
 });
 
+// demo toggle: pause/resume autonomy. Paused, the sim idles and only picks on an
+// explicit pick command, so an NL command visibly drives it (else the auto cycle
+// masks command causation). Matches the hub's set_mode contract.
+socket.on('set_mode', ({ autostart } = {}) => {
+  sim.autostart = autostart !== false;
+  console.log(`[sim] set_mode autostart=${sim.autostart}`);
+});
+
 // main loop: telemetry 5 Hz + state machine
 setInterval(() => {
   const now = Date.now();
@@ -126,8 +135,13 @@ setInterval(() => {
     drive: sim.drive,
   });
 
-  // state machine advance (ESTOP only leaves via command/timeout above)
-  if (sim.state !== 'ESTOP' && now - sim.stateSince > STATE_DURATION[sim.state]) {
+  // state machine advance (ESTOP only leaves via command/timeout above).
+  // When autonomy is paused (set_mode autostart:false) the sim will not leave
+  // IDLE on its own; an explicit pick command still runs PICK->SORT->IDLE and
+  // then parks at IDLE, so an NL-driven pick is clearly attributable on stage.
+  const dwellDone = now - sim.stateSince > STATE_DURATION[sim.state];
+  const pausedAtIdle = sim.state === 'IDLE' && !sim.autostart;
+  if (sim.state !== 'ESTOP' && dwellDone && !pausedAtIdle) {
     const next = NEXT_STATE[sim.state];
     if (next === 'PICK' && !sim.pendingFruit) sim.pendingFruit = randomFruit();
     if (sim.state === 'SORT') emitPickEvent(now).catch((e) => console.warn('[sim] pick emit failed:', e.message));

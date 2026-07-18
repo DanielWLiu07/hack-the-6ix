@@ -30,15 +30,27 @@ from . import config
 from .camera import CVCamera, MockCamera
 from .detector import load_detector
 from .poses import PoseStore
-from .state_machine import ESTOP, PickStateMachine
+from .state_machine import ESTOP, IDLE, PickStateMachine
+
+# Demo command modes:
+#   "auto"  - autonomous: continuously SEEK/PICK/SORT on its own (autostart).
+#   "await" - await-command: sit IDLE until a command (nl_action/pick) arrives,
+#             run exactly that one command, return to IDLE. On stage this makes
+#             a spoken command visibly drive the robot (the autonomous cycle no
+#             longer masks causation). Toggle live via the hub `set_mode` event.
+AUTO, AWAIT = "auto", "await"
+
+
+def _norm_mode(mode):
+    return AWAIT if str(mode).lower() in (AWAIT, "await_command", "idle", "wait") else AUTO
 
 
 class RobotNode:
     def __init__(self, bridge, camera, detector, poses, server_url,
-                 autostart=False):
+                 command_mode=AWAIT):
         self.bridge = bridge
         self.server_url = server_url
-        self.autostart = autostart
+        self.command_mode = _norm_mode(command_mode)
 
         self.sio = socketio.Client(
             reconnection=True, reconnection_delay=1, reconnection_delay_max=5)
@@ -147,10 +159,7 @@ class RobotNode:
         @sio.event
         def connect():
             print(f"[node] connected to {self.server_url} as robot")
-            if self.autostart:
-                with self._lock:
-                    self.sm.continuous = True
-                    self.sm.start("nearest")
+            self._apply_mode(self.command_mode, announce=True)
 
         @sio.event
         def disconnect():
@@ -185,7 +194,9 @@ class RobotNode:
                 return
             target = (data or {}).get("target", "nearest")
             with self._lock:
-                self.sm.continuous = False
+                self._present_mock_fruit(fruit=target)
+                # await: one pick then idle. auto: retarget ongoing picking.
+                self.sm.continuous = (self.command_mode == AUTO)
                 self.sm.start(target)
 
         @sio.on("estop")
@@ -193,6 +204,18 @@ class RobotNode:
             with self._lock:
                 self.sm.estop()
             print("[node] ESTOP")
+
+        @sio.on("set_mode")
+        def on_set_mode(data):
+            """Live demo-mode toggle from the hub.
+
+            server-core's contract (index.js) is `set_mode {autostart: bool}`:
+            autostart=false pauses autonomy (await-command), true resumes
+            autonomous picking. The hub also replays the last set_mode to a
+            robot on connect, so a mid-demo toggle survives a robot reconnect.
+            """
+            autostart = bool((data or {}).get("autostart", True))
+            self._apply_mode(AUTO if autostart else AWAIT, announce=True)
 
         @sio.on("nl_action")
         def on_nl_action(data):
@@ -213,14 +236,50 @@ class RobotNode:
                         tgt["fruit"] = fruit
                     if filt and filt != "any":
                         tgt["ripeness"] = filt
-                    self.sm.continuous = False
+                    self._present_mock_fruit(fruit=fruit, ripeness=filt)
+                    # await: one pick then idle. auto: retarget ongoing picking.
+                    self.sm.continuous = (self.command_mode == AUTO)
                     self.sm.start(tgt or "nearest")
-            print(f"[node] nl_action {task} {action.get('fruit')}/{action.get('filter')}")
+            print(f"[node] nl_action {task} {action.get('fruit')}/{action.get('filter')} "
+                  f"[mode={self.command_mode}]")
 
     _last_nl = 0.0
 
     def _recent_nl(self, window=0.75):
         return (time.monotonic() - self._last_nl) < window
+
+    def _present_mock_fruit(self, fruit=None, ripeness=None):
+        """Sim only: place the requested fruit in the mock scene so a filtered
+        command has a matching target (as if the operator presented it). No-op
+        on real hardware (real camera sees whatever fruit is physically there).
+        Only presents when a specific fruit/ripeness is asked for; a plain
+        "nearest" command uses whatever is already in view.
+        """
+        cam = self.sm.camera
+        f = fruit if fruit not in (None, "any", "nearest") else None
+        r = ripeness if ripeness not in (None, "any") else None
+        if (f or r) and hasattr(cam, "spawn_fruit"):
+            cam.spawn_fruit(fruit=f, ripeness=r,
+                            near_joints=self.sm.poses.get("home"))
+
+    def _apply_mode(self, mode, announce=False):
+        """Set the demo command mode and reconcile the state machine."""
+        mode = _norm_mode(mode)
+        with self._lock:
+            self.command_mode = mode
+            if self.sm.state == ESTOP:
+                pass  # never override a latched estop; mode applies after clear
+            elif mode == AUTO:
+                self.sm.continuous = True
+                if self.sm.state == IDLE:
+                    self.sm.start("nearest")
+            else:  # AWAIT: drop whatever it was doing and wait for a command
+                self.sm.continuous = False
+                self.sm.stop()
+        if announce:
+            msg = ("autonomous picking" if mode == AUTO
+                   else "await-command (idling until a command arrives)")
+            print(f"[node] command mode -> {mode}: {msg}")
 
     # run
 
@@ -278,8 +337,16 @@ def build(args):
         detector = load_detector(
             mock_camera=camera if isinstance(camera, MockCamera) else None)
     poses = PoseStore()
+    # --await-command forces the await demo mode; --autostart is autonomous;
+    # default is await (robot idle until commanded) - a safe stage default.
+    if getattr(args, "await_command", False):
+        mode = AWAIT
+    elif args.autostart:
+        mode = AUTO
+    else:
+        mode = AWAIT
     return RobotNode(bridge, camera, detector, poses, args.server,
-                     autostart=args.autostart)
+                     command_mode=mode)
 
 
 def main(argv=None):
@@ -289,13 +356,16 @@ def main(argv=None):
     ap.add_argument("--server", default=config.SERVER_URL,
                     help="Socket.IO hub URL (default env SERVER_URL)")
     ap.add_argument("--autostart", action="store_true",
-                    help="begin continuous picking on connect (demo mode)")
+                    help="autonomous mode: begin continuous picking on connect")
+    ap.add_argument("--await-command", dest="await_command", action="store_true",
+                    help="await-command demo mode: idle until an nl_action/pick "
+                         "arrives, run one command, return to idle")
     ap.add_argument("--real-detector", action="store_true",
                     help="in --sim, still load ONNX/HSV instead of MockDetector")
     ap.add_argument("--seed", type=int, default=None, help="MockCamera RNG seed")
     args = ap.parse_args(argv)
     node = build(args)
-    print(f"[node] server={args.server} sim={args.sim} autostart={args.autostart}")
+    print(f"[node] server={args.server} sim={args.sim} mode={node.command_mode}")
     node.run()
     return 0
 
