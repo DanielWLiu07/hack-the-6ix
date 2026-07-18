@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C1 LIDAR // DIRECT</title>
+<style>
+  :root{
+    --bg:#0a0f0d;
+    --bg-panel:#0f1613;
+    --grid-line:#1c2b26;
+    --grid-line-strong:#26382f;
+    --accent-scan:#52ffa8;
+    --accent-scan-dim:#1f7a53;
+    --accent-pose:#ff9d47;
+    --text-primary:#d7ffe9;
+    --text-muted:#5f7a70;
+    --text-dim:#3d5049;
+    --danger:#ff5c5c;
+    --ok:#52ffa8;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; padding:0; height:100%; background:var(--bg); color:var(--text-primary);
+    font-family:ui-monospace, 'JetBrains Mono', Menlo, Consolas, monospace; overflow:hidden; }
+  body{ display:flex; flex-direction:column; height:100vh; }
+  #topbar{ display:flex; align-items:center; gap:12px; padding:0 16px; height:52px;
+    background:var(--bg-panel); border-bottom:1px solid var(--grid-line-strong); flex-shrink:0; }
+  #topbar .brand{ font-weight:700; letter-spacing:.12em; font-size:13px; white-space:nowrap; }
+  #topbar .brand span{ color:var(--accent-scan); }
+  #status-dot{ width:8px; height:8px; border-radius:50%; background:var(--danger);
+    box-shadow:0 0 6px var(--danger); flex-shrink:0; transition:background .2s, box-shadow .2s; }
+  #status-dot.live{ background:var(--ok); box-shadow:0 0 8px var(--ok); }
+  #status-text{ font-size:11px; color:var(--text-muted); white-space:nowrap; }
+  #ws-url{ flex:1; min-width:120px; background:#0c1211; border:1px solid var(--grid-line-strong);
+    color:var(--text-primary); font-family:inherit; font-size:12px; padding:7px 10px; border-radius:3px; outline:none; }
+  #ws-url:focus{ border-color:var(--accent-scan-dim); }
+  #connect-btn{ background:transparent; border:1px solid var(--accent-scan-dim); color:var(--accent-scan);
+    font-family:inherit; font-size:11px; letter-spacing:.08em; padding:7px 14px; border-radius:3px;
+    cursor:pointer; white-space:nowrap; }
+  #connect-btn:hover{ background:rgba(82,255,168,0.08); }
+  #stats{ font-size:11px; color:var(--text-dim); white-space:nowrap; }
+  #stats b{ color:var(--text-muted); }
+  #scale-controls{ display:flex; align-items:center; gap:10px; margin-left:auto; }
+  #scale-label{ font-size:11px; color:var(--text-muted); white-space:nowrap; min-width:98px; }
+  #scale-value{ color:var(--text-primary); font-weight:600; }
+  #scale-slider{ width:140px; accent-color:var(--accent-scan); cursor:pointer; }
+  #scale-slider:disabled{ opacity:0.35; cursor:not-allowed; }
+  .switch{ width:32px; height:18px; border-radius:9px; background:var(--grid-line-strong);
+    position:relative; cursor:pointer; transition:background .15s; flex-shrink:0; }
+  .switch.on{ background:var(--accent-scan-dim); }
+  .switch::after{ content:''; position:absolute; top:2px; left:2px; width:14px; height:14px;
+    border-radius:50%; background:var(--text-dim); transition:transform .15s, background .15s; }
+  .switch.on::after{ transform:translateX(14px); background:var(--accent-scan); }
+  #main{ flex:1; position:relative; background:radial-gradient(circle at center, #0d1512 0%, var(--bg) 72%); }
+  #scope{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  #error-panel{ position:absolute; bottom:12px; left:12px; right:12px; max-width:520px;
+    background:rgba(20,10,10,0.9); border:1px solid var(--danger); border-radius:4px; padding:10px 12px;
+    font-size:11px; color:var(--danger); white-space:pre-wrap; word-break:break-word; display:none; }
+</style>
+</head>
+<body>
+  <div id="topbar">
+    <div class="brand">C1 <span>DIRECT</span></div>
+    <div id="status-dot"></div>
+    <div id="status-text">disconnected</div>
+    <input id="ws-url" type="text" value="ws://10.186.57.69:8765" spellcheck="false">
+    <button id="connect-btn">CONNECT</button>
+    <div id="stats"><b id="pt-count">0</b> pts &nbsp; <b id="scan-hz">--</b> Hz</div>
+    <div id="scale-controls">
+      <span id="scale-label">auto (<span id="scale-value">--</span>m)</span>
+      <input type="range" id="scale-slider" min="0.2" max="15" step="0.1" value="3" disabled>
+      <div class="switch on" id="auto-toggle"></div>
+    </div>
+  </div>
+  <div id="main">
+    <canvas id="scope"></canvas>
+    <div id="error-panel"></div>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+  let ws = null;
+  let latestPoints = [];   // [[angle_deg, distance_mm], ...]
+  let scanTimestamps = [];
+
+  const scopeCanvas = document.getElementById('scope');
+  const ctx = scopeCanvas.getContext('2d');
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+  const urlInput = document.getElementById('ws-url');
+  const connectBtn = document.getElementById('connect-btn');
+  const ptCount = document.getElementById('pt-count');
+  const scanHz = document.getElementById('scan-hz');
+  const errorPanel = document.getElementById('error-panel');
+  const scaleSlider = document.getElementById('scale-slider');
+  const scaleLabel = document.getElementById('scale-label');
+  const scaleValue = document.getElementById('scale-value');
+  const autoToggle = document.getElementById('auto-toggle');
+
+  // Display range: AUTO fits the visible ring to whatever the current max
+  // return distance is (good for room-scale). Flip the toggle off and drag
+  // the slider to pin a fixed range instead, e.g. 0.5-1m, to see close-in
+  // detail that auto-scaling otherwise squashes down near the center.
+  let autoScale = true;
+  let manualRangeM = parseFloat(scaleSlider.value);
+
+  autoToggle.addEventListener('click', () => {
+    autoScale = !autoScale;
+    autoToggle.classList.toggle('on', autoScale);
+    scaleSlider.disabled = autoScale;
+    scaleLabel.firstChild.textContent = autoScale ? 'auto (' : 'range (';
+  });
+
+  scaleSlider.addEventListener('input', () => {
+    manualRangeM = parseFloat(scaleSlider.value);
+  });
+
+  function showError(msg){
+    errorPanel.style.display = 'block';
+    errorPanel.textContent = msg;
+  }
+  function clearError(){ errorPanel.style.display = 'none'; }
+
+  function connect(){
+    if (ws) { ws.close(); ws = null; }
+    const url = urlInput.value.trim();
+    if (!url) return;
+    statusText.textContent = 'connecting...';
+    clearError();
+
+    try {
+      ws = new WebSocket(url);
+    } catch (e) {
+      showError(`WebSocket construction failed: ${e.message}`);
+      return;
+    }
+
+    ws.onopen = () => {
+      statusDot.classList.add('live');
+      statusText.textContent = 'live';
+      clearError();
+    };
+
+    ws.onclose = (ev) => {
+      statusDot.classList.remove('live');
+      statusText.textContent = 'disconnected';
+      if (!ev.wasClean){
+        showError(`Connection closed unexpectedly (code ${ev.code}).\n` +
+          `Common causes: wrong IP/hostname, server not running, ` +
+          `or blocked by network (firewall / different subnet).`);
+      }
+    };
+
+    ws.onerror = () => {
+      statusDot.classList.remove('live');
+      statusText.textContent = 'error';
+      showError(`WebSocket error connecting to ${url}.\n` +
+        `Browsers hide the low-level reason for security -- check that:\n` +
+        `  - the server script is running on the Pi\n` +
+        `  - the address/hostname resolves (try the raw IP if .local fails)\n` +
+        `  - laptop and Pi are on the same network`);
+    };
+
+    ws.onmessage = (ev) => {
+      try {
+        const data = JSON.parse(ev.data);
+        if (Array.isArray(data.points)){
+          latestPoints = data.points;
+          ptCount.textContent = latestPoints.length;
+          const now = performance.now();
+          scanTimestamps.push(now);
+          scanTimestamps = scanTimestamps.filter(t => now - t < 3000);
+        }
+      } catch(e){ /* ignore malformed frame */ }
+    };
+  }
+
+  connectBtn.addEventListener('click', connect);
+  urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
+
+  function resize(){
+    scopeCanvas.width = scopeCanvas.parentElement.clientWidth * devicePixelRatio;
+    scopeCanvas.height = scopeCanvas.parentElement.clientHeight * devicePixelRatio;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function getCss(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function niceCeil(v){
+    if (v <= 0.5) return 0.5;
+    if (v <= 1) return 1;
+    if (v <= 2) return 2;
+    if (v <= 5) return 5;
+    if (v <= 10) return 10;
+    if (v <= 20) return 20;
+    return Math.ceil(v/10)*10;
+  }
+
+  function draw(){
+    const w = scopeCanvas.width, h = scopeCanvas.height;
+    const cx = w/2, cy = h/2;
+    const R = Math.min(w,h) * 0.44;
+    ctx.clearRect(0,0,w,h);
+
+    let rangeM;
+    if (autoScale){
+      let maxDistM = 1;
+      for (const [, distMm] of latestPoints){
+        const m = distMm/1000;
+        if (m > maxDistM) maxDistM = m;
+      }
+      rangeM = niceCeil(maxDistM);
+    } else {
+      rangeM = manualRangeM;
+    }
+    scaleValue.textContent = rangeM.toFixed(1);
+    const pxPerM = R / rangeM;
+
+    ctx.strokeStyle = getCss('--grid-line');
+    ctx.lineWidth = 1*devicePixelRatio;
+    for (let i=1;i<=4;i++){
+      ctx.beginPath();
+      ctx.arc(cx, cy, R*(i/4), 0, Math.PI*2);
+      ctx.stroke();
+    }
+    for (let a=0; a<360; a+=30){
+      const rad = a*Math.PI/180;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx+R*Math.cos(rad), cy+R*Math.sin(rad));
+      ctx.stroke();
+    }
+    ctx.fillStyle = getCss('--text-dim');
+    ctx.font = `${11*devicePixelRatio}px monospace`;
+    for (let i=1;i<=4;i++){
+      const ringRadiusPx = R*(i/4);
+      const labelM = ringRadiusPx / pxPerM;
+      ctx.fillText(labelM.toFixed(2)+'m', cx+4*devicePixelRatio, cy-ringRadiusPx-2*devicePixelRatio);
+    }
+
+    ctx.fillStyle = getCss('--accent-pose');
+    ctx.beginPath();
+    ctx.arc(cx, cy, 5*devicePixelRatio, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = getCss('--accent-scan');
+    for (const [angleDeg, distMm] of latestPoints){
+      const rad = angleDeg * Math.PI/180;
+      const m = distMm/1000;
+      const px = cx + m*pxPerM*Math.cos(rad);
+      const py = cy + m*pxPerM*Math.sin(rad);
+      ctx.beginPath();
+      ctx.arc(px, py, 1.6*devicePixelRatio, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+
+  setInterval(() => {
+    scanHz.textContent = scanTimestamps.length ? (scanTimestamps.length/3).toFixed(1) : '--';
+  }, 200);
+})();
+</script>
+</body>
+</html>
