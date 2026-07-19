@@ -228,7 +228,7 @@ setInterval(() => {
   });
 }, 1500);
 
-// lidar: 6x4 m room walls from current pose, 2 Hz, 180 pts
+// lidar: 6x4 m room walls from current pose
 function wallDistance(px, py, angle) {
   // distance from (px,py) along `angle` to the 6x4 room boundary
   const dx = Math.cos(angle);
@@ -238,6 +238,47 @@ function wallDistance(px, py, angle) {
   if (dx < -1e-6) d = Math.min(d, (0 - px) / dx);
   if (dy > 1e-6) d = Math.min(d, (4 - py) / dy);
   if (dy < -1e-6) d = Math.min(d, (0 - py) / dy);
+  return d;
+}
+
+// Static clutter inside the room so the scan and map show real structure
+// (pillars, crate stacks, a planter/bin row), not four bare walls. Modeled as
+// circles; each beam takes the nearest of the walls and these. This makes the
+// SLAM map read as a furnished space on camera.
+const OBSTACLES = [
+  { x: 3.0, y: 2.0, r: 0.24 }, // centre pillar
+  { x: 1.4, y: 1.0, r: 0.18 }, { x: 4.6, y: 3.0, r: 0.18 }, // corner pillars
+  { x: 2.0, y: 3.2, r: 0.26 }, { x: 2.5, y: 3.35, r: 0.22 }, // crate stack
+  { x: 5.05, y: 0.8, r: 0.2 }, { x: 5.05, y: 1.5, r: 0.2 }, // bin/planter row
+  { x: 5.05, y: 2.2, r: 0.2 }, { x: 5.05, y: 2.9, r: 0.2 },
+  { x: 0.8, y: 2.6, r: 0.2 }, { x: 0.9, y: 3.2, r: 0.2 }, // planter row (far wall)
+  { x: 3.8, y: 0.7, r: 0.16 }, { x: 1.2, y: 1.9, r: 0.16 }, // scattered fruit crates
+];
+
+// nearest positive ray-circle hit from (px,py) along unit dir (dx,dy)
+function rayCircle(px, py, dx, dy, c) {
+  const ox = px - c.x;
+  const oy = py - c.y;
+  const b = ox * dx + oy * dy;
+  const cc = ox * ox + oy * oy - c.r * c.r;
+  const disc = b * b - cc;
+  if (disc < 0) return Infinity;
+  const s = Math.sqrt(disc);
+  const t1 = -b - s;
+  if (t1 > 0.02) return t1;
+  const t2 = -b + s;
+  return t2 > 0.02 ? t2 : Infinity;
+}
+
+// nearest of the walls and all obstacle circles along `angle`
+function rayDistance(px, py, angle) {
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  let d = wallDistance(px, py, angle);
+  for (const o of OBSTACLES) {
+    const t = rayCircle(px, py, dx, dy, o);
+    if (t < d) d = t;
+  }
   return d;
 }
 
@@ -251,10 +292,11 @@ let slamTick = 0;
 if (LIDAR_ON) {
   setInterval(() => {
     const points = [];
-    for (let i = 0; i < 180; i++) {
-      const rel = (i / 180) * Math.PI * 2; // angle in robot frame
+    const BEAMS = 360; // full-resolution sweep (schema cap)
+    for (let i = 0; i < BEAMS; i++) {
+      const rel = (i / BEAMS) * Math.PI * 2; // angle in robot frame
       const world = rel + sim.pos.heading;
-      let d = wallDistance(sim.pos.x, sim.pos.y, world);
+      let d = rayDistance(sim.pos.x, sim.pos.y, world);
       d += (Math.random() - 0.5) * 0.04; // sensor noise
       if (Math.random() < 0.03) continue; // dropouts
       points.push([+(d * Math.cos(rel)).toFixed(3), +(d * Math.sin(rel)).toFixed(3)]);
