@@ -6,6 +6,7 @@
 import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Splat, OrbitControls } from '@react-three/drei'
+import { useSplatBlobUrl } from '../lib/splatBlob.js'
 
 const SPLAT_URL = '/assets/robot.splat'
 
@@ -13,6 +14,7 @@ const SPLAT_URL = '/assets/robot.splat'
 const SPLAT_FIX = { rotation: [0.158, 2.348, -0.062], scale: 1.35 }
 
 export default function FleetRobotSplat() {
+  const splatUrl = useSplatBlobUrl(SPLAT_URL)
   return (
     <div className="povf-splat">
       <Canvas
@@ -23,7 +25,7 @@ export default function FleetRobotSplat() {
         <ambientLight intensity={0.9} />
         <Suspense fallback={null}>
           <group rotation={SPLAT_FIX.rotation} scale={SPLAT_FIX.scale}>
-            <Splat src={SPLAT_URL} />
+            {splatUrl && <Splat src={splatUrl} />}
           </group>
         </Suspense>
         <OrbitControls

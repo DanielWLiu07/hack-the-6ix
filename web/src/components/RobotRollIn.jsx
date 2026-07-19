@@ -11,6 +11,7 @@
 import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Splat } from '@react-three/drei'
+import { useSplatBlobUrl } from '../lib/splatBlob.js'
 
 const SPLAT_URL = '/assets/robot.splat'
 
@@ -87,6 +88,7 @@ function engineShake(b, now, punch = 0) {
 // Cart drives along the floor in WORLD space from screen-left to the apple, then
 // yaws to face the camera. Triggered by the apple slam (startRef).
 function RollingRobot({ fixRef, startRef }) {
+  const splatUrl = useSplatBlobUrl(SPLAT_URL) // blob: URL so drei gets a Content-Length (see splatBlob.js)
   const outer = useRef(null) // world placement (position + yaw + world scale)
   const rig = useRef(null) // engine shake + drive bounce
   const fix = useRef(null) // splat orientation (SPLAT_FIX / tune)
@@ -156,7 +158,7 @@ function RollingRobot({ fixRef, startRef }) {
     <group ref={outer}>
       <group ref={rig}>
         <group ref={fix}>
-          <Splat src={SPLAT_URL} />
+          {splatUrl && <Splat src={splatUrl} />}
         </group>
       </group>
     </group>
