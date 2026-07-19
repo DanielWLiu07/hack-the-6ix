@@ -1,6 +1,6 @@
 import { StrictMode, Suspense, lazy, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { Auth0Provider, useAuth0 } from '@auth0/auth0-react'
 import './index.css'
 import App from './App.jsx'
@@ -76,6 +76,22 @@ function MaybeRobotProvider({ children }) {
   return <AuthenticatedRobotProvider>{children}</AuthenticatedRobotProvider>
 }
 
+// The "Create account" button sends the user to Auth0's hosted signup, which
+// returns to the one registered callback (/teleop) with a code. We do not
+// exchange it (login is done via the on-board form), so drop the code and send
+// the new user to the board to sign in with their fresh credentials.
+function SignupReturn() {
+  const { pathname, search } = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    const params = new URLSearchParams(search)
+    if (pathname === '/teleop' && params.has('code') && params.has('state')) {
+      navigate('/?signup=done', { replace: true })
+    }
+  }, [pathname, search, navigate])
+  return null
+}
+
 function MaybeAuth0({ children }) {
   if (!AUTH0_DOMAIN || !AUTH0_CLIENT_ID) return children
   return (
@@ -98,6 +114,7 @@ createRoot(document.getElementById('root')).render(
     <MaybeAuth0>
       <MaybeRobotProvider>
         <BrowserRouter>
+          <SignupReturn />
           <OperatorBadge />
           <TvTransitionProvider>
           <Routes>

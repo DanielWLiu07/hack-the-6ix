@@ -142,6 +142,9 @@ function AuthBoardPanel({ operator, onLogin, onLogout, onClose, onDemo }) {
           <button type="submit" className="signboard-action" disabled={pending}>
             {pending ? 'Signing in...' : 'Sign in'}
           </button>
+          <button type="button" className="signboard-create" onClick={signupRedirect}>
+            New here? Create an account
+          </button>
         </form>
       )}
       {onDemo ? (
