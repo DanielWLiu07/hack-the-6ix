@@ -54,3 +54,9 @@
 - Redeployed prod: dpl_HAQ3geS97iqpG51JSXZoArkoyU3t, READY. Alias hack-the-6ix-chi.vercel.app resolves to it.
 - Verified unfurl: fetched prod HTML as facebookexternalhit, all og+twitter tags present; og:image (absolute URL) returns 200 image/png 722846 bytes at 1200x630; title correct. Definitive human check: paste the URL into Slack/iMessage to eyeball the rendered card.
 - Note: og:image is 722 KB (well under scraper caps). VITE_SERVER_URL still empty in prod (localhost fallback, venue tunnel step unchanged).
+
+## [18:07] WIP - prod healthy but stale; HOLDING per human (defer to master)
+- Deployment check: prod dpl_CNtbXiRRYQ5fKgvh5tkrUF475J2d Ready, serving fine (routes 200, real app bundle loads, og meta + card intact). Last deploy 10:38 (~7.5h ago).
+- Working tree is ~72 frontend files ahead of prod (new pages Harvest/Swarm, FarmHandChat, RobotPOV/MonkeyStage/tv-intro, reworked Analytics/Teleop/LidarView, new assets). Tree builds clean (658 modules).
+- Frontend workers editing live (newest change 27s ago). Human decision: HOLD, defer landing/scene/stage deploys to master. Did NOT redeploy.
+- Prod remains fully functional as a static + sim demo; a redeploy is a clean ~40s op whenever master/human wants the pending work live.

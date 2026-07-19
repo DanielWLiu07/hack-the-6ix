@@ -20,6 +20,28 @@ const REALM = import.meta.env.VITE_AUTH0_REALM || 'Username-Password-Authenticat
 
 export const ROPG_CONFIGURED = Boolean(DOMAIN && CLIENT_ID)
 
+// The only redirect_uri registered for this SPA app in the tenant. Signup
+// returns here; the app then strips the code and sends the user to the board.
+const SIGNUP_RETURN_PATH = '/teleop'
+
+// "Create an account": leave the app for Auth0's hosted signup screen. We do not
+// complete the returned code exchange (the user signs in via the on-board form
+// afterward with their new credentials), so a static PKCE challenge just to
+// satisfy the public-client requirement to start the flow is fine.
+export function signupRedirect() {
+  if (!ROPG_CONFIGURED) return
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    redirect_uri: window.location.origin + SIGNUP_RETURN_PATH,
+    response_type: 'code',
+    scope: 'openid profile email',
+    screen_hint: 'signup',
+    code_challenge: 'ht6orchardpassht6orchardpassht6orchardpass1',
+    code_challenge_method: 'S256',
+  })
+  window.location.href = `https://${DOMAIN}/authorize?${params.toString()}`
+}
+
 // Decode a JWT payload (no verification; just to read name/email for display).
 function decodeJwt(token) {
   try {

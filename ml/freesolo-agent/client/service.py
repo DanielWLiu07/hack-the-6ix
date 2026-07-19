@@ -19,6 +19,8 @@ Deps: pip install -r requirements.txt   (python-socketio[client])
 import logging
 import os
 import sys
+import threading
+import time
 
 import socketio
 
@@ -31,11 +33,38 @@ SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:3001")
 
 sio = socketio.Client(reconnection=True, reconnection_delay=1, reconnection_delay_max=5)
 
+# Keep the Freesolo endpoint warm: Modal serving scales to zero when idle, and a
+# cold first request can time out (-> fallback to rules). A periodic ping keeps
+# the trained model responsive (~0.8s) throughout the demo. 0 disables.
+KEEPALIVE_SECONDS = int(os.environ.get("FARMHAND_KEEPALIVE", "150"))
+_keepalive_started = False
+
+
+def _keepalive():
+    if not os.environ.get("FARMHAND_URL"):
+        return
+    first = True
+    while True:
+        try:
+            farmhand.handle("pick an apple")
+            if first:
+                log.info("model warmed up")
+                first = False
+        except Exception as e:  # never let keepalive break the service
+            log.warning("keepalive ping failed: %s", e)
+        if KEEPALIVE_SECONDS <= 0:
+            return
+        time.sleep(KEEPALIVE_SECONDS)
+
 
 @sio.event
 def connect():
+    global _keepalive_started
     log.info("connected to %s", SERVER_URL)
     sio.emit("register", {"role": "farmhand"})
+    if not _keepalive_started:
+        _keepalive_started = True
+        threading.Thread(target=_keepalive, daemon=True).start()
 
 
 @sio.event

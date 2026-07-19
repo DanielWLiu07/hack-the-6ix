@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react'
+import { useTvTransition } from '../lib/tvTransition.jsx'
+import { drawStatic } from '../lib/crtTuneIn.js'
 import './ArrivalFuzz.css'
 
 // Full-screen TV static that covers a page the instant it MOUNTS, then fades:
@@ -9,6 +11,17 @@ import './ArrivalFuzz.css'
 // asset load happening underneath it.
 export default function ArrivalFuzz({ hold = 480, fade = 820 }) {
   const ref = useRef(null)
+  // This mounts once the (lazy) page has mounted, so tell the TV transition it
+  // can clear its static now - the page-side fuzz below takes over seamlessly,
+  // with no clean/black gap between them.
+  const { arrived } = useTvTransition()
+  // Signal AFTER two frames, not on mount: the page shell mounts before its
+  // heavy 3D/images paint, and clearing the static on mount can expose an
+  // unpainted (black) element. Two rAFs let the first real frame land first.
+  useEffect(() => {
+    let raf = requestAnimationFrame(() => { raf = requestAnimationFrame(() => arrived()) })
+    return () => cancelAnimationFrame(raf)
+  }, [arrived])
   useEffect(() => {
     const canvas = ref.current
     if (!canvas) return undefined
@@ -21,16 +34,7 @@ export default function ArrivalFuzz({ hold = 480, fade = 820 }) {
     }
     resize()
     window.addEventListener('resize', resize)
-    const draw = () => {
-      const img = ctx.createImageData(w, h)
-      const d = img.data
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (55 + Math.random() * 150) | 0
-        d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
-      }
-      ctx.putImageData(img, 0, 0)
-    }
-    draw() // cover from the very first frame
+    drawStatic(ctx, w, h) // cover from the very first frame
     canvas.style.opacity = '1'
     const t0 = performance.now()
     let raf = 0
@@ -38,7 +42,7 @@ export default function ArrivalFuzz({ hold = 480, fade = 820 }) {
       const el = performance.now() - t0
       const op = el < hold ? 1 : Math.max(0, 1 - (el - hold) / fade)
       if (op <= 0.001) { canvas.style.opacity = '0'; return }
-      draw()
+      drawStatic(ctx, w, h)
       canvas.style.opacity = String(op)
       raf = requestAnimationFrame(loop)
     }

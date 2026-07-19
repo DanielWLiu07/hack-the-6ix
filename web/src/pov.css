@@ -38,6 +38,25 @@
 .pov-view { position: absolute; inset: 0; }
 .pov-main canvas { display: block; width: 100% !important; height: 100% !important; }
 
+/* ARM CAM renders as a large centered rectangle, not a fullscreen fill.
+   Leaves room on the right for the fleet + chat panel. */
+.pov-cam-frame {
+  position: absolute;
+  top: 88px;
+  bottom: 132px;
+  left: 0;
+  right: 0;
+  width: min(52vw, 760px);
+  margin-inline: auto;          /* centered on screen, clears the right drawer */
+  border-radius: 16px;
+  box-shadow: 0 10px 44px rgba(0, 0, 0, 0.16);
+  border: 1px solid var(--edge, rgba(0, 0, 0, 0.12));
+  display: grid;
+  place-items: center;
+}
+@media (max-width: 900px) {
+  .pov-cam-frame { width: auto; left: 20px; right: 20px; top: 76px; bottom: 120px; }
+}
 .pov-cam { overflow: hidden; background: #fffdfa; }
 .pov-cam-img {
   width: 100%;
@@ -112,7 +131,7 @@
 
 /* HUD layer */
 .pov-hud { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
-.pov-hud button, .pov-hud a { pointer-events: auto; }
+.pov-hud button, .pov-hud a, .pov-hud .pov-fringe-h { pointer-events: auto; }
 
 /* faint corner ticks */
 .pov-tick { position: absolute; width: 18px; height: 18px; border: 1.5px solid var(--edge); opacity: 0.45; }
@@ -409,3 +428,197 @@
 }
 .fringe-edit-anim.on { border-color: #86e6a0; color: #86e6a0; }
 .fringe-edit-anim:hover { background: rgba(246, 245, 240, 0.18); }
+
+/* fleet picker - swarm-aware POV: which rover this cockpit is inside */
+.pov-fleet {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  max-width: 92vw;
+  overflow-x: auto;
+  background: rgba(18, 19, 15, 0.72);
+  border: 1px solid rgba(246, 245, 240, 0.18);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+  z-index: 8;
+}
+.pov-fleet-lab { font-size: 9px; letter-spacing: 0.14em; color: #8a857b; padding: 0 2px; }
+.pov-fleet-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border: 1px solid rgba(246, 245, 240, 0.22);
+  border-radius: 6px;
+  background: rgba(246, 245, 240, 0.06);
+  color: #d8d5cd;
+  font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.pov-fleet-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: #8a857b; box-shadow: 0 0 6px currentColor; }
+.pov-fleet-chip.SEEK .dot { background: #7cd4ff; }
+.pov-fleet-chip.PICK .dot { background: #f2a03c; }
+.pov-fleet-chip.SORT .dot { background: #86e6a0; }
+.pov-fleet-chip.ESTOP .dot { background: #ff5b5b; }
+.pov-fleet-chip .sim { font-size: 8px; color: #7cd4ff; letter-spacing: 0.08em; }
+.pov-fleet-chip:hover { border-color: rgba(246, 245, 240, 0.5); }
+.pov-fleet-chip.on { border-color: #f2a03c; color: #fff; background: rgba(242, 160, 60, 0.16); }
+.pov-fleet-all { font-size: 10px; letter-spacing: 0.08em; color: #7cd4ff; text-decoration: none; padding: 0 4px; white-space: nowrap; }
+.pov-fleet-all:hover { color: #a9e2ff; }
+
+/* active-rover tag on the camera feed */
+.pov-cam-tag {
+  position: absolute;
+  top: 52px;
+  left: 12px;
+  z-index: 5;
+  padding: 3px 8px;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.1em;
+  color: #12130f;
+  background: rgba(246, 245, 240, 0.82);
+  border-radius: 4px;
+}
+
+/* mission-control sidebar: fleet roster + FarmHand command console.
+   Uses the page's manga paper/ink/glass vocabulary so it reads as the same
+   HUD system as the bottom chips (frosted glass, ink text), over any tab. */
+.pov-fleetbar {
+  position: absolute;
+  right: 0;                 /* fleet + chat live on the RIGHT side */
+  top: 64px;
+  bottom: 108px;
+  z-index: 9;
+  display: flex;
+  align-items: stretch;      /* [tab][body]: body flush-right, pull-tab on its inner edge */
+  max-width: 92vw;
+}
+.pov-fleetbar-tab {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 12px 5px;
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
+  box-shadow: var(--glass-hi);
+  backdrop-filter: var(--blur);
+  color: var(--dim);
+  cursor: pointer;
+}
+.pov-fleetbar-tab .lab { writing-mode: vertical-rl; font: 700 10px/1 var(--ui-mono); letter-spacing: 0.18em; }
+.pov-fleetbar-tab .chev { font-size: 14px; line-height: 1; color: var(--txt); }
+.pov-fleetbar-tab:hover { color: var(--txt); border-color: rgba(17, 16, 13, 0.26); }
+.pov-fleetbar-body {
+  width: 300px;
+  max-width: 84vw;
+  display: flex;
+  padding: 12px;
+  background: var(--glass);
+  border: 1px solid var(--edge);
+  border-right: 0;
+  border-radius: 12px 0 0 12px;
+  box-shadow: var(--glass-hi), -8px 0 28px rgba(17, 16, 13, 0.12);
+  backdrop-filter: var(--blur);
+}
+
+.povf { display: flex; flex-direction: column; width: 100%; min-height: 0; gap: 8px; color: var(--txt); }
+
+/* Two side-by-side tabs at the top: FLEET | FARMHAND. */
+.povf-tabs { display: flex; gap: 6px; flex: none; }
+.povf-tab {
+  flex: 1 1 0;
+  padding: 8px 6px;
+  font: 700 10px/1 var(--ui-mono); letter-spacing: 0.1em;
+  color: var(--dim); text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--edge); border-radius: 8px;
+  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.povf-tab:hover { color: var(--txt); border-color: rgba(17, 16, 13, 0.28); }
+.povf-tab.on { color: var(--ink); background: rgba(17, 16, 13, 0.06); border-color: var(--ink); }
+
+/* Active pane fills the rest of the panel height. */
+.povf-pane { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; }
+.povf-pane-chat { gap: 8px; }
+.povf-pane-chat .povf-cmd { flex: 1 1 auto; height: auto; min-height: 0; }
+
+/* Scanned-rover splat header in the FLEET tab. */
+.povf-splat {
+  position: relative; flex: none;
+  height: 168px; border-radius: 10px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 20%, rgba(255,255,255,0.55), rgba(17,16,13,0.05));
+  border: 1px solid var(--edge);
+}
+.povf-splat canvas { display: block; width: 100% !important; height: 100% !important; }
+.povf-splat-tag {
+  position: absolute; left: 8px; bottom: 7px;
+  font: 700 8px/1 var(--ui-mono); letter-spacing: 0.12em; color: var(--faint);
+  background: rgba(255, 255, 255, 0.6); padding: 3px 6px; border-radius: 4px;
+}
+
+.povf-sec-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font: 700 9px/1 var(--ui-mono); letter-spacing: 0.14em; color: var(--faint);
+  text-transform: uppercase;
+}
+.povf-swarm { color: var(--dim); text-decoration: none; letter-spacing: 0.08em; font-weight: 700; }
+.povf-swarm:hover { color: var(--txt); }
+.povf-roster { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1 1 auto; min-height: 60px; }
+.povf-empty { color: var(--faint); font-size: 11px; text-align: center; padding: 12px 0; }
+
+.povf-card {
+  display: flex; flex-direction: column; gap: 5px;
+  padding: 8px 9px; text-align: left;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  color: var(--txt); font: 500 11px/1.2 var(--ui-mono); cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.povf-card:hover { border-color: rgba(17, 16, 13, 0.3); background: rgba(255, 255, 255, 0.7); }
+.povf-card.on { border-color: var(--ink); background: rgba(17, 16, 13, 0.06); }
+.povf-card-top { display: flex; align-items: center; gap: 6px; }
+.povf-led { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 5px currentColor; flex: none; }
+.povf-id { font-weight: 700; letter-spacing: 0.03em; }
+.povf-sim { font-size: 8px; color: #2f7db0; letter-spacing: 0.08em; }
+.povf-state { margin-left: auto; font-size: 9px; font-weight: 700; padding: 1px 6px; border: 1px solid; border-radius: 4px; letter-spacing: 0.06em; }
+.povf-batt { display: flex; align-items: center; gap: 7px; }
+.povf-batt .track { flex: 1; height: 6px; border-radius: 3px; background: rgba(17, 16, 13, 0.12); overflow: hidden; }
+.povf-batt .track > span { display: block; height: 100%; background: #2f9d54; border-radius: 3px; }
+.povf-batt .track > span.warn { background: #d98a2b; }
+.povf-batt .track > span.crit { background: #d4483a; }
+.povf-batt-v { font-size: 10px; color: var(--dim); min-width: 36px; text-align: right; }
+.povf-drive { font-size: 9px; color: var(--faint); letter-spacing: 0.02em; }
+
+.povf-cmd { flex: 0 0 auto; height: 268px; display: flex; }
+
+@media (max-height: 620px) {
+  .povf-cmd { height: 200px; }
+}
+
+/* machine-fringe height slider (replaces the CLEAR toggle) */
+.pov-fringe-h {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  box-shadow: var(--glass-hi);
+  border-radius: 8px;
+  backdrop-filter: var(--blur);
+}
+.pov-fringe-h .lab { font: 600 0.58rem var(--ui-mono); letter-spacing: 0.14em; color: var(--faint); }
+.pov-fringe-h input[type="range"] { width: 84px; accent-color: var(--ink); cursor: pointer; }
+.pov-fringe-h .val { font: 600 0.62rem var(--ui-mono); color: var(--txt); min-width: 22px; text-align: right; }

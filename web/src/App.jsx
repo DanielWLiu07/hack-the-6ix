@@ -1,7 +1,8 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRobot } from './lib/robot.jsx'
-import { passwordLogin } from './lib/ropg.js'
+import { drawStatic } from './lib/crtTuneIn.js'
+import { passwordLogin, signupRedirect } from './lib/ropg.js'
 import { useOperator, operatorLabel } from './lib/auth.jsx'
 import './App.css'
 
@@ -249,25 +250,16 @@ function StageArrivalFuzz({ active }) {
     }
     resize()
     window.addEventListener('resize', resize)
-    // Ramp IN over the still-visible landing (like a TV losing signal), hold
-    // fully covered while the stage swaps in behind it, then fade OUT to the
-    // stage. COVER must match stageCovered's delay so the landing unmounts and
-    // the stage mounts exactly when the fuzz is fully opaque.
+    // Ramp IN over the still-visible landing (soft CRT tune-in), hold fully
+    // covered while the stage swaps in behind it, then fade OUT to the stage.
+    // COVER must match stageCovered's delay so the landing unmounts and the stage
+    // mounts exactly when the cover is fully opaque.
     const COVER = 340 // ms fade-in 0 -> 1 over the landing
     const HOLD = 420 // ms fully covered while the stage mounts
     const FADE = 950 // ms fade-out over the settled stage
     const t0 = performance.now()
     let raf = 0
-    const draw = () => {
-      const img = ctx.createImageData(w, h)
-      const d = img.data
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (55 + Math.random() * 150) | 0
-        d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
-      }
-      ctx.putImageData(img, 0, 0)
-    }
-    draw()
+    drawStatic(ctx, w, h)
     canvas.style.opacity = '0'
     const loop = () => {
       const el = performance.now() - t0
@@ -277,7 +269,7 @@ function StageArrivalFuzz({ active }) {
           ? 1
           : Math.max(0, 1 - (el - COVER - HOLD) / FADE)
       if (op <= 0.001 && el > COVER + HOLD) { canvas.style.opacity = '0'; return }
-      draw()
+      drawStatic(ctx, w, h)
       canvas.style.opacity = String(op)
       raf = requestAnimationFrame(loop)
     }

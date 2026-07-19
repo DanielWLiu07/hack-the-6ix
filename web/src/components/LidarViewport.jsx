@@ -1,9 +1,9 @@
-import { Component, Suspense, useEffect, useRef, useState } from 'react'
+import { Component, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Grid, Html, OrbitControls } from '@react-three/drei'
+import { Grid, Html, Line, OrbitControls, Splat } from '@react-three/drei'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import * as THREE from 'three'
-import { useRobotEvent } from '../lib/robot.jsx'
+import { useRobot, useRobotEvent } from '../lib/robot.jsx'
 import { CanvasGuard, SAFE_DPR } from '../lib/canvasGuard.jsx'
 
 const DECAY_MS = 4000
@@ -18,6 +18,16 @@ const MAX_CELLS = 128 * 128
 // planeGeometry lies in XY; this tips every instance flat onto the ground plane.
 const FLAT_Q = new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0))
 const CONE_UP = new THREE.Vector3(0, 1, 0)
+
+// --- Robot representation: the Gaussian splat capture of the actual rover ---
+// The splat sits at the live slam_pose and turns with the heading. A capture's
+// native scale/orientation is arbitrary, so these are the alignment knobs -
+// tweak them until the rover sits upright, on the ground, facing its travel
+// direction. (Rotations in radians.)
+const ROBOT_SPLAT_URL = '/assets/robot.splat'
+const ROBOT_SPLAT_SCALE = 0.6 // overall size on the map (raise/lower to match ~0.4 m rover)
+const ROBOT_SPLAT_ROT = [0, 0, 0] // [rx,ry,rz] correction for the capture's native axes
+const ROBOT_SPLAT_Y = 0.0 // vertical offset so the rover's base rests on the floor plane
 
 function b64ToBytes(b64) {
   try {
@@ -128,26 +138,54 @@ function SlamMap({ showFreeSpace, occupiedColor, freeColor }) {
 
 // Robot marker driven by slam_pose. Eases toward the latest pose so the cone
 // glides across the map and its nose points along robot-forward.
+// Robot marker: the actual rover, rendered as its Gaussian splat capture. It
+// glides to the live slam_pose and yaws to the heading. A small ground dot marks
+// the exact pose so position stays readable even if the splat is subtle/offset;
+// a cone stands in while the splat streams in.
 function PoseMarker({ poseRef, color }) {
   const grp = useRef()
+  const spin = useRef()
   const target = useRef(new THREE.Vector3()).current
-  const targetQ = useRef(new THREE.Quaternion()).current
-  const fwd = useRef(new THREE.Vector3()).current
   useFrame(() => {
+    if (!grp.current) return
+    // Default to the origin so the rover ALWAYS shows - even before any pose or
+    // with no connection. When a slam_pose arrives it glides there and turns.
     const p = poseRef.current
-    if (!p || !grp.current) return
-    worldToThree(p.x, p.y, target)
+    const px = p ? p.x : 0
+    const py = p ? p.y : 0
+    const th = p ? p.theta : 0
+    worldToThree(px, py, target)
+    target.y = ROBOT_SPLAT_Y
     grp.current.position.lerp(target, 0.25)
-    fwd.set(-Math.sin(p.theta), 0, -Math.cos(p.theta))
-    targetQ.setFromUnitVectors(CONE_UP, fwd)
-    grp.current.quaternion.slerp(targetQ, 0.25)
+    if (spin.current) {
+      // robot heading -> yaw about the vertical (three) axis; wrap the delta so
+      // it never spins the long way round the +/-pi seam.
+      const yaw = Math.atan2(-Math.sin(th), -Math.cos(th))
+      let d = yaw - spin.current.rotation.y
+      d = Math.atan2(Math.sin(d), Math.cos(d))
+      spin.current.rotation.y += d * 0.25
+    }
   })
   return (
     <group ref={grp}>
-      <mesh>
-        <coneGeometry args={[0.12, 0.36, 4]} />
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.06, 20]} />
         <meshBasicMaterial color={color} />
       </mesh>
+      <group ref={spin}>
+        <Suspense
+          fallback={
+            <mesh>
+              <coneGeometry args={[0.12, 0.36, 4]} />
+              <meshBasicMaterial color={color} />
+            </mesh>
+          }
+        >
+          <group rotation={ROBOT_SPLAT_ROT} scale={ROBOT_SPLAT_SCALE}>
+            <Splat src={ROBOT_SPLAT_URL} />
+          </group>
+        </Suspense>
+      </group>
     </group>
   )
 }
@@ -385,6 +423,67 @@ function AutoOrbit() {
   return null
 }
 
+// Inverse of worldToThree: a three-space ground point -> SLAM world meters.
+function threeToWorld(pt) {
+  return [-pt.z, -pt.x] // wx = -z, wy = -x
+}
+
+// The planned route to the goal, drawn as a bright polyline hovering just over
+// the map. Recomputed only when the path points change.
+function NavPath({ points, color }) {
+  const pts = useMemo(() => {
+    if (!Array.isArray(points) || points.length < 2) return null
+    return points.map(([wx, wy]) => [-wy, SENSOR_H + 0.05, -wx])
+  }, [points])
+  if (!pts) return null
+  return <Line points={pts} color={color} lineWidth={3} dashed dashScale={8} transparent opacity={0.95} />
+}
+
+// Destination pin at the declared goal: a pulsing ground ring plus a small
+// standing marker so it reads from the map's default oblique angle.
+function GoalMarker({ goal, color, reached }) {
+  const ring = useRef()
+  useFrame((s) => {
+    if (!ring.current) return
+    const k = reached ? 1.15 : 1 + 0.35 * (0.5 + 0.5 * Math.sin(s.clock.elapsedTime * 4))
+    ring.current.scale.set(k, k, k)
+  })
+  if (!Array.isArray(goal)) return null
+  const [x, , z] = [-goal[1], 0, -goal[0]]
+  return (
+    <group position={[x, 0, z]}>
+      <mesh ref={ring} position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.14, 0.2, 28]} />
+        <meshBasicMaterial color={color} transparent opacity={0.9} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0.18, 0]}>
+        <coneGeometry args={[0.07, 0.22, 4]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+    </group>
+  )
+}
+
+// Invisible ground catcher: a click sets a navigation goal (SLAM world meters).
+// OrbitControls owns drags; a genuine click still fires onClick on this plane.
+function NavClickPlane({ onPick }) {
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, 0.01, 0]}
+      onClick={(e) => {
+        e.stopPropagation()
+        onPick(threeToWorld(e.point))
+      }}
+    >
+      {/* sized to the room (+margin) so a click on empty ground past the map
+          doesn't project to a far-away goal that flings the rover out */}
+      <planeGeometry args={[14, 14]} />
+      <meshBasicMaterial visible={false} />
+    </mesh>
+  )
+}
+
 function Scene({
   showWorld,
   onWorldFail,
@@ -410,8 +509,25 @@ function Scene({
   slamOccupiedColor,
   slamFreeColor,
   slamMarkerColor,
+  navigable,
+  emitNav,
+  onNavState,
+  navColor,
 }) {
   const [scans, setScans] = useState([])
+  // Live navigation route (nav_path event): goal + planned polyline + status.
+  const [nav, setNav] = useState(null)
+  useRobotEvent('nav_path', (msg) => {
+    if (!msg) return
+    const next = {
+      goal: Array.isArray(msg.goal) ? msg.goal : null,
+      points: Array.isArray(msg.points) ? msg.points : [],
+      active: !!msg.active,
+      reached: !!msg.reached,
+    }
+    setNav(next)
+    onNavState?.(next)
+  })
   // Latest SLAM pose. When present, live scans are lifted into the world frame
   // so they land on the accumulated map; without it we fall back to the classic
   // robot-centered radar (pose stays at the origin).
@@ -481,14 +597,14 @@ function Scene({
         />
       )}
       {showSlam && <SlamMap showFreeSpace={showFreeSpace} occupiedColor={slamOccupiedColor} freeColor={slamFreeColor} />}
-      {showSlam && hasPose && <PoseMarker poseRef={poseRef} color={slamMarkerColor} />}
-      {/* Static origin cone only when SLAM isn't driving a live robot marker. */}
-      {showOriginMarker && !(showSlam && hasPose) && (
-        <mesh position={[0, SENSOR_H, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <coneGeometry args={[0.09, 0.26, 4]} />
-          <meshBasicMaterial color="#e5484d" />
-        </mesh>
+      {navigable && <NavClickPlane onPick={(xy) => emitNav?.(xy)} />}
+      {navigable && nav?.active && <NavPath points={nav.points} color={navColor} />}
+      {navigable && nav?.goal && (
+        <GoalMarker goal={nav.goal} color={navColor} reached={nav.reached} />
       )}
+      {/* The rover (Gaussian splat) is ALWAYS present - it holds the origin until
+          a slam_pose arrives (even with no connection), then glides to the pose. */}
+      <PoseMarker poseRef={poseRef} color={slamMarkerColor} />
       {showScans && scans.map((s) => (
         <ScanPoints
           key={s.id}
@@ -549,42 +665,73 @@ export default function LidarViewport({
   slamOccupiedColor = '#2bb673',
   slamFreeColor = '#8aa79b',
   slamMarkerColor = '#f5a524',
+  navigable = false,
+  navColor = '#2f7db0',
 }) {
   const [worldFailed, setWorldFailed] = useState(false)
+  const [navState, setNavState] = useState(null)
+  const { emit } = useRobot()
   const handleWorldFail = () => {
     setWorldFailed(true)
     onWorldFail?.()
   }
+  const emitNav = (xy) =>
+    emit('nav_goal', { ts: Date.now(), x: Math.round(xy[0] * 1000) / 1000, y: Math.round(xy[1] * 1000) / 1000 })
+  const cancelNav = () => emit('nav_goal', { ts: Date.now(), cancel: true })
+
+  const navHint = navState?.reached
+    ? 'ARRIVED · click to set a new destination'
+    : navState?.active
+      ? 'NAVIGATING to destination...'
+      : 'click the map to declare a destination'
+
   return (
-    <Canvas camera={camera} dpr={SAFE_DPR}>
-      <CanvasGuard />
-      <Scene
-        showWorld={showWorld && !worldFailed}
-        onWorldFail={handleWorldFail}
-        orbit={orbit}
-        controls={controls}
-        pointColor={pointColor}
-        pointSize={pointSize}
-        gridCellColor={gridCellColor}
-        gridSectionColor={gridSectionColor}
-        fitView={fitView}
-        controlTarget={controlTarget}
-        backgroundColor={backgroundColor}
-        showGrid={showGrid}
-        scanDecayMs={scanDecayMs}
-        showOriginMarker={showOriginMarker}
-        maxScans={maxScans}
-        showScans={showScans}
-        worldStatus={worldStatus}
-        autoFitEnabled={autoFitEnabled}
-        onInteract={onInteract}
-        showSlam={showSlam}
-        showFreeSpace={showFreeSpace}
-        slamOccupiedColor={slamOccupiedColor}
-        slamFreeColor={slamFreeColor}
-        slamMarkerColor={slamMarkerColor}
-      />
-    </Canvas>
+    <>
+      <Canvas camera={camera} dpr={SAFE_DPR}>
+        <CanvasGuard />
+        <Scene
+          showWorld={showWorld && !worldFailed}
+          onWorldFail={handleWorldFail}
+          orbit={orbit}
+          controls={controls}
+          pointColor={pointColor}
+          pointSize={pointSize}
+          gridCellColor={gridCellColor}
+          gridSectionColor={gridSectionColor}
+          fitView={fitView}
+          controlTarget={controlTarget}
+          backgroundColor={backgroundColor}
+          showGrid={showGrid}
+          scanDecayMs={scanDecayMs}
+          showOriginMarker={showOriginMarker}
+          maxScans={maxScans}
+          showScans={showScans}
+          worldStatus={worldStatus}
+          autoFitEnabled={autoFitEnabled}
+          onInteract={onInteract}
+          showSlam={showSlam}
+          showFreeSpace={showFreeSpace}
+          slamOccupiedColor={slamOccupiedColor}
+          slamFreeColor={slamFreeColor}
+          slamMarkerColor={slamMarkerColor}
+          navigable={navigable}
+          emitNav={emitNav}
+          onNavState={setNavState}
+          navColor={navColor}
+        />
+      </Canvas>
+      {navigable && (
+        <div className="lv-nav">
+          <span className={`lv-nav-hint ${navState?.active ? 'go' : ''} ${navState?.reached ? 'done' : ''}`}>
+            <i className="lv-nav-dot" />
+            {navHint}
+          </span>
+          {navState?.active && (
+            <button className="lv-nav-stop" onClick={cancelNav}>STOP</button>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 

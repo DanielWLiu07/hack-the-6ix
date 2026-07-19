@@ -193,12 +193,43 @@ body:has(.deco-catcher) { user-select: none; -webkit-user-select: none; }
 }
 
 /* ---- controls ------------------------------------------------------- */
-.az-controls { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; }
-.az-seg { display: inline-flex; border: 2px solid var(--ink); border-radius: 4px; overflow: hidden; background: var(--paper); box-shadow: 3px 3px 0 var(--ink); }
+/* controls sit above the deco crust (z-index 2) so nothing can ever swallow a click */
+.az-controls {
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+.az-winctl { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 0.7rem; row-gap: 0.32rem; align-items: center; }
+.az-winlabel {
+  grid-column: 1;
+  font: 800 0.62rem var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.az-seg {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  display: inline-flex;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--ink);
+}
 .az-seg button {
-  font: 800 0.72rem var(--mono);
-  letter-spacing: 0.06em;
-  padding: 0.42rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.18rem;
+  min-width: 4.2rem;
+  font: 800 0.74rem var(--mono);
+  letter-spacing: 0.03em;
+  padding: 0.42rem 0.85rem;
   background: transparent;
   color: var(--ink);
   border: none;
@@ -206,9 +237,28 @@ body:has(.deco-catcher) { user-select: none; -webkit-user-select: none; }
   cursor: pointer;
   transition: background 0.12s, color 0.12s;
 }
+.az-seg button .ct {
+  font: 800 0.64rem var(--mono);
+  letter-spacing: 0.02em;
+  color: var(--ink-3);
+  background: var(--track);
+  border-radius: 999px;
+  padding: 0.02rem 0.44rem;
+  min-width: 1.5rem;
+  transition: background 0.12s, color 0.12s;
+}
 .az-seg button:last-child { border-right: none; }
 .az-seg button:hover { background: var(--track); }
 .az-seg button.on { background: var(--ink); color: var(--paper); }
+.az-seg button.on .ct { background: var(--paper); color: var(--ink); }
+.az-wincap {
+  grid-column: 1;
+  grid-row: 2;
+  font: 500 0.68rem var(--mono);
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  white-space: nowrap;
+}
 
 .az-live {
   margin-left: auto;
@@ -379,7 +429,33 @@ body:has(.deco-catcher) { user-select: none; -webkit-user-select: none; }
 .az-num { transition: color 0.2s; }
 .az-metric.flash .az-num { color: var(--ink); }
 
+/* gentle staggered entrance for each section, once on mount */
+@keyframes az-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.az-main > * {
+  animation: az-rise 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.az-main > *:nth-child(1) { animation-delay: 0.02s; }
+.az-main > *:nth-child(2) { animation-delay: 0.08s; }
+.az-main > *:nth-child(3) { animation-delay: 0.14s; }
+.az-main > *:nth-child(4) { animation-delay: 0.20s; }
+.az-main > *:nth-child(5) { animation-delay: 0.26s; }
+.az-main > *:nth-child(6) { animation-delay: 0.32s; }
+.az-main > *:nth-child(7) { animation-delay: 0.38s; }
+.az-main > *:nth-child(n + 8) { animation-delay: 0.44s; }
+
+/* bin bars sweep in left-to-right; clip-path keeps the halftone tone undistorted */
+@keyframes az-sweep {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+.az-tbl-bar > * { animation: az-sweep 0.85s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both; }
+
 @media (prefers-reduced-motion: reduce) {
   .az-metric.flash,
+  .az-main > *,
+  .az-tbl-bar > *,
   .az-live:not(.stale) .sq { animation: none; }
 }

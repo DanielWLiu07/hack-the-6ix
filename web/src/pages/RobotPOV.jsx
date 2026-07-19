@@ -3,6 +3,7 @@ import { useRobot, useRobotEvent, SERVER_URL } from '../lib/robot.jsx'
 import RobotFringe from '../components/RobotFringe.jsx'
 import LidarViewport from '../components/LidarViewport.jsx'
 import BackToStage from '../components/BackToStage.jsx'
+import PovFleetPanel from '../components/PovFleetPanel.jsx'
 import ArrivalFuzz from '../components/ArrivalFuzz.jsx'
 import '../pov.css'
 
@@ -92,20 +93,29 @@ function LidarLayer({ world }) {
 }
 
 // Optical layer (arm camera + detection boxes) 
-function CameraLayer({ detections }) {
-  const [noStream, setNoStream] = useState(false)
+function CameraLayer({ detections, label }) {
+  // connecting | live | off. Show NOT CONNECTED (same placeholder as the other
+  // tabs) until a real frame actually loads; a stream that errors or never
+  // arrives falls to 'off' - never a blank/broken-image state.
+  const [status, setStatus] = useState('connecting')
+  useEffect(() => {
+    const t = setTimeout(() => setStatus((s) => (s === 'connecting' ? 'off' : s)), 4000)
+    return () => clearTimeout(t)
+  }, [])
   return (
-    <div className="pov-view pov-cam">
-      {!noStream ? (
+    <div className="pov-cam-frame pov-cam">
+      {status !== 'off' && (
         <img
           className="pov-cam-img"
           src={`${SERVER_URL}/stream`}
           alt=""
-          onError={() => setNoStream(true)}
+          style={{ display: status === 'live' ? 'block' : 'none' }}
+          onLoad={() => setStatus('live')}
+          onError={() => setStatus('off')}
         />
-      ) : (
-        <NotConnected sub="arm camera offline" />
       )}
+      {status !== 'live' && <NotConnected sub="arm camera offline" />}
+      {status === 'live' && label && <span className="pov-cam-tag">{label} · ARM CAM</span>}
       {/* bbox overlay - viewBox matches the detector's frame; "slice" mirrors
           object-fit: cover on the feed so boxes stay registered. */}
       <svg
@@ -160,6 +170,17 @@ export default function RobotPOV() {
   const editFringe =
     new URLSearchParams(window.location.search).has('edit') && tab === 'cam'
   const [isFs, setIsFs] = useState(false)
+  // Machine-fringe height: how far the top/side machine models hang into the
+  // frame. The HUD slider sets it and it persists. 1 = fully shown, 0 = tucked
+  // off-screen (the old "cleared" look). No auto-hide - the fringe stays put at
+  // whatever height you choose.
+  const [fringeHeight, setFringeHeight] = useState(() => {
+    const v = parseFloat(localStorage.getItem('pov-fringe-height') ?? '1')
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1
+  })
+  useEffect(() => {
+    localStorage.setItem('pov-fringe-height', String(fringeHeight))
+  }, [fringeHeight])
 
   // Live gate. OFF by default so no socket-sourced data (which may be a stand-in
   // robot / camera test pattern, indistinguishable from real hardware here)
@@ -177,13 +198,36 @@ export default function RobotPOV() {
     setTimeout(() => setBoxes((prev) => prev.filter((b) => b.id !== id)), DET_TTL)
   })
 
+  // Swarm-aware POV: this cockpit is "inside" ONE robot. The fleet roster (live
+  // `fleet` event) drives a robot picker; the selected rover's state/battery/
+  // arm/drive bind to the HUD. Camera + SLAM are the single physical sensors,
+  // labeled with the active rover. Deep-linkable via ?robot=rover-NN.
+  const [fleet, setFleet] = useState([])
+  const [selRobot, setSelRobot] = useState(
+    () => new URLSearchParams(window.location.search).get('robot') || null,
+  )
+  useRobotEvent('fleet', (f) => { if (Array.isArray(f?.robots)) setFleet(f.robots) })
+  const [fleetOpen, setFleetOpen] = useState(true) // mission-control sidebar open
+  // Resolve the active robot: the picked one if still in the roster, else the
+  // first rover. null when no roster yet (fall back to merged telemetry).
+  const activeRobot = (selRobot && fleet.find((r) => r.id === selRobot)) || fleet[0] || null
+  const pickRobot = (id) => {
+    setSelRobot(id)
+    const u = new URL(window.location.href)
+    u.searchParams.set('robot', id)
+    window.history.replaceState(null, '', u) // keep the deep-link in sync
+  }
+
   const feedsOn = connected // live data shows whenever the hub is connected (no GO LIVE gate)
-  const hasTele = feedsOn && telemetry
-  const state = feedsOn ? (telemetry?.state ?? 'IDLE') : 'OFFLINE'
-  const batt = hasTele ? telemetry.battery_v : null
+  // Prefer the active rover's live fleet entry; fall back to merged telemetry
+  // (single-robot demos, or before the first fleet frame arrives).
+  const src = feedsOn ? (activeRobot || telemetry) : null
+  const hasTele = Boolean(src)
+  const state = feedsOn ? (src?.state ?? 'IDLE') : 'OFFLINE'
+  const batt = hasTele && typeof src.battery_v === 'number' ? src.battery_v : null
   const battPct = batt != null ? Math.max(0, Math.min(1, (batt - 9.9) / 2.7)) : 0
-  const arm = hasTele ? telemetry.arm : null
-  const drive = hasTele ? telemetry.drive : null
+  const arm = hasTele && Array.isArray(src.arm) ? src.arm : null
+  const drive = hasTele ? src.drive : null
   const locked = tab === 'cam' && feedsOn && boxes.length > 0
   const last = feedsOn ? detLog[0] : null
   const activeTab = Math.max(0, TABS.findIndex((t) => t.id === tab))
@@ -201,7 +245,7 @@ export default function RobotPOV() {
   let view
   if (tab === 'cam') {
     view = feedsOn ? (
-      <CameraLayer detections={boxes} />
+      <CameraLayer detections={boxes} label={activeRobot?.id} />
     ) : (
       <NotConnected sub={`no robot on ${SERVER_URL}`} />
     )
@@ -226,7 +270,7 @@ export default function RobotPOV() {
   }
 
   return (
-    <div className="pov-root" ref={rootRef}>
+    <div className={`pov-root ${fringeHeight < 0.1 ? 'decluttered' : ''}`} ref={rootRef}>
       <ArrivalFuzz />
       <BackToStage />
    {/* active sensor view */}
@@ -239,7 +283,7 @@ export default function RobotPOV() {
           WebGL context in THIS document: the camera tab has no 3D canvas, and
           both the SLAM and iPhone tabs render their 3D inside isolated iframes
           (/pov-slam and phone.html), each with its own context. */}
-      <RobotFringe edit={editFringe} />
+      <RobotFringe edit={editFringe} reveal={fringeHeight} />
 
    {/* HUD */}
       <div className="pov-hud">
@@ -249,7 +293,27 @@ export default function RobotPOV() {
         <span className="pov-tick br" />
         <div className="pov-scanline" />
 
-        {/* top bar */}
+        {/* Mission-control sidebar: live fleet roster (click a rover to enter it)
+            + FarmHand NL command console. Collapsible so the cockpit stays clean.
+            Commands broadcast to the fleet; the real robot executes for real. */}
+        {feedsOn && (
+          <aside className={`pov-fleetbar ${fleetOpen ? 'open' : ''}`}>
+            <button
+              className="pov-fleetbar-tab"
+              onClick={() => setFleetOpen((v) => !v)}
+              title={fleetOpen ? 'Hide fleet + command' : 'Fleet + command'}
+            >
+              <span className="chev">{fleetOpen ? '›' : '‹'}</span>
+              <span className="lab">FLEET</span>
+            </button>
+            {fleetOpen && (
+              <div className="pov-fleetbar-body">
+                <PovFleetPanel fleet={fleet} activeId={activeRobot?.id} onPick={pickRobot} />
+              </div>
+            )}
+          </aside>
+        )}
+
         {/* center reticle (camera view only) */}
         {tab === 'cam' && feedsOn && (
           <div className={`pov-reticle ${locked ? 'lock' : ''}`}>
@@ -322,6 +386,18 @@ export default function RobotPOV() {
             </div>
 
             <div className="pov-top-r">
+              <label className="pov-fringe-h" title="Machine-fringe height">
+                <span className="lab">FRINGE</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={fringeHeight}
+                  onChange={(e) => setFringeHeight(parseFloat(e.target.value))}
+                />
+                <span className="val">{Math.round(fringeHeight * 100)}</span>
+              </label>
               <button className="pov-fs" onClick={toggleFs} title="Fullscreen">
                 {isFs ? 'EXIT FS' : 'FULL'}
               </button>

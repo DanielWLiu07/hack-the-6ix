@@ -16,9 +16,9 @@ const BINS = ['apple_ripe', 'apple_unripe', 'banana_ripe', 'banana_unripe']
 const KG_PER_PICK = 0.15 // avg fruit mass, waste-avoided estimate
 
 const WINDOWS = [
-  { key: 'all', label: 'ALL', ms: 0 },
-  { key: '5m', label: '5M', ms: 5 * 60_000 },
-  { key: '1m', label: '1M', ms: 60_000 },
+  { key: '1m', label: '1 min', span: 'the last minute', ms: 60_000 },
+  { key: '5m', label: '5 min', span: 'the last 5 minutes', ms: 5 * 60_000 },
+  { key: 'all', label: 'All time', span: 'this session', ms: 0 },
 ]
 
 // Server /api/stats shape (server-core): { totals:{picks,successes,failures,
@@ -212,13 +212,26 @@ export default function Analytics() {
   }, [])
 
   const winMs = WINDOWS.find((w) => w.key === win)?.ms ?? 0
-  const winLabel = WINDOWS.find((w) => w.key === win)?.label ?? 'ALL'
+  const winLabel = WINDOWS.find((w) => w.key === win)?.label ?? 'All time'
+  const winSpan = WINDOWS.find((w) => w.key === win)?.span ?? 'this session'
 
   const bufAsc = useMemo(() => [...picks].sort((a, b) => a.ts - b.ts), [picks])
   const winPicks = useMemo(
     () => (winMs > 0 ? bufAsc.filter((p) => now - p.ts <= winMs) : bufAsc),
     [bufAsc, winMs, now],
   )
+
+  // live count per window so each button shows what it will surface - a click
+  // always moves a visible number even when the sim buffer is sparse.
+  const winCounts = useMemo(() => {
+    const serverAll = serverStats && !sim ? serverStats.total : null
+    const m = {}
+    for (const w of WINDOWS) {
+      if (w.ms > 0) m[w.key] = bufAsc.filter((p) => now - p.ts <= w.ms).length
+      else m[w.key] = serverAll ?? bufAsc.length
+    }
+    return m
+  }, [bufAsc, now, serverStats, sim])
 
   const useServer = win === 'all' && !!serverStats && !sim
   const byBin =
@@ -344,7 +357,7 @@ export default function Analytics() {
       {/* manga-shaded deco scene + editor (background) */}
       <HeroBoundary>
         <Suspense fallback={null}>
-          <Deco />
+          <Deco editor={false} />
         </Suspense>
       </HeroBoundary>
 
@@ -356,16 +369,31 @@ export default function Analytics() {
         <div className="az-main">
           {/* controls */}
       <div className="az-controls">
-        <div className="az-seg" role="group" aria-label="time window">
-          {WINDOWS.map((w) => (
-            <button
-              key={w.key}
-              className={win === w.key ? 'on' : ''}
-              onClick={() => setWin(w.key)}
-            >
-              {w.label}
-            </button>
-          ))}
+        <div className="az-winctl">
+          <span className="az-winlabel">Window</span>
+          <div className="az-seg" role="group" aria-label="time window">
+            {WINDOWS.map((w) => (
+              <button
+                key={w.key}
+                type="button"
+                className={win === w.key ? 'on' : ''}
+                aria-pressed={win === w.key}
+                onClick={() => setWin(w.key)}
+              >
+                <span className="lb">{w.label}</span>
+                <span className="ct">{winCounts[w.key] ?? 0}</span>
+              </button>
+            ))}
+          </div>
+          <span className="az-wincap">
+            {(() => {
+              const n = winCounts[win] ?? 0
+              const where = win === 'all' ? (useServer ? 'all time' : 'this session') : winSpan
+              return n
+                ? `${n} pick${n === 1 ? '' : 's'} ${win === 'all' ? where : `from ${where}`}`
+                : `no picks yet ${win === 'all' ? where : `in ${where}`}`
+            })()}
+          </span>
         </div>
         <span className={`az-live${streaming ? '' : ' stale'}`}>
           <span className="sq" />
@@ -389,7 +417,7 @@ export default function Analytics() {
 
       {/* impact / ROI strip */}
       <div className="az-panel az-impact">
-        <h3>Impact // waste kept off the ground this {winLabel === 'ALL' ? 'session' : winLabel.toLowerCase()}</h3>
+        <h3>Impact // waste kept off the ground {win === 'all' ? 'this session' : `in ${winSpan}`}</h3>
         <div className="az-impact-grid">
           <div className="az-imp"><b><Num value={wasteKg} digits={1} /><i>kg</i></b><span>waste avoided</span></div>
           <div className="az-imp"><b><Num value={co2eKg} digits={1} /><i>kg</i></b><span>CO2e avoided</span></div>
@@ -501,7 +529,7 @@ export default function Analytics() {
 
       {/* trends */}
       <div className="az-panel az-trends">
-        <h3>Trends // throughput bars + sort-success line over {winLabel === 'ALL' ? 'session' : winLabel}</h3>
+        <h3>Trends // throughput bars + sort-success line over {win === 'all' ? 'the session' : winSpan}</h3>
         <TrendChart bars={series.buckets} line={series.successRoll} />
         <div className="az-trend-legend">
           <span><i className="k-bar" /> throughput (peak {peakThroughput}/bucket)</span>

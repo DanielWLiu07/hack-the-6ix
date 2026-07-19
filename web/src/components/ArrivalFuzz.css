@@ -8,6 +8,5 @@
   height: 100vh;
   z-index: 2147483300;
   pointer-events: none;
-  image-rendering: pixelated;
   display: block;
 }
