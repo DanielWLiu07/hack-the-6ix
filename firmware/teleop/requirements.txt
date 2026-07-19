@@ -1,0 +1,2 @@
+# No extra pip deps: the web_ui brick brings FastAPI/uvicorn/socket.io, and the
+# MCU Bridge comes from arduino.app_utils in the App Lab container.
