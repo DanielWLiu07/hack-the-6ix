@@ -7,3 +7,4 @@ onnxruntime>=1.17
 onnxslim            # used by ultralytics ONNX simplify
 roboflow            # only for data/download_public.py (optional)
 pyyaml
+mediapipe  # optional: alternative CV (robot/vision ObjectDetector path)

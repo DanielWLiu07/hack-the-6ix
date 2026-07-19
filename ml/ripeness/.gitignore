@@ -13,3 +13,6 @@ __pycache__/
 # Exception: the deployable model IS the deliverable - track it so firmware/linux
 # can pull it. (Un-ignore export/.)
 !export/
+
+# MediaPipe object-detector model (downloaded via mediapipe_detect / deploy)
+models/

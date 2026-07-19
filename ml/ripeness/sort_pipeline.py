@@ -39,13 +39,18 @@ def sort_bin(fruit, ripeness):
     return f"{fruit}_{ripeness}"
 
 
-def run_one(sess, classes, size, path, conf, use_color=False):
+def run_one(sess, classes, size, path, conf, detector="color"):
     img = cv2.imread(str(path))
     if img is None:
         return None
-    if use_color:
-        # color+shape detector: robust on REAL fruit, one dominant fruit per frame
+    if detector == "color":
+        # color-signature detector: best on the solid-color 3D-printed props
         d = color_classify(img)
+        dets = [d] if d and d["conf"] >= conf else []
+    elif detector == "mediapipe":
+        # MediaPipe ObjectDetector: real trained net, best on REAL fruit + clutter
+        from mediapipe_detect import classify as mp_classify
+        d = mp_classify(img)
         dets = [d] if d and d["conf"] >= conf else []
     else:
         dets = detect(sess, img, classes, size, conf_thres=conf)
@@ -71,21 +76,20 @@ def main():
     g.add_argument("--image", help="single photo")
     g.add_argument("--dir", help="folder of photos")
     ap.add_argument("--model", default=str(ROOT / "export/model.onnx"))
-    ap.add_argument("--detector", default="color", choices=["color", "onnx"],
-                    help="color = robust on real fruit incl clutter (default); onnx = trained net (best on synthetic props)")
+    ap.add_argument("--detector", default="color", choices=["color", "mediapipe", "onnx"],
+                    help="color = best on 3D-printed props (default); mediapipe = real trained net, best on real fruit; onnx = our synthetic-trained net")
     ap.add_argument("--conf", type=float, default=0.35)
     ap.add_argument("--emit", action="store_true", help="push events to the live hub")
     ap.add_argument("--server", default=os.environ.get("SERVER_URL", "http://localhost:3001"))
     args = ap.parse_args()
 
-    use_color = args.detector == "color"
-    # color mode needs no trained model; only load ONNX for the net path
-    if use_color:
-        sess, classes, size = None, None, None
-    else:
+    # only the onnx path needs the trained model loaded
+    if args.detector == "onnx":
         classes = json.loads((Path(args.model).parent / "classes.json").read_text())
         size = classes.get("imgsz", 320)
         sess = ort.InferenceSession(args.model, providers=["CPUExecutionProvider"])
+    else:
+        sess, classes, size = None, None, None
 
     if args.image:
         paths = [Path(args.image)]
@@ -106,7 +110,7 @@ def main():
             sio = None
 
     for p in paths:
-        r = run_one(sess, classes, size, p, args.conf, use_color=use_color)
+        r = run_one(sess, classes, size, p, args.conf, detector=args.detector)
         if r is None:
             print(f"{p.name}: unreadable")
             continue
