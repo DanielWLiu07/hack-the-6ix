@@ -56,7 +56,7 @@ function fitUnit(root, len) {
   return inner
 }
 
-export default function RobotFringe({ edit = false, reveal = 1 }) {
+export default function RobotFringe({ edit = false, spreadUp = 0, spreadDown = 0 }) {
   const canvasRef = useRef(null)
   // Imperative bridge into the three.js scene, populated once by the effect and
   // called by the DOM editor panel (add / delete / duplicate / export).
@@ -64,11 +64,13 @@ export default function RobotFringe({ edit = false, reveal = 1 }) {
   // Latest edit flag, read inside the (build-once) effect's pointer handlers.
   const editRef = useRef(edit)
   editRef.current = edit
-  // Declutter flag, read inside the build-once render loop: when true every
-  // model slides off its nearest screen edge (top -> up, sides -> out sideways).
-  // reveal: 0..1, how far the machine models hang into frame (1 = fully shown).
-  const revealRef = useRef(reveal)
-  revealRef.current = reveal
+  // spreadUp / spreadDown: independent vertical spread, read in the build-once
+  // loop. Top models (visual centre above the pivot) rise by spreadUp; bottom
+  // models sink by spreadDown. The two are independent - one never moves the other.
+  const upRef = useRef(spreadUp)
+  upRef.current = spreadUp
+  const downRef = useRef(spreadDown)
+  downRef.current = spreadDown
   // Selected prop summary for the panel (id + file), or null. The effect owns
   // the live THREE object; this only drives which panel/handles show.
   const [sel, setSel] = useState(null)
@@ -595,7 +597,8 @@ export default function RobotFringe({ edit = false, reveal = 1 }) {
 
     const clock = new THREE.Clock()
     const gaze = new THREE.Vector3()
-    let clearAmt = 0 // eased 0..1 declutter progress
+    let topEase = 0
+    let downEase = 0 // eased independent spread amounts
     let raf
     const loop = () => {
       if (disposed) return
@@ -636,22 +639,33 @@ export default function RobotFringe({ edit = false, reveal = 1 }) {
           default: break
         }
       }
-      // Declutter exit: slide each top-level model off its NEAREST screen edge
-      // (no fade). Runs after the per-prop base positioning so it wins; a no-op
-      // while stowed (clearAmt ~ 0) so idle motion is untouched.
-      clearAmt += ((1 - revealRef.current) - clearAmt) * 0.07
-      if (clearAmt > 0.002) {
+      // Independent vertical spread. Top models (visual centre >= PIVOT) rise by
+      // topEase; bottom models sink by downEase - the two are independent.
+      // Classification is by BOUNDING-BOX centre (wires/pipes hold their height
+      // in geometry, so raw position.y is wrong) and is captured only once a
+      // model has actually loaded (non-empty box) - forcing an unloaded prop to
+      // a stale spot is what corrupted the base layout before. Editable props are
+      // reset to base+idle by the loop above, so they take the offset ADDITIVELY;
+      // static procedural models are set from a captured stable base.
+      topEase += (upRef.current - topEase) * 0.1
+      downEase += (downRef.current - downEase) * 0.1
+      if (topEase > 0.001 || downEase > 0.001) {
+        const PIVOT = 3
+        const editSet = new Set(editable.map((r) => r.holder))
         for (const o of fringe.children) {
-          if (!o.userData._exit) {
-            o.userData._home = o.position.clone()
-            o.userData._exit =
-              Math.abs(o.position.x) > 5
-                ? new THREE.Vector3(Math.sign(o.position.x) * 11, 2.5, 0) // side -> out
-                : new THREE.Vector3(0, 8.5, 0) // top -> up
+          if (o.userData._grpUp === undefined) {
+            const box = new THREE.Box3().setFromObject(o)
+            if (box.isEmpty()) continue // not loaded yet; classify next frame
+            const cy = (box.min.y + box.max.y) / 2 - fringe.position.y
+            o.userData._grpUp = cy >= PIVOT
           }
-          const h = o.userData._home
-          o.position.x = h.x + o.userData._exit.x * clearAmt
-          o.position.y = h.y + o.userData._exit.y * clearAmt
+          const off = o.userData._grpUp ? topEase : -downEase
+          if (editSet.has(o)) {
+            o.position.y += off // editable: added onto the freshly reset base+idle
+          } else {
+            if (o.userData._baseY === undefined) o.userData._baseY = o.position.y
+            o.position.y = o.userData._baseY + off // static: from a captured base
+          }
         }
       }
       // keep the selection outline glued to a prop while it is dragged/nudged

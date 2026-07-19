@@ -55,6 +55,13 @@
 - Verified unfurl: fetched prod HTML as facebookexternalhit, all og+twitter tags present; og:image (absolute URL) returns 200 image/png 722846 bytes at 1200x630; title correct. Definitive human check: paste the URL into Slack/iMessage to eyeball the rendered card.
 - Note: og:image is 722 KB (well under scraper caps). VITE_SERVER_URL still empty in prod (localhost fallback, venue tunnel step unchanged).
 
+## [21:41] DONE - LIVE DATA WIRED: prod pulls real robot data via Tailscale Funnel
+- Set up the public tunnel: Tailscale Funnel (open-source brew tailscale, daemon started via sudo brew services, human enabled Funnel in admin console). Command: tailscale funnel --bg 3001 (persistent background).
+- Public URL: https://daniels-macbook-pro.tailaa0f4f.ts.net proxies to hub :3001. Verified from the Vercel origin via the public ingress IP: /api/health 200, socket.io handshake 200. CORS already reflects the vercel origin (server-core origin:true).
+- Set VITE_SERVER_URL to that funnel URL in Vercel prod (vercel env pull mis-reports it as empty, IGNORE - the remote build injected it correctly). Redeployed: dpl_HMwrcTF131gy2oHoj4LsLZa74x1V READY. Confirmed the funnel host is baked into the prod bundle (grep of assets/index-*.js).
+- Result: anyone opening https://hack-the-6ix-chi.vercel.app gets live telemetry/detections/lidar (hub broadcasts to all ui clients).
+- CAVEATS: (1) keep-alive - funnel survives closing the terminal but NOT laptop sleep/reboot or tailscaled stop; re-run tailscale funnel --bg 3001 if it drops. Hub :3001 + robot node must stay running. (2) THIS laptop's local DNS returns NXDOMAIN for ts.net, so testing prod live-data from this same laptop's browser may fail; test from a phone (cellular) where public DNS resolves. (3) 2D C1 lidar needs the Pi online + its client pointed at the hub (rpi was offline); phone-lidar world.glb is already deployed static. (4) teleop stays Auth0-gated.
+
 ## [18:07] WIP - prod healthy but stale; HOLDING per human (defer to master)
 - Deployment check: prod dpl_CNtbXiRRYQ5fKgvh5tkrUF475J2d Ready, serving fine (routes 200, real app bundle loads, og meta + card intact). Last deploy 10:38 (~7.5h ago).
 - Working tree is ~72 frontend files ahead of prod (new pages Harvest/Swarm, FarmHandChat, RobotPOV/MonkeyStage/tv-intro, reworked Analytics/Teleop/LidarView, new assets). Tree builds clean (658 modules).
