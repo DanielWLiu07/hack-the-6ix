@@ -1,0 +1,9 @@
+# app.yaml - Uno Q cockpit: combined drive + arm teleop.
+name: cockpit
+icon: 🕹️
+
+# web_ui brick serves assets/ + socket.io on :7000; expose that port.
+ports: [7000]
+
+bricks:
+  - arduino:web_ui

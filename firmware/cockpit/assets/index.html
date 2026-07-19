@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Rover Cockpit</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --line:#30363d; --txt:#e6edf3; --muted:#8b949e;
+    --ok:#2ea043; --warn:#d29922; --stop:#f85149; --accent:#388bfd; --arm:#5db0ff;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--txt);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  body { display:flex; flex-direction:column; gap:12px; padding:14px; max-width:760px; margin:0 auto; }
+  h1 { font-size:18px; margin:0; letter-spacing:1px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .grow { flex:1 1 200px; }
+  .k { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+  .v { font-size:16px; margin-top:2px; }
+  .big { font-size:26px; font-weight:700; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--muted); margin-right:6px; vertical-align:middle; }
+  .dot.on { background:var(--ok); } .dot.off { background:var(--stop); } .dot.warn{ background:var(--warn); }
+  #state.IDLE { color:var(--muted); } #state.DRIVE { color:var(--ok); } #state.ESTOP { color:var(--stop); }
+  .chip { display:inline-block; font-size:12px; padding:3px 8px; border-radius:20px; border:1px solid var(--line); color:var(--muted); }
+  .chip.on { background:#3a2d05; border-color:#8a6d13; color:var(--warn); }
+  .bars { display:flex; gap:10px; }
+  .bar { flex:1; height:120px; background:#0b0f14; border:1px solid var(--line); border-radius:8px; position:relative; overflow:hidden; }
+  .bar > i { position:absolute; left:0; right:0; height:50%; background:var(--accent); transition:none; }
+  .bar > i.neg { background:var(--warn); }
+  .bar > .mid { position:absolute; left:0; right:0; top:50%; height:1px; background:var(--line); }
+  .bar > span { position:absolute; bottom:4px; left:0; right:0; text-align:center; font-size:12px; color:var(--muted); }
+  button { font:inherit; color:var(--txt); background:#21262d; border:1px solid var(--line);
+    border-radius:8px; padding:12px 14px; cursor:pointer; }
+  button:active { transform:translateY(1px); }
+  .estop { background:var(--stop); border-color:#b62324; color:#fff; font-weight:700; flex:2; }
+  .clear { background:#1f6feb; border-color:#1158c7; color:#fff; flex:1; }
+  label.chk { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+  input[type=range]{ width:100%; }
+  #pad { touch-action:none; height:180px; background:#0b0f14; border:1px solid var(--line);
+    border-radius:12px; position:relative; }
+  #stick { position:absolute; width:64px; height:64px; margin:-32px 0 0 -32px; border-radius:50%;
+    background:var(--accent); left:50%; top:50%; opacity:.85; }
+  .hint { color:var(--muted); font-size:12px; line-height:1.6; }
+  kbd { background:#21262d; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:1px 6px; font-size:12px; }
+  .arm .jrow { display:flex; align-items:center; gap:10px; margin:8px 0; }
+  .arm .jname { width:120px; color:var(--muted); font-size:13px; }
+  .arm .jname b { color:var(--txt); }
+  .arm input[type=range]{ flex:1; accent-color:var(--arm); }
+  .arm .jval { width:46px; text-align:right; color:var(--arm); font-weight:700; }
+  .poses { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-top:10px; }
+  .poses .pose { background:#1b3a52; border-color:#245177; color:#eaf2fb; padding:12px 6px; }
+  .recrow { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px; }
+  .recrow .rec { background:#28223a; border-color:#43376b; color:#d9ccff; }
+  .recrow .rec.filled { background:#2f7d46; border-color:#3f9e5b; color:#eafff0; }
+  #armcap { margin-top:10px; color:var(--arm); font-size:13px; font-family:ui-monospace,monospace; }
+  .warn { color:var(--warn); font-size:12px; margin-top:6px; }
+</style>
+</head>
+<body>
+  <h1>🕹️ ROVER COCKPIT</h1>
+
+  <div class="row">
+    <div class="card grow">
+      <div class="k">link</div>
+      <div class="v"><span id="linkDot" class="dot"></span><span id="link">connecting…</span></div>
+    </div>
+    <div class="card grow">
+      <div class="k">controller</div>
+      <div class="v"><span id="padDot" class="dot"></span><span id="pad-name">none — use touch / keys</span></div>
+      <div id="gpdbg" style="color:var(--muted); font-size:11px; margin-top:4px; min-height:1em; word-break:break-all;"></div>
+    </div>
+    <div class="card grow">
+      <div class="k">state · mode</div>
+      <div class="big"><span id="state" class="IDLE">IDLE</span> <span id="autonChip" class="chip">manual</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k" style="margin-bottom:8px;">left / right output</div>
+    <div class="bars">
+      <div class="bar"><div class="mid"></div><i id="barL"></i><span>L <b id="valL">0.00</b></span></div>
+      <div class="bar"><div class="mid"></div><i id="barR"></i><span>R <b id="valR">0.00</b></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center; justify-content:space-between;">
+      <label class="chk"><input type="checkbox" id="deadman" checked /> require deadman (hold R2 / touch / key)</label>
+      <div class="v"><span id="armDot" class="dot"></span><span id="arm">disarmed</span></div>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="k">speed cap <b id="capv">100%</b></div>
+      <input type="range" id="cap" min="20" max="100" value="100" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k" style="margin-bottom:6px;">touch drive (drag) — release to stop</div>
+    <div id="pad"><div id="stick"></div></div>
+  </div>
+
+  <div class="card arm">
+    <div class="k" style="margin-bottom:6px;">arm — sliders jog · d-pad jogs · buttons pose</div>
+    <div id="armJoints"></div>
+    <div class="poses">
+      <button class="pose" data-id="0">Home (□)</button>
+      <button id="circleSeq" class="pose">○ Sequence</button>
+    </div>
+    <div class="row" style="margin-top:8px;"><button id="armPark" style="flex:1;">Park → 90°</button></div>
+    <div id="armcap">[base, shoulder, elbow, gripper] = [90, 90, 90, 90]</div>
+    <div class="warn">Gripper: creep toward closed (90), stop before it stalls (gears).</div>
+  </div>
+
+  <div class="row">
+    <button class="estop" id="btnEstop">■ E-STOP</button>
+    <button class="clear" id="btnClear">clear</button>
+  </div>
+
+  <div class="card hint">
+    <b>Sticks</b> drive (L throttle · R steer), hold <kbd>R2</kbd> deadman.
+    <b>D-pad</b> <kbd>↑</kbd> arm up <kbd>↓</kbd> down · <kbd>←→</kbd> base · <kbd>L2</kbd> shoulder fwd.
+    <kbd>△</kbd> gripper · <kbd>□</kbd> Home · <kbd>○</kbd> Home→Target→open · <kbd>✕</kbd> auton (stub) ·
+    <kbd>L1</kbd> e-stop · <kbd>R1</kbd> clear. Keyboard: <kbd>W/S</kbd> throttle, <kbd>A/D</kbd> turn,
+    <kbd>Space</kbd> e-stop. Battery ON for wheels/servos.
+  </div>
+
+<script src="/socket.io.min.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const clamp = (v,a=-1,b=1) => Math.max(a, Math.min(b, v));
+  const dz = v => Math.abs(v) < 0.12 ? 0 : v;
+
+  const INVERT_THROTTLE = true;
+  const INVERT_STEER    = false;   // flipped: left/right turns were reversed
+  const STEER_GAIN      = 0.4;     // turning is less sensitive than throttle (was 1.0)
+
+  // arm joints (slider min/max = bench soft-limits). idx: 0 base,1 shoulder,2 elbow,3 gripper
+  const ARM = [
+    { name:"base",     pin:"D3",  min:0,  max:180 },
+    { name:"shoulder", pin:"D10", min:0,  max:175 },
+    { name:"elbow",    pin:"D9",  min:90, max:175 },
+    { name:"gripper",  pin:"D11", min:95, max:150 },
+  ];
+  const JOG   = 0.9;    // deg per frame while a d-pad direction is held
+  const GRIP_OPEN = 150, GRIP_SHUT = 95;
+  // Home pose [base, shoulder, elbow, gripper] - keep in sync with sketch POSES[0].
+  const POSE_HOME = [120, 45, 150, 95];   // gripper closed at home (carry); sequence opens at the end
+
+  const socket = io({ transports:["websocket","polling"] });
+  let linked = false;
+  socket.on("connect",    () => { linked=true;  setLink(true);  });
+  socket.on("disconnect", () => { linked=false; setLink(false); });
+  socket.on("status", s => { const el=$("state"); el.textContent=s.state; el.className=s.state; });
+  socket.on("arm", s => { if (s && Array.isArray(s.angles)) syncArm(s.angles); });
+  function setLink(ok){
+    $("linkDot").className = "dot " + (ok?"on":"off");
+    $("link").textContent = ok ? "connected" : "disconnected";
+  }
+
+  // ---- drive input state ----
+  let cap = 1.0;
+  $("cap").oninput = e => { cap = e.target.value/100; $("capv").textContent = e.target.value+"%"; };
+  let requireDeadman = true;
+  $("deadman").onchange = e => requireDeadman = e.target.checked;
+
+  const pad = $("pad"), stick = $("stick");
+  let touch = { active:false, x:0, y:0 };
+  function padXY(ev){
+    const r = pad.getBoundingClientRect();
+    const p = ev.touches ? ev.touches[0] : ev;
+    return { x:clamp(((p.clientX-r.left)/r.width)*2-1), y:clamp(((p.clientY-r.top)/r.height)*2-1) };
+  }
+  function padMove(ev){ if(!touch.active) return; const {x,y}=padXY(ev);
+    touch.x=x; touch.y=y; stick.style.left=(50+x*45)+"%"; stick.style.top=(50+y*45)+"%"; ev.preventDefault(); }
+  function padEnd(){ touch.active=false; touch.x=touch.y=0; stick.style.left="50%"; stick.style.top="50%"; }
+  pad.addEventListener("pointerdown", e=>{ touch.active=true; padMove(e); pad.setPointerCapture(e.pointerId); });
+  pad.addEventListener("pointermove", padMove);
+  pad.addEventListener("pointerup", padEnd);
+  pad.addEventListener("pointercancel", padEnd);
+
+  const keys = {};
+  addEventListener("keydown", e => { if(e.code==="Space"){ estop(); e.preventDefault(); return; } keys[e.code]=true; });
+  addEventListener("keyup", e => { keys[e.code]=false; });
+  function keyVec(){
+    let f=0,t=0;
+    if (keys.KeyW||keys.ArrowUp) f+=1;
+    if (keys.KeyS||keys.ArrowDown) f-=1;
+    if (keys.KeyA||keys.ArrowLeft) t-=1;
+    if (keys.KeyD||keys.ArrowRight) t+=1;
+    return { f, t, active:(f||t)!==0 };
+  }
+
+  let padName = "";
+  addEventListener("gamepadconnected", e => { padName = e.gamepad.id; });
+  addEventListener("gamepaddisconnected", () => { padName = ""; });
+  function readGamepad(){
+    const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+    let gp = null;
+    for (const g of gps) if (g){ gp = g; break; }
+    if (!gp){ setPad(false, padName); return null; }
+    setPad(true, gp.id);
+    const b = i => gp.buttons[i] && gp.buttons[i].pressed;
+    const trig = i => gp.buttons[i] ? Math.max(gp.buttons[i].value||0, gp.buttons[i].pressed?1:0) : 0;
+    const bdbg = gp.buttons.map((bt,i)=> (bt.pressed||bt.value>0.1) ? i : null).filter(x=>x!==null).join(',');
+    const adbg = gp.axes.map((a,i)=> Math.abs(a)>0.3 ? `a${i}:${a.toFixed(1)}` : null).filter(Boolean).join(' ');
+    return {
+      f:-dz(gp.axes[1]||0), t:dz(gp.axes[2]||0),
+      r2: trig(7), l2: trig(6),
+      cross:b(0), circle:b(1), square:b(2), triangle:b(3), l1:b(4), r1:b(5),
+      dpad:[b(12), b(13), b(14), b(15)],   // up, down, left, right
+      dbg: `btn[${bdbg||'-'}] ${adbg} L2:${trig(6).toFixed(1)}`,
+    };
+  }
+  function setPad(ok, name){
+    $("padDot").className = "dot " + (ok?"on":"off");
+    $("pad-name").textContent = ok ? (name||"gamepad").slice(0,28) : "none — use touch / keys";
+  }
+
+  // ---- arm UI ----
+  const armF = ARM.map(() => 90);   // float mirror of each joint (smooth jog)
+  const box = $("armJoints");
+  ARM.forEach((j, ch) => {
+    const row = document.createElement("div"); row.className = "jrow";
+    row.innerHTML = `<div class="jname"><b>${j.name}</b> ${j.pin}</div>
+      <input type="range" id="a${ch}" min="${j.min}" max="${j.max}" value="90">
+      <div class="jval" id="av${ch}">90°</div>`;
+    box.appendChild(row);
+    row.querySelector("#a"+ch).addEventListener("input", e => { armF[ch]=+e.target.value; setArm(ch, +e.target.value); });
+  });
+  let armPending = {}, armTimer = null;
+  function flushArm(){
+    armTimer = null;
+    const p = armPending; armPending = {};
+    Object.entries(p).forEach(([ch, deg]) => { if (linked) socket.emit("servo", {ch:+ch, deg:+deg}); });
+  }
+  function setArm(ch, deg){
+    const j = ARM[ch];
+    deg = Math.round(Math.max(j.min, Math.min(j.max, deg)));
+    $("a"+ch).value = deg; $("av"+ch).textContent = deg + "°";
+    armPending[ch] = deg;
+    if (!armTimer) armTimer = setTimeout(flushArm, 40);
+    updateArmCap();
+  }
+  function jog(ch, d){ armF[ch] = Math.max(ARM[ch].min, Math.min(ARM[ch].max, armF[ch]+d)); setArm(ch, armF[ch]); }
+  function creepToward(pose){   // step joints toward a target pose (for L2 hold); skips base
+    pose.forEach((tgt, ch) => {
+      if (ch === 0) return;     // L2 does NOT move the base
+      const d = tgt - armF[ch];
+      if (Math.abs(d) < 0.6) return;
+      jog(ch, Math.sign(d) * Math.min(JOG, Math.abs(d)));
+    });
+  }
+  function updateArmCap(){
+    const a = ARM.map((_, ch) => $("a"+ch).value);
+    $("armcap").textContent = "[base, shoulder, elbow, gripper] = [" + a.join(", ") + "]";
+  }
+  function syncArm(angles){
+    angles.forEach((deg, ch) => { const s=$("a"+ch); if(!s) return; armF[ch]=deg; s.value=deg; $("av"+ch).textContent=deg+"°"; });
+    updateArmCap();
+  }
+  function goPose(id){ if (linked) socket.emit("pose", {id:+id}); }
+  let gripOpen = false;
+  function toggleGrip(){ gripOpen = !gripOpen; jog(3, 0); setArm(3, gripOpen ? GRIP_OPEN : GRIP_SHUT); armF[3] = gripOpen ? GRIP_OPEN : GRIP_SHUT; }
+
+  document.querySelectorAll(".pose[data-id]").forEach(b => b.addEventListener("click", () => goPose(b.dataset.id)));
+  $("circleSeq").addEventListener("click", () => { if (linked) socket.emit("seq_circle", {}); });
+  $("armPark").addEventListener("click", () => { if (linked) socket.emit("park", {}); });
+
+  // ---- estop / clear / auton ----
+  let estopped = false;
+  function estop(){ estopped=true; socket.emit("estop",{}); }
+  function clearEstop(){ estopped=false; socket.emit("clear",{}); }
+  $("btnEstop").onclick = estop;
+  $("btnClear").onclick = clearEstop;
+  let auton = false;
+  function toggleAuton(){ auton=!auton; socket.emit("auton",{on:auton});
+    const c=$("autonChip"); c.textContent = auton ? "AUTON (stub)" : "manual"; c.className = auton ? "chip on" : "chip"; }
+
+  function setArmed(on){
+    $("armDot").className = "dot " + (on?"on":"warn");
+    $("arm").textContent = on ? "ARMED" : "disarmed";
+  }
+
+  // ---- main loop ----
+  let pc={cross:0,circle:0,square:0,triangle:0,l1:0,r1:0};
+  function tick(){
+    let f=0, t=0, armed=false;
+    const gp = readGamepad();
+    if (gp) $("gpdbg").textContent = gp.dbg;
+
+    if (gp){
+      // edge-triggered actions
+      if (gp.l1 && !pc.l1) estop();
+      if (gp.r1 && !pc.r1) clearEstop();
+      if (gp.triangle && !pc.triangle) toggleGrip();
+      if (gp.square && !pc.square) goPose(0);                       // Square -> Home (Image #1)
+      if (gp.circle && !pc.circle) socket.emit("seq_circle", {});   // Circle -> Home->Target->open grip
+      if (gp.cross && !pc.cross) toggleAuton();
+      pc = {cross:gp.cross, circle:gp.circle, square:gp.square, triangle:gp.triangle, l1:gp.l1, r1:gp.r1};
+      // continuous arm jog while held (up = higher shoulder angle):
+      if (gp.dpad[0]){ jog(1, +JOG); jog(2, -JOG); }   // up:   shoulder+ (up), elbow- (down)
+      if (gp.dpad[1]){ jog(1, -JOG); jog(2, +JOG); }   // down: shoulder- (down), elbow+ (up)
+      if (gp.dpad[2])  jog(0, +JOG);                   // left:  base +
+      if (gp.dpad[3])  jog(0, -JOG);                   // right: base -
+      // L2 (hold) = shoulder forward only (higher angle)
+      if (gp.l2 > 0.15) jog(1, +JOG);
+      // drive
+      const deadman = !requireDeadman || gp.r2 > 0.15;
+      if (deadman){ f = gp.f; t = gp.t; armed = true; }
+    }
+    if (touch.active){ f = -touch.y; t = touch.x; armed = true; }
+    const kv = keyVec();
+    if (kv.active){ f = kv.f; t = kv.t; armed = true; }
+
+    if (INVERT_THROTTLE) f = -f;
+    if (INVERT_STEER)    t = -t;
+    t *= STEER_GAIN;     // scale down turn rate (throttle unaffected)
+
+    let l=0, r=0;
+    if (armed && !estopped){ l = clamp(f + t) * cap; r = clamp(f - t) * cap; }
+    setArmed(armed && !estopped);
+
+    if (linked) socket.emit("drive", { l:+l.toFixed(3), r:+r.toFixed(3) });
+    paint(l, r);
+    requestAnimationFrame(tick);
+  }
+
+  function paint(l, r){
+    $("valL").textContent = l.toFixed(2);
+    $("valR").textContent = r.toFixed(2);
+    for (const [v, bar] of [[l,"barL"],[r,"barR"]]){
+      const el = $(bar), mag = Math.min(Math.abs(v),1)*50;
+      el.className = v<0 ? "neg" : "";
+      if (v>=0){ el.style.bottom="50%"; el.style.top="auto"; el.style.height=mag+"%"; }
+      else { el.style.top="50%"; el.style.bottom="auto"; el.style.height=mag+"%"; }
+    }
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
