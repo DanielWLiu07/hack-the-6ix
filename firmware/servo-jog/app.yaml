@@ -1,0 +1,6 @@
+name: servo-test
+icon: 🦾
+# Expose the jog UI's HTTP port to the board host so it's reachable at
+# http://<board-ip>:7000
+ports: [7000]
+bricks: []

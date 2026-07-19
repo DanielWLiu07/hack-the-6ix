@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# firmware/tools: install + configure arduino-cli for the UNO Q STM32 side.
+# fw-tools: install + configure arduino-cli for the UNO Q STM32 side.
 # Safe to re-run (idempotent). macOS + Linux.
 set -euo pipefail
 
@@ -55,9 +55,10 @@ else
   arduino-cli core install STMicroelectronics:stm32 || warn "STM32 core install failed - compile checks unavailable"
 fi
 
-# 3. libraries the MCU firmware needs
+# 3. libraries fw-mcu needs
 say "installing sketch libraries..."
-arduino-cli lib install "Adafruit PWM Servo Driver Library" || warn "PCA9685 lib install failed"
+# Arm is direct-drive (Servo lib on D3/D9/D10/D11), no PCA9685 driver board.
+arduino-cli lib install "Servo" || warn "Servo lib install failed"
 # MCU<->Linux RPC library for the UNO Q (see ../BRIDGE.md §4). This one is
 # NOT optional: the UNO Q core's variant.h #errors out without it (no Serial),
 # so a silent failure here breaks EVERY compile. Fail loud.
