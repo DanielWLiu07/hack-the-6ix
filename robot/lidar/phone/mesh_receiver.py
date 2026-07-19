@@ -18,11 +18,22 @@ Wire format (little-endian), one frame per anchor update:
            | vCount*3 float32 (anchor-local verts) | tCount*3 uint32 indices
            | vCount*3 uint8 RGB
 
+Camera pose frames, ~30 Hz (where the PHONE is in the same ARKit world space,
+so egocentric math like "distance ahead of the phone" is possible - the mesh
+alone cannot provide that because a long session's origin drifts far away):
+  'POSE' | uint32 payloadLen (72) | payload
+  payload: float64 unix epoch seconds | float32 x16 camera transform
+           (column-major, camera-to-world)
+The latest pose is served as JSON at GET :CONTROL_PORT/pose for any consumer
+(fusion, phone_front, etc.): {ts, rx_ts, age_s, transform (4x4 row-major),
+position [x,y,z], forward [x,y,z] (camera -Z in world)}.
+
 Run (on the laptop, iPhone on the same WiFi / your hotspot):
     cd robot/lidar/phone && python3 mesh_receiver.py           # listens 0.0.0.0:9353
 Then in the app enter this laptop's IP (printed at startup) and tap Start scan.
 Env: PORT (9353), WORLD_OUT (default ../../web/public/world.glb), EXPORT_EVERY_S (2).
 """
+import json
 import os
 import socket
 import socketserver
@@ -48,7 +59,9 @@ EXPORT_EVERY_S = float(os.environ.get("EXPORT_EVERY_S", "2"))
 _anchors = {}
 _lock = threading.Lock()
 _dirty = False
-_stats = {"frames": 0, "clients": 0}
+_stats = {"frames": 0, "clients": 0, "poses": 0}
+# Latest phone camera pose: {"ts": float, "rx_ts": float, "transform": 4x4 list}
+_pose = None
 
 
 def lan_ip():
@@ -89,7 +102,7 @@ def _parse_payload(p):
 
 class Handler(socketserver.BaseRequestHandler):
     def handle(self):
-        global _dirty
+        global _dirty, _pose
         with _lock:
             _stats["clients"] += 1
         peer = self.client_address[0]
@@ -104,12 +117,24 @@ class Handler(socketserver.BaseRequestHandler):
                 if not hdr:
                     break
                 magic, length = hdr[:4], struct.unpack("<I", hdr[4:8])[0]
-                if magic != b"MSH2" or length <= 0 or length > 50_000_000:
+                if magic not in (b"MSH2", b"POSE") or length <= 0 or length > 50_000_000:
                     print(f"[mesh] bad frame magic={magic!r} len={length}", flush=True)
                     break
                 payload = _recv_exact(sock, length)
                 if payload is None:
                     break
+                if magic == b"POSE":
+                    # float64 epoch ts | float32 x16 camera transform (column-major)
+                    try:
+                        ts = struct.unpack_from("<d", payload, 0)[0]
+                        t = np.frombuffer(payload, dtype="<f4", count=16, offset=8).reshape(4, 4).T
+                    except Exception as e:
+                        print(f"[mesh] pose parse error: {e}", flush=True)
+                        continue
+                    with _lock:
+                        _pose = {"ts": ts, "rx_ts": time.time(), "transform": t.tolist()}
+                        _stats["poses"] += 1
+                    continue
                 try:
                     uuid, verts, faces, colors = _parse_payload(payload)
                 except Exception as e:
@@ -183,8 +208,9 @@ CONTROL_PORT = int(os.environ.get("CONTROL_PORT", "9355"))
 
 
 class Control(BaseHTTPRequestHandler):
-    """Tiny HTTP control endpoint for the web UI. GET /clear resets the world to
-    empty so a fresh scan visibly builds from nothing."""
+    """Tiny HTTP control endpoint. GET /clear resets the world to empty so a
+    fresh scan visibly builds from nothing. GET /pose returns the phone's latest
+    camera pose as JSON (404 until the first POSE frame arrives)."""
 
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -194,7 +220,27 @@ class Control(BaseHTTPRequestHandler):
 
     def do_GET(self):
         global _dirty
-        if self.path.startswith("/clear"):
+        if self.path.startswith("/pose"):
+            with _lock:
+                pose = _pose
+            if pose is None:
+                self.send_response(404); self._cors()
+                self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(b'{"error":"no pose received yet"}')
+                return
+            t = pose["transform"]
+            body = json.dumps({
+                "ts": pose["ts"],
+                "rx_ts": pose["rx_ts"],
+                "age_s": round(time.time() - pose["rx_ts"], 3),
+                "transform": t,                             # 4x4 row-major, camera-to-world
+                "position": [t[0][3], t[1][3], t[2][3]],    # phone location, ARKit world (m)
+                "forward": [-t[0][2], -t[1][2], -t[2][2]],  # camera look direction (-Z column)
+            }).encode()
+            self.send_response(200); self._cors()
+            self.send_header("Content-Type", "application/json"); self.end_headers()
+            self.wfile.write(body)
+        elif self.path.startswith("/clear"):
             with _lock:
                 _anchors.clear()
                 _dirty = False
@@ -219,7 +265,7 @@ def main():
     print(f"[mesh] receiver listening on 0.0.0.0:{PORT}", flush=True)
     print(f"[mesh] in the iPhone app, set laptop IP = {ip}", flush=True)
     print(f"[mesh] world output: {WORLD_OUT}", flush=True)
-    print(f"[mesh] control (clear) on 0.0.0.0:{CONTROL_PORT}/clear", flush=True)
+    print(f"[mesh] control on 0.0.0.0:{CONTROL_PORT} (/clear, /pose)", flush=True)
     threading.Thread(target=export_loop, daemon=True).start()
     threading.Thread(
         target=lambda: ThreadingHTTPServer(("0.0.0.0", CONTROL_PORT), Control).serve_forever(),
