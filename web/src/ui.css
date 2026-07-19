@@ -325,7 +325,9 @@
   letter-spacing: 0.08em;
 }
 .badge.IDLE  { background: rgba(138,151,141,0.15); color: var(--ui-dim); }
+.badge.NAV   { background: rgba(155,140,255,0.16); color: #b3a6ff; }
 .badge.SEEK  { background: rgba(82,169,255,0.15); color: var(--ui-blue); }
+.badge.APPROACH { background: rgba(90,209,196,0.16); color: #7fe0d4; }
 .badge.PICK  { background: rgba(70,167,88,0.18); color: var(--ui-green); }
 .badge.SORT  { background: rgba(255,207,63,0.15); color: var(--ui-yellow); }
 .badge.ESTOP { background: rgba(229,72,77,0.2); color: var(--ui-red); animation: blink 0.8s step-end infinite; }

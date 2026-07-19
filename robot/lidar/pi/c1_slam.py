@@ -336,8 +336,12 @@ def run(server_url, port, duration=None):
             slam.update(pts)
             now = time.time()
             if sio.connected and now - t_scan >= 0.25:
-                world = _apply(slam.pose, pts)
-                out = world if len(world) <= 360 else world[:: math.ceil(len(world) / 360)]
+                # lidar_scan carries ROBOT-frame points (x fwd, y left). The web
+                # viewport re-applies slam_pose to place them on the world map, so
+                # emitting world-frame here double-transforms it (the live sweep
+                # drifts/rotates off the map once the rover moves). Send pts as-is
+                # to match sim.py / server sim.js and this module's own docstring.
+                out = pts if len(pts) <= 360 else pts[:: math.ceil(len(pts) / 360)]
                 sio.emit("lidar_scan", {"ts": int(now * 1000),
                          "points": [[round(float(x), 3), round(float(y), 3)] for x, y in out]})
                 t_scan = now

@@ -17,7 +17,9 @@ const STALE_MS = 6000 // no update in this long -> dim + mark STALE
 // State -> ink color, shared with the POV/analytics palette.
 const STATE_COLOR = {
   IDLE: '#8a857b',
+  NAV: '#9b8cff',
   SEEK: '#7cd4ff',
+  APPROACH: '#5ad1c4',
   PICK: '#f2a03c',
   SORT: '#86e6a0',
   ESTOP: '#ff5b5b',

@@ -164,3 +164,17 @@ def test_drop_returns_to_nav_when_navigating():
             break
     assert sm.stats["picks"] >= 1
     assert sm.state == NAV
+
+
+def test_telemetry_reports_nav_and_approach_uncoarsened():
+    # The web telemetry schema now includes NAV/APPROACH, so robot_node must
+    # report them verbatim (no more coarsening drive states to SEEK) - otherwise
+    # the dashboard can't distinguish roaming/driving from an in-place search.
+    from robot_linux.robot_node import RobotNode
+    bridge = MockBridge()
+    cam = MockCamera(bridge, seed=1)
+    node = RobotNode(bridge, cam, MockDetector(cam), PoseStore(),
+                     "http://localhost:0", lidar=MockLidarFeed())
+    for st in (NAV, APPROACH, SEEK):
+        node.sm.state = st
+        assert node._telemetry()["state"] == st

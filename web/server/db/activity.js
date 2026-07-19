@@ -4,7 +4,7 @@
 
 import { round2 } from './impact.js';
 
-const STATES = ['IDLE', 'SEEK', 'PICK', 'SORT', 'ESTOP'];
+const STATES = ['IDLE', 'NAV', 'SEEK', 'APPROACH', 'PICK', 'SORT', 'ESTOP'];
 // Gaps larger than this between consecutive samples mean the robot was
 // disconnected/off - don't attribute that time to the earlier state.
 const MAX_GAP_MS = 5000;
@@ -35,7 +35,8 @@ export function computeActivity(rows) {
   }
 
   const totalMs = Object.values(stateDurations).reduce((a, b) => a + b, 0);
-  const activeMs = stateDurations.SEEK + stateDurations.PICK + stateDurations.SORT;
+  const activeMs = stateDurations.NAV + stateDurations.SEEK + stateDurations.APPROACH
+    + stateDurations.PICK + stateDurations.SORT;
 
   // Downsample the battery curve to a bounded number of points for the chart.
   const withBattery = rows.filter((r) => typeof r.battery_v === 'number');

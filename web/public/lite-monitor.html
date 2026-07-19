@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HT6 - lite monitor</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --edge:#2b3340; --tx:#e6edf3; --dim:#8b949e;
+          --grn:#3fb950; --red:#f85149; --amb:#d29922; --blu:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx);
+         font:14px/1.4 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  header { display:flex; align-items:center; gap:12px; padding:10px 16px;
+           border-bottom:1px solid var(--edge); background:var(--panel); }
+  header h1 { font-size:15px; margin:0; letter-spacing:.5px; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--red); }
+  .dot.on { background:var(--grn); box-shadow:0 0 8px var(--grn); }
+  .sub { color:var(--dim); font-size:12px; }
+  main { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:12px; max-width:900px; }
+  .panel { background:var(--panel); border:1px solid var(--edge); border-radius:8px; padding:12px; }
+  .panel h2 { margin:0 0 8px; font-size:11px; letter-spacing:1px; color:var(--dim); text-transform:uppercase; }
+  .state { font-size:34px; font-weight:700; letter-spacing:1px; }
+  .state.SEEK{color:var(--blu)} .state.PICK,.state.SORT{color:var(--amb)}
+  .state.ESTOP{color:var(--red)} .state.IDLE{color:var(--dim)}
+  .hint { color:var(--dim); font-size:11px; margin-top:4px; height:14px; }
+  .bar { position:relative; height:18px; background:#0b0f14; border:1px solid var(--edge);
+         border-radius:4px; margin:5px 0; overflow:hidden; }
+  .bar .mid { position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--edge); }
+  .bar .fill { position:absolute; top:0; bottom:0; left:50%; background:var(--grn); }
+  .bar .fill.neg { background:var(--amb); }
+  .row { display:flex; justify-content:space-between; font-size:12px; }
+  .arm { display:flex; gap:6px; align-items:flex-end; height:70px; }
+  .joint { flex:1; text-align:center; }
+  .joint .col { background:var(--blu); border-radius:2px 2px 0 0; width:100%; }
+  .joint span { font-size:10px; color:var(--dim); }
+  canvas { width:100%; background:#05080c; border:1px solid var(--edge); border-radius:6px; display:block; }
+  .big { font-size:22px; font-weight:700; }
+  .kv { color:var(--dim); } .kv b { color:var(--tx); font-weight:600; }
+  .span2 { grid-column:1 / -1; }
+  @media (max-width:640px){ main{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>HT6 - LITE MONITOR</h1>
+  <span class="sub" id="hub">connecting...</span>
+</header>
+<main>
+  <div class="panel">
+    <h2>State</h2>
+    <div class="state IDLE" id="state">-</div>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Battery</h2>
+    <div class="big" id="batt">- V</div>
+  </div>
+
+  <div class="panel">
+    <h2>Drive (tank L / R)</h2>
+    <div class="row"><span>L</span><span id="lval">0.00</span></div>
+    <div class="bar"><div class="mid"></div><div class="fill" id="lbar"></div></div>
+    <div class="row"><span>R</span><span id="rval">0.00</span></div>
+    <div class="bar"><div class="mid"></div><div class="fill" id="rbar"></div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Arm joints (deg)</h2>
+    <div class="arm" id="arm"></div>
+  </div>
+
+  <div class="panel span2">
+    <h2>Camera view - box grows as the rover drives up to the fruit</h2>
+    <canvas id="cam" width="480" height="360"></canvas>
+    <div class="row" style="margin-top:6px">
+      <span class="kv" id="det">detection: -</span>
+      <span class="kv">picks: <b id="picks">0</b> - last: <b id="lastpick">-</b></span>
+    </div>
+  </div>
+</main>
+
+<script>
+const HUB = (location.hostname || 'localhost');
+const HUB_URL = 'http://' + HUB + ':3001';
+document.getElementById('hub').textContent = HUB_URL;
+
+function loadIO(cb){
+  const s = document.createElement('script');
+  s.src = HUB_URL + '/socket.io/socket.io.js';
+  s.onload = cb;
+  s.onerror = () => document.getElementById('hub').textContent =
+    'could not load socket.io from ' + HUB_URL + ' - is the hub running? (scripts/demo.sh status)';
+  document.head.appendChild(s);
+}
+
+const $ = id => document.getElementById(id);
+const clamp1 = v => Math.max(-1, Math.min(1, v||0));
+
+function setBar(barId, valId, v){
+  v = clamp1(v);
+  const bar = $(barId), val = $(valId);
+  const w = Math.abs(v) * 50;              // % of half-width
+  bar.style.width = w + '%';
+  if (v < 0){ bar.style.left = (50 - w) + '%'; bar.classList.add('neg'); }
+  else      { bar.style.left = '50%';          bar.classList.remove('neg'); }
+  val.textContent = v.toFixed(2);
+}
+
+// arm joints
+const armEl = $('arm');
+for (let i=0;i<5;i++){
+  armEl.insertAdjacentHTML('beforeend',
+    `<div class="joint"><div class="col" id="j${i}" style="height:0"></div><span>${['ba','sh','el','wr','gr'][i]}</span></div>`);
+}
+function setArm(a){ (a||[]).slice(0,5).forEach((d,i)=>{ const c=$('j'+i); if(c) c.style.height=(Math.max(0,Math.min(180,d))/180*60)+'px'; }); }
+
+// camera canvas: draw the latest detection bbox (source frame 640x480)
+const cam = $('cam'), cx = cam.getContext('2d');
+const SRC_W=640, SRC_H=480;
+let lastDet = null, detAge = 0;
+function drawCam(){
+  cx.clearRect(0,0,cam.width,cam.height);
+  // crosshair
+  cx.strokeStyle='#1d2530'; cx.lineWidth=1;
+  cx.beginPath(); cx.moveTo(cam.width/2,0); cx.lineTo(cam.width/2,cam.height);
+  cx.moveTo(0,cam.height/2); cx.lineTo(cam.width,cam.height/2); cx.stroke();
+  if (lastDet && lastDet.bbox && detAge < 60){
+    const sx=cam.width/SRC_W, sy=cam.height/SRC_H;
+    const [x,y,w,h]=lastDet.bbox;
+    const col = lastDet.ripeness==='ripe' ? '#3fb950' : '#d29922';
+    cx.strokeStyle=col; cx.lineWidth=2;
+    cx.strokeRect(x*sx, y*sy, w*sx, h*sy);
+    cx.fillStyle=col; cx.font='12px monospace';
+    cx.fillText(`${lastDet.fruit} ${lastDet.ripeness}`, x*sx, Math.max(12,y*sy-4));
+  }
+  detAge++;
+  requestAnimationFrame(drawCam);
+}
+requestAnimationFrame(drawCam);
+
+loadIO(() => {
+  const socket = io(HUB_URL, { transports:['websocket','polling'], auth:{ role:'ui' } });
+  socket.on('connect',    () => { $('dot').classList.add('on'); $('hub').textContent = HUB_URL + ' - connected'; });
+  socket.on('disconnect', () => { $('dot').classList.remove('on'); $('hub').textContent = HUB_URL + ' - disconnected'; });
+
+  socket.on('telemetry', t => {
+    const st = t.state || '-';
+    const el = $('state'); el.textContent = st; el.className = 'state ' + st;
+    // APPROACH is reported as SEEK by the node; nonzero drive during SEEK = approaching
+    const driving = (Math.abs(t.drive?.l||0) + Math.abs(t.drive?.r||0)) > 0.02;
+    $('hint').textContent = (st==='SEEK' && driving) ? '^ driving toward fruit (approach)' :
+                            (st==='SEEK') ? 'scanning for fruit' : '';
+    $('batt').textContent = (t.battery_v!=null ? t.battery_v.toFixed(2) : '-') + ' V';
+    setBar('lbar','lval', t.drive?.l); setBar('rbar','rval', t.drive?.r);
+    setArm(t.arm);
+  });
+
+  socket.on('detection', d => { lastDet = d; detAge = 0; $('det').textContent =
+    `detection: ${d.fruit} ${d.ripeness} (${(d.conf*100|0)}%)`; });
+
+  let picks = 0;
+  socket.on('pick_event', p => { picks++; $('picks').textContent = picks;
+    $('lastpick').textContent = `${p.fruit} ${p.ripeness}->${p.bin}${p.success?'':' '}`; });
+});
+</script>
+</body>
+</html>

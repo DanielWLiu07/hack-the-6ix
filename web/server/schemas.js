@@ -6,7 +6,7 @@ const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
 const isInt = (v) => Number.isInteger(v);
 const FRUITS = ['apple', 'banana'];
 const RIPENESS = ['ripe', 'unripe'];
-const STATES = ['IDLE', 'SEEK', 'PICK', 'SORT', 'ESTOP'];
+const STATES = ['IDLE', 'NAV', 'SEEK', 'APPROACH', 'PICK', 'SORT', 'ESTOP'];
 
 export const validators = {
   telemetry: (p) =>

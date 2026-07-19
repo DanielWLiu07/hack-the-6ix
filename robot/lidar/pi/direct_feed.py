@@ -13,6 +13,14 @@ both boards (no websockets / socket.io to install or wedge).
 One process owns the serial port (exclusive), so stop any other lidar reader
 (lidar-viewer / lidar-slam / c1_slam_node) before running this.
 
+Optional hub mirror (so ONE serial owner feeds both the robot AND the dashboard):
+set env `HUB_URL` (e.g. http://ubentu:3001) and this also connects to the laptop
+Socket.IO hub as a `robot` publisher and emits `lidar_scan` / `slam_pose` /
+`slam_map` (the same events the dashboard already renders). It is strictly
+best-effort and additive: if python-socketio / occupancy aren't importable or the
+hub is unreachable, the TCP autonomy path above runs unchanged (never blocked).
+Without `HUB_URL` the mirror is off and this stays the dependency-free TCP feed.
+
 Wire protocol: one compact JSON object per scan (~10 Hz), terminated by '\n':
     {
       "ts": 1784...,                          # epoch ms
@@ -37,6 +45,12 @@ FWD_CONE = float(os.environ.get('FORWARD_CONE_DEG', '30'))
 N_SECT  = int(os.environ.get('N_SECTORS', '12'))
 MIN_R   = float(os.environ.get('MIN_RANGE_M', '0.10'))
 
+# Optional hub mirror (dashboard). Off unless HUB_URL is set.
+HUB_URL = os.environ.get('HUB_URL') or os.environ.get('SERVER_URL')
+SCAN_HZ = float(os.environ.get('HUB_SCAN_HZ', '5'))    # lidar_scan emit rate
+POSE_HZ = float(os.environ.get('HUB_POSE_HZ', '2'))    # slam_pose emit rate
+MAP_HZ  = float(os.environ.get('HUB_MAP_HZ', '0.5'))   # slam_map emit rate
+
 # Optional SLAM pose. If scan_match isn't importable we still ship obstacles.
 try:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -49,6 +63,18 @@ except Exception as e:                      # noqa: BLE001
     print(f'[direct_feed] SLAM pose disabled ({e}); shipping obstacles only', file=sys.stderr)
     _HAVE_SLAM = False
     np = None
+
+# Optional occupancy grid for the hub slam_map (best-effort; needs numpy too).
+_HAVE_GRID = False
+_grid = None
+if HUB_URL and _HAVE_SLAM:
+    try:
+        from occupancy import OccupancyGrid
+        _grid = OccupancyGrid()
+        _HAVE_GRID = True
+    except Exception as e:                  # noqa: BLE001
+        print(f'[direct_feed] slam_map disabled ({e}); mirroring scan+pose only',
+              file=sys.stderr)
 
 _clients = set()
 _clients_lock = threading.Lock()
@@ -141,6 +167,81 @@ def accept_thread():
     srv.close()
 
 
+# --- optional hub mirror -----------------------------------------------------
+# Best-effort Socket.IO publisher to the laptop dashboard hub. Everything here is
+# wrapped so a mirror failure can never disturb the TCP autonomy feed.
+_sio = None
+_hub_last = {'scan': 0.0, 'pose': 0.0, 'map': 0.0}
+
+
+def hub_connect_thread():
+    """Connect to the hub as a `robot` publisher; reconnection is handled by the
+    client. Runs in the background so it never blocks serial bring-up."""
+    global _sio
+    try:
+        import socketio
+    except Exception as e:                  # noqa: BLE001
+        print(f'[direct_feed] hub mirror disabled (no socketio: {e})', file=sys.stderr)
+        return
+    _sio = socketio.Client(reconnection=True, reconnection_delay=1,
+                           reconnection_delay_max=5, logger=False, engineio_logger=False)
+    while not _stop.is_set():
+        try:
+            _sio.connect(HUB_URL, auth={'role': 'robot'}, wait_timeout=10)
+            print(f'[direct_feed] hub mirror connected {HUB_URL} (role=robot)', file=sys.stderr)
+            return
+        except Exception as e:              # noqa: BLE001
+            print(f'[direct_feed] hub connect failed ({e}); retry 3s', file=sys.stderr)
+            _stop.wait(3.0)
+
+
+def _emit(event, payload):
+    if _sio is None or not _sio.connected:
+        return
+    try:
+        _sio.emit(event, payload)
+    except Exception:                       # noqa: BLE001 - never let a socket hiccup touch the feed
+        pass
+
+
+def mirror_to_hub(pts, pose, ts_ms):
+    """Mirror one scan to the dashboard hub (throttled). No-op if not connected.
+
+    Emits the same events the dashboard already renders:
+      lidar_scan  {ts, points:[[x,y],...]}   (robot-frame meters, <=360 pts)
+      slam_pose   {ts, x, y, theta}          (world m / rad)
+      slam_map    occupancy grid payload      (best-effort, needs _grid)
+    """
+    if _sio is None or not _sio.connected:
+        return
+    now = time.time()
+    # lidar_scan: subsample to <=360 pts (schema cap) and emit at SCAN_HZ.
+    if SCAN_HZ > 0 and now - _hub_last['scan'] >= 1.0 / SCAN_HZ:
+        _hub_last['scan'] = now
+        step = max(1, (len(pts) + 359) // 360)
+        points = [[round(x, 3), round(y, 3)] for x, y in pts[::step]][:360]
+        _emit('lidar_scan', {'ts': ts_ms, 'points': points})
+    if pose is None:
+        return
+    # slam_pose at POSE_HZ.
+    if POSE_HZ > 0 and now - _hub_last['pose'] >= 1.0 / POSE_HZ:
+        _hub_last['pose'] = now
+        _emit('slam_pose', {'ts': ts_ms, 'x': pose['x'], 'y': pose['y'],
+                            'theta': pose['theta']})
+    # slam_map at MAP_HZ: integrate this scan (robot -> world) then emit the grid.
+    if _HAVE_GRID and MAP_HZ > 0 and now - _hub_last['map'] >= 1.0 / MAP_HZ:
+        _hub_last['map'] = now
+        try:
+            px, py, th = pose['x'], pose['y'], pose['theta']
+            c, s = math.cos(th), math.sin(th)
+            world = np.array([[px + x * c - y * s, py + x * s + y * c]
+                              for x, y in pts], float)
+            _grid.integrate((px, py), world)
+            _emit('slam_map', _grid.slam_map_payload(ts_ms))
+        except Exception as e:              # noqa: BLE001
+            print(f'[direct_feed] slam_map integrate failed: {e}', file=sys.stderr)
+
+
 def lidar_thread():
     global _ser
     while not _stop.is_set():
@@ -184,6 +285,7 @@ def lidar_thread():
                             pass
                     msg.update(summarize(pts))
                     broadcast(json.dumps(msg))
+                    mirror_to_hub(pts, msg['pose'], msg['ts'])
                     scan = []
                 if dist > 0:
                     scan.append((ang, dist))
@@ -206,6 +308,9 @@ def main():
     signal.signal(signal.SIGTERM, _sig)
     signal.signal(signal.SIGINT, _sig)
     threading.Thread(target=accept_thread, daemon=True).start()
+    if HUB_URL:
+        print(f'[direct_feed] hub mirror on -> {HUB_URL} (slam_map={_HAVE_GRID})', file=sys.stderr)
+        threading.Thread(target=hub_connect_thread, daemon=True).start()
     lidar_thread()
 
 
