@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# TLS certs/keys for the local telemetry server - never commit private keys
+*.key
+*.crt
+*.pem
