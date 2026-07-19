@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTvTransition } from '../lib/tvTransition.jsx'
+import { drawStatic } from '../lib/crtTuneIn.js'
 import './ArrivalFuzz.css'
 
 // Full-screen TV static that covers a page the instant it MOUNTS, then fades:
@@ -28,21 +29,12 @@ export default function ArrivalFuzz({ hold = 480, fade = 820 }) {
     let w = 2
     let h = 2
     const resize = () => {
-      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 7))
-      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 7))
+      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 16))
+      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 16))
     }
     resize()
     window.addEventListener('resize', resize)
-    const draw = () => {
-      const img = ctx.createImageData(w, h)
-      const d = img.data
-      for (let i = 0; i < d.length; i += 4) {
-        const v = (Math.random() * 255) | 0
-        d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
-      }
-      ctx.putImageData(img, 0, 0)
-    }
-    draw() // cover from the very first frame
+    drawStatic(ctx, w, h) // cover from the very first frame
     canvas.style.opacity = '1'
     const t0 = performance.now()
     let raf = 0
@@ -50,7 +42,7 @@ export default function ArrivalFuzz({ hold = 480, fade = 820 }) {
       const el = performance.now() - t0
       const op = el < hold ? 1 : Math.max(0, 1 - (el - hold) / fade)
       if (op <= 0.001) { canvas.style.opacity = '0'; return }
-      draw()
+      drawStatic(ctx, w, h)
       canvas.style.opacity = String(op)
       raf = requestAnimationFrame(loop)
     }

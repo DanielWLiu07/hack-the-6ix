@@ -74,20 +74,35 @@ TURN_RATE = 1.8          # rad/s max yaw rate
 
 
 class Robot:
-    """Kinematic robot chasing waypoints with limited turn rate."""
+    """Kinematic robot with limited turn rate. Patrols WAYPOINTS by default; when
+    a nav goal path is set (set_goal), it chases that path instead and reports
+    goal_reached on arrival, then resumes patrol."""
 
     def __init__(self):
         self.x, self.y = WAYPOINTS[0]
         self.theta = 0.0
         self.wp = 1
+        self.goal_path = None      # list of (x, y) world waypoints, or None
+        self.goal_idx = 0
+        self.goal_reached = False  # latched True the tick the final point is hit
+        self.hold = False          # True = stay put (no patrol) until a goal
 
-    def step(self, dt):
-        tx, ty = WAYPOINTS[self.wp]
+    def set_goal(self, path):
+        """Start navigating along `path` (world (x,y) list, last = destination)."""
+        if not path:
+            return
+        self.goal_path = [tuple(p) for p in path]
+        self.goal_idx = 0
+        self.goal_reached = False
+
+    def clear_goal(self):
+        self.goal_path = None
+        self.goal_idx = 0
+
+    def _seek(self, tx, ty, dt):
+        """Turn-rate-limited drive toward (tx,ty). Returns distance to it."""
         dx, dy = tx - self.x, ty - self.y
-        if math.hypot(dx, dy) < 0.15:
-            self.wp = (self.wp + 1) % len(WAYPOINTS)
-            tx, ty = WAYPOINTS[self.wp]
-            dx, dy = tx - self.x, ty - self.y
+        dist = math.hypot(dx, dy)
         desired = math.atan2(dy, dx)
         err = (desired - self.theta + math.pi) % (2 * math.pi) - math.pi
         self.theta += max(-TURN_RATE * dt, min(TURN_RATE * dt, err))
@@ -95,6 +110,26 @@ class Robot:
         speed = ROBOT_SPEED * max(0.25, math.cos(min(abs(err), math.pi / 2)))
         self.x += speed * dt * math.cos(self.theta)
         self.y += speed * dt * math.sin(self.theta)
+        return dist
+
+    def step(self, dt):
+        if self.goal_path is not None:
+            tx, ty = self.goal_path[self.goal_idx]
+            dist = self._seek(tx, ty, dt)
+            final = self.goal_idx >= len(self.goal_path) - 1
+            if dist < (0.12 if final else 0.22):
+                if final:
+                    self.goal_reached = True
+                    self.goal_path = None
+                else:
+                    self.goal_idx += 1
+            return
+        if self.hold:
+            return  # map built: stay put until an operator declares a goal
+        tx, ty = WAYPOINTS[self.wp]
+        dist = self._seek(tx, ty, dt)
+        if dist < 0.15:
+            self.wp = (self.wp + 1) % len(WAYPOINTS)
 
 
 # raycasting

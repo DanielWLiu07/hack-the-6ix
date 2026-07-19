@@ -56,7 +56,7 @@ function fitUnit(root, len) {
   return inner
 }
 
-export default function RobotFringe({ edit = false }) {
+export default function RobotFringe({ edit = false, reveal = 1 }) {
   const canvasRef = useRef(null)
   // Imperative bridge into the three.js scene, populated once by the effect and
   // called by the DOM editor panel (add / delete / duplicate / export).
@@ -64,6 +64,11 @@ export default function RobotFringe({ edit = false }) {
   // Latest edit flag, read inside the (build-once) effect's pointer handlers.
   const editRef = useRef(edit)
   editRef.current = edit
+  // Declutter flag, read inside the build-once render loop: when true every
+  // model slides off its nearest screen edge (top -> up, sides -> out sideways).
+  // reveal: 0..1, how far the machine models hang into frame (1 = fully shown).
+  const revealRef = useRef(reveal)
+  revealRef.current = reveal
   // Selected prop summary for the panel (id + file), or null. The effect owns
   // the live THREE object; this only drives which panel/handles show.
   const [sel, setSel] = useState(null)
@@ -590,6 +595,7 @@ export default function RobotFringe({ edit = false }) {
 
     const clock = new THREE.Clock()
     const gaze = new THREE.Vector3()
+    let clearAmt = 0 // eased 0..1 declutter progress
     let raf
     const loop = () => {
       if (disposed) return
@@ -628,6 +634,24 @@ export default function RobotFringe({ edit = false }) {
           case 'spin': h.rotation.y = b.ry + w * 0.42; break  // gentle yaw wobble, not a full 360 spin
           case 'pulse': h.scale.setScalar(b.sc * (1 + w * a.amp)); break
           default: break
+        }
+      }
+      // Declutter exit: slide each top-level model off its NEAREST screen edge
+      // (no fade). Runs after the per-prop base positioning so it wins; a no-op
+      // while stowed (clearAmt ~ 0) so idle motion is untouched.
+      clearAmt += ((1 - revealRef.current) - clearAmt) * 0.07
+      if (clearAmt > 0.002) {
+        for (const o of fringe.children) {
+          if (!o.userData._exit) {
+            o.userData._home = o.position.clone()
+            o.userData._exit =
+              Math.abs(o.position.x) > 5
+                ? new THREE.Vector3(Math.sign(o.position.x) * 11, 2.5, 0) // side -> out
+                : new THREE.Vector3(0, 8.5, 0) // top -> up
+          }
+          const h = o.userData._home
+          o.position.x = h.x + o.userData._exit.x * clearAmt
+          o.position.y = h.y + o.userData._exit.y * clearAmt
         }
       }
       // keep the selection outline glued to a prop while it is dragged/nudged

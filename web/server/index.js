@@ -55,13 +55,15 @@ io.use(async (socket, next) => {
 });
 
 // events flowing robot -> ui
-const ROBOT_EVENTS = ['telemetry', 'detection', 'pick_event', 'lidar_scan', 'slam_map', 'slam_pose'];
+const ROBOT_EVENTS = ['telemetry', 'detection', 'pick_event', 'lidar_scan', 'slam_map', 'slam_pose', 'nav_path'];
 // events flowing ui/agent -> robot
 // set_mode is the demo toggle: {autostart:false} pauses the robot's autonomous
 // SEEK/PICK/SORT cycle so an NL command visibly drives it on stage (otherwise
 // the autonomous loop masks whether a pick came from a command). The sim honors
 // it; fw-linux mirrors it on the real robot (contract in status/server-core.md).
-const CONTROL_EVENTS = ['drive', 'arm_pose', 'pick', 'estop', 'nl_command', 'set_mode'];
+// nav_goal is an operator-declared destination (world meters, or {cancel:true}
+// to abort): the robot/SLAM node plans a path to it and drives there.
+const CONTROL_EVENTS = ['drive', 'arm_pose', 'pick', 'estop', 'nl_command', 'set_mode', 'nav_goal'];
 
 const counts = { robot: 0, ui: 0, agent: 0 };
 let lastTelemetry = null;
@@ -70,6 +72,7 @@ let lastTelemetry = null;
 // 0.5 Hz map tick (the map is a slow event; a fresh UI must not wait for it).
 let lastSlamMap = null;
 let lastSlamPose = null;
+let lastNavPath = null;
 // Last authenticated operator to issue a control command - the robot's
 // pick_events (emitted later, by the robot) are attributed to them for the
 // audit trail. null in autonomous/dev-bypass mode (pick stays unattributed).
@@ -154,6 +157,7 @@ io.on('connection', (socket) => {
     if (lastTelemetry) socket.emit('telemetry', lastTelemetry);
     if (lastSlamMap) socket.emit('slam_map', lastSlamMap);
     if (lastSlamPose) socket.emit('slam_pose', lastSlamPose);
+    if (lastNavPath) socket.emit('nav_path', lastNavPath);
     socket.emit('fleet', fleetSnapshot()); // roster now, don't wait for the 1 Hz tick
   }
   // a robot that (re)connects inherits the current demo autonomy mode
@@ -199,6 +203,10 @@ io.on('connection', (socket) => {
         lastSlamMap = payload;
       } else if (event === 'slam_pose') {
         lastSlamPose = payload;
+      } else if (event === 'nav_path') {
+        // only replay an IN-PROGRESS route to late joiners; a finished/cancelled
+        // route shouldn't leave a stale goal marker on a fresh page load.
+        lastNavPath = payload.active ? payload : null;
       } else if (event === 'detection') {
         store.recordDetection(payload).catch(logStoreErr);
       } else if (event === 'pick_event') {

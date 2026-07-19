@@ -168,3 +168,20 @@ Human: massively improve the data + graphs + UI. Added (all live-derived, no har
 - Wired the human's exported "Copy layout" arrangement (8 props: server/magnifier/apple/robotarm on left, banana/haybale/crate/battery on right) as the DEFAULT_PLACEMENT auto-loaded default. catalogId->url via PALETTE key map. Props frame the data down the margins.
 - Data beautified: inverted screentone IMPACT hero with red offset shadow + red spot accents (live/SIM dot, FAIL badge, section tick), panel hover-lift, punchier TrendChart (peak bar + success area fill), section-label ticks. Density pass (consistent 1.3rem gaps, compact cards).
 `npm run build` ✓, `oxlint` ✓, all data live.
+
+## [18:06] DONE - reworked ALL/5M/1M time-window control + gentle entrance animation
+User: "the all 5m 1m buttons dont work rethink and make it better to use" then "can we animate some of it maybe please gently".
+Diagnosis: click path was actually clean (deco crust and ArrivalFuzz are both pointer-events:none). The buttons DID toggle state and filter winPicks, but with ~15.5s between sim picks the ALL/5M/1M outputs are near-identical early in a session, so the control read as dead - no feedback.
+Rethink (Analytics.jsx + analytics.css):
+- WINDOWS relabeled + reordered narrow->wide: "1 min" / "5 min" / "All time" (keys 1m/5m/all unchanged, default still all). Added per-window `span` copy.
+- Each button now shows a live count badge (winCounts memo) so a click always moves a visible number. In live mode the All-time badge uses serverStats.total; windowed badges count the session buffer within the window.
+- Added a "WINDOW" label and a live caption ("N picks from the last 5 minutes" / "4208 picks all time" / "no picks yet ..."), sourced from the same winCounts as the badges so they stay coherent.
+- Hard clickability guarantee: `.az-controls { position:relative; z-index:3; pointer-events:auto }` so it always sits above the deco crust (z2), regardless of pointer-events.
+- Fixed the two remaining `winLabel === 'ALL'` string checks (label text changed) to key off `win === 'all'` / winSpan.
+Animation (analytics.css, gated behind prefers-reduced-motion):
+- `.az-main > *` staggered fade-rise on mount (az-rise, 0.55s, nth-child delays).
+- Bin bars sweep in left-to-right via clip-path (az-sweep) so the halftone tone is not distorted.
+Verified: oxlint clean, `npm run build` green, headless screenshot confirms control + layout render correctly and caption matches the active window's count.
+
+## [18:10] DONE - gentle idle motion on deco props
+User: "slightly animate the side objects i dont feel anything". Added a per-prop useFrame idle drift in Deco.jsx Prop(): slow bob (position.y ~0.045) + sway (rotation.y ~0.06 rad, rotation.z ~0.025 rad), phase derived from placement (pos.x/pos.z) so props move independently. Layered on top of placement, only offsets y/y-z so editor drag is unaffected. Respects prefers-reduced-motion (skips when reduce). Canvas frameloop is default always so it animates continuously through mangaPass. oxlint clean, build green.

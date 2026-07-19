@@ -24,6 +24,7 @@ export default function SlamEmbed() {
         maxScans={48}
         showScans
         showSlam
+        navigable
       />
     </div>
   )

@@ -54,7 +54,7 @@ export default function FarmHandChat({ variant = 'default', fill = false, showHe
     <div style={panelStyle} className={`farmhand-chat farmhand-chat--${variant}`}>
       {showHeader && (
         <div style={S.header}>
-          <span>FarmHand</span>
+          <span>Pomme</span>
           <span style={{ ...S.dot, background: connected ? '#3ddc84' : '#e5533c' }} />
         </div>
       )}

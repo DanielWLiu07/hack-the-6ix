@@ -156,8 +156,26 @@ function Prop({ url, pos, rot, scale, onDown }) {
     m.position.y -= b2.min.y // feet on the ground
     return m
   }, [scene, url])
+  // gentle idle drift so the scene breathes; phase from position so each prop
+  // moves independently, amplitude tiny (a slow bob + sway on top of placement).
+  const ref = useRef(null)
+  const still = useMemo(
+    () => typeof window !== 'undefined'
+      && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches,
+    [],
+  )
+  const ph = pos[0] * 0.7 + pos[2] * 1.3
+  useFrame((state) => {
+    const g = ref.current
+    if (!g || still) return
+    const t = state.clock.getElapsedTime()
+    g.position.y = pos[1] + Math.sin(t * 0.75 + ph) * 0.045
+    g.rotation.y = rot[1] + Math.sin(t * 0.45 + ph) * 0.06
+    g.rotation.z = rot[2] + Math.sin(t * 0.6 + ph * 1.4) * 0.025
+  })
   return (
     <group
+      ref={ref}
       position={pos}
       rotation={rot}
       scale={scale}

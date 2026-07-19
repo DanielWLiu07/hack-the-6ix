@@ -103,7 +103,7 @@ function CameraLayer({ detections, label }) {
     return () => clearTimeout(t)
   }, [])
   return (
-    <div className="pov-view pov-cam">
+    <div className="pov-cam-frame pov-cam">
       {status !== 'off' && (
         <img
           className="pov-cam-img"
@@ -170,6 +170,17 @@ export default function RobotPOV() {
   const editFringe =
     new URLSearchParams(window.location.search).has('edit') && tab === 'cam'
   const [isFs, setIsFs] = useState(false)
+  // Machine-fringe height: how far the top/side machine models hang into the
+  // frame. The HUD slider sets it and it persists. 1 = fully shown, 0 = tucked
+  // off-screen (the old "cleared" look). No auto-hide - the fringe stays put at
+  // whatever height you choose.
+  const [fringeHeight, setFringeHeight] = useState(() => {
+    const v = parseFloat(localStorage.getItem('pov-fringe-height') ?? '1')
+    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1
+  })
+  useEffect(() => {
+    localStorage.setItem('pov-fringe-height', String(fringeHeight))
+  }, [fringeHeight])
 
   // Live gate. OFF by default so no socket-sourced data (which may be a stand-in
   // robot / camera test pattern, indistinguishable from real hardware here)
@@ -259,7 +270,7 @@ export default function RobotPOV() {
   }
 
   return (
-    <div className="pov-root" ref={rootRef}>
+    <div className={`pov-root ${fringeHeight < 0.1 ? 'decluttered' : ''}`} ref={rootRef}>
       <ArrivalFuzz />
       <BackToStage />
    {/* active sensor view */}
@@ -272,7 +283,7 @@ export default function RobotPOV() {
           WebGL context in THIS document: the camera tab has no 3D canvas, and
           both the SLAM and iPhone tabs render their 3D inside isolated iframes
           (/pov-slam and phone.html), each with its own context. */}
-      <RobotFringe edit={editFringe} />
+      <RobotFringe edit={editFringe} reveal={fringeHeight} />
 
    {/* HUD */}
       <div className="pov-hud">
@@ -292,7 +303,7 @@ export default function RobotPOV() {
               onClick={() => setFleetOpen((v) => !v)}
               title={fleetOpen ? 'Hide fleet + command' : 'Fleet + command'}
             >
-              <span className="chev">{fleetOpen ? '‹' : '›'}</span>
+              <span className="chev">{fleetOpen ? '›' : '‹'}</span>
               <span className="lab">FLEET</span>
             </button>
             {fleetOpen && (
@@ -375,6 +386,18 @@ export default function RobotPOV() {
             </div>
 
             <div className="pov-top-r">
+              <label className="pov-fringe-h" title="Machine-fringe height">
+                <span className="lab">FRINGE</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={fringeHeight}
+                  onChange={(e) => setFringeHeight(parseFloat(e.target.value))}
+                />
+                <span className="val">{Math.round(fringeHeight * 100)}</span>
+              </label>
               <button className="pov-fs" onClick={toggleFs} title="Fullscreen">
                 {isFs ? 'EXIT FS' : 'FULL'}
               </button>

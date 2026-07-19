@@ -18,6 +18,7 @@ import { preloadRoute } from '../lib/routePreload.js'
 import { StageProp, PropBoundary } from '../components/StageProp.jsx'
 import { PROP_CATALOG, CATALOG_BY_ID, DEFAULT_PLACEMENT, FLOOR } from '../lib/stageProps.js'
 
+import { drawStatic } from '../lib/crtTuneIn.js'
 import '../App.css'
 
 // Fresh Meshy-generated cartoon monkey, arms out in a T-pose (a clean static
@@ -154,18 +155,10 @@ function FuzzCanvas({ w, h, fuzzRef }) {
     canvas.height = lh
     let raf = 0
     const step = () => {
-      // Opacity is driven by the camera intro (shared ref) so the static and the
+      // Opacity is driven by the camera intro (shared ref) so the tune-in and the
       // zoom-out are always in lockstep, even on a slow cold load.
       const op = fuzzRef.current?.opacity ?? 0
-      if (op > 0.01) {
-        const img = ctx.createImageData(lw, lh)
-        const d = img.data
-        for (let i = 0; i < d.length; i += 4) {
-          const v = (Math.random() * 255) | 0
-          d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
-        }
-        ctx.putImageData(img, 0, 0)
-      }
+      if (op > 0.01) drawStatic(ctx, lw, lh)
       canvas.style.opacity = String(op)
       raf = requestAnimationFrame(step)
     }
@@ -189,24 +182,15 @@ function StageFuzz({ fuzzRef }) {
     let w = 2
     let h = 2
     const resize = () => {
-      // low-res canvas stretched to fill => chunky pixelated static
-      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 7))
-      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 7))
+      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 16))
+      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 16))
     }
     resize()
     window.addEventListener('resize', resize)
     let raf = 0
     const step = () => {
       const op = fuzzRef.current?.opacity ?? 0
-      if (op > 0.01) {
-        const img = ctx.createImageData(w, h)
-        const d = img.data
-        for (let i = 0; i < d.length; i += 4) {
-          const v = (Math.random() * 255) | 0
-          d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
-        }
-        ctx.putImageData(img, 0, 0)
-      }
+      if (op > 0.01) drawStatic(ctx, w, h)
       canvas.style.opacity = String(op)
       raf = requestAnimationFrame(step)
     }
@@ -871,33 +855,34 @@ const TV_ARC = {
 // texture). Rendered as a child of the clicked TV so it scales/zooms WITH the
 // monitor - the fuzz is on the screen, not the whole viewport.
 function TvStaticMesh() {
+  const matRef = useRef(null)
+  const t0 = useRef(0)
+  const FADE_MS = 420 // ramp the static IN over the zoom, so it animates into fuzz
   const tex = useMemo(() => {
     const c = document.createElement('canvas')
     // Match the full-screen overlay's static density (~window/7): when the camera
     // zooms this monitor to fill the viewport, its pixels are the same size as the
     // overlay/landing static, so the in-scene -> overlay handoff is one same fuzz.
-    c.width = 183
-    c.height = 117
+    c.width = 80
+    c.height = 50
     const t = new THREE.CanvasTexture(c)
     t.magFilter = THREE.NearestFilter
     t.minFilter = THREE.NearestFilter
     return { c, t }
   }, [])
   useFrame(() => {
-    const ctx = tex.c.getContext('2d')
-    const img = ctx.createImageData(tex.c.width, tex.c.height)
-    const d = img.data
-    for (let i = 0; i < d.length; i += 4) {
-      const v = (Math.random() * 255) | 0
-      d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
-    }
-    ctx.putImageData(img, 0, 0)
+    const now = performance.now()
+    if (!t0.current) t0.current = now
+    drawStatic(tex.c.getContext('2d'), tex.c.width, tex.c.height)
     tex.t.needsUpdate = true
+    // Fade the static up from the monitor's real screen instead of popping to it,
+    // so clicking a monitor animates INTO the fuzz (and never flashes black).
+    if (matRef.current) matRef.current.opacity = Math.min(1, (now - t0.current) / FADE_MS)
   })
   return (
     <mesh position={[0, 0, 0.135]}>
       <planeGeometry args={[1.95, 1.25]} />
-      <meshBasicMaterial map={tex.t} toneMapped={false} />
+      <meshBasicMaterial ref={matRef} map={tex.t} transparent opacity={0} toneMapped={false} />
     </mesh>
   )
 }
@@ -1486,9 +1471,9 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
             <planeGeometry args={[60, 60]} />
             <meshStandardMaterial color="#050505" roughness={1} />
           </mesh>
-          <RadialLight bind={bind} groupRef={radialRef} />
+          <RadialLight bind={editTV ? bind : undefined} groupRef={radialRef} />
           <Suspense fallback={null}>
-            <Monkey bind={bind} poseRef={poseRef} mimic={mimic} mirror={mirror} />
+            <Monkey bind={editTV ? bind : undefined} poseRef={poseRef} mimic={mimic} mirror={mirror} />
             {showNav && <StageTVNav bind={bind} onNav={editTV ? () => {} : startZoom} edit={editTV} zoomTo={zoomTo} exitTo={exitStatic} onReady={onTvReady} registry={tvGroups} />}
           </Suspense>
           {placed.map((inst) => {
@@ -1536,9 +1521,9 @@ export default function MonkeyStage({ showNav = true, playIntro = false, liveSce
           <div className="stage-palette-note">Drops in front of the monkey - drag it into place.</div>
         </div>
       )}
-      {/* The transform panel (with copy) shows in the editor, and also on the
-          clean stage when the radial light is picked - so it can be copied. */}
-      {(editTV || selected?.name === 'radial light') && (
+      {/* Transform panel is editor-only. The clean /stage must never show any
+          configuration UI (no select / drag / sliders). */}
+      {editTV && (
         <TransformSliders selected={selected} getAll={serializeAll} />
       )}
     </div>

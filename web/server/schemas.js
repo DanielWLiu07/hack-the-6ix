@@ -51,4 +51,15 @@ export const validators = {
   // SLAM pose (root CLAUDE.md addendum). theta in radians.
   slam_pose: (p) =>
     isNum(p.ts) && isNum(p.x) && isNum(p.y) && isNum(p.theta),
+
+  // Navigation path: the robot's planned route to an operator-declared goal.
+  // goal is world meters (null while idle); points is the planned polyline
+  // (world meters, start -> goal). active while driving, reached on arrival.
+  nav_path: (p) =>
+    isNum(p.ts) &&
+    (p.goal == null ||
+      (Array.isArray(p.goal) && p.goal.length === 2 && p.goal.every(isNum))) &&
+    Array.isArray(p.points) && p.points.length <= 512 &&
+    p.points.every((pt) => Array.isArray(pt) && pt.length === 2 && pt.every(isNum)) &&
+    typeof p.active === 'boolean' && typeof p.reached === 'boolean',
 };

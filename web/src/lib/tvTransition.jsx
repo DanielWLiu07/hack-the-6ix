@@ -6,6 +6,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { drawStatic } from './crtTuneIn.js'
 
 const TvCtx = createContext(null)
 
@@ -50,8 +51,8 @@ export default function TvTransitionProvider({ children }) {
     let h = 2
     const resize = () => {
       // low-res canvas stretched to fill => chunky pixelated static
-      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 7))
-      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 7))
+      w = canvas.width = Math.max(2, Math.ceil(window.innerWidth / 16))
+      h = canvas.height = Math.max(2, Math.ceil(window.innerHeight / 16))
     }
     resize()
     window.addEventListener('resize', resize)
@@ -90,15 +91,7 @@ export default function TvTransitionProvider({ children }) {
         s.op = Math.max(0, 1 - (now - s.t0) / REVEAL_MS)
         if (s.op <= 0) { s.phase = 'idle'; s.op = 0 }
       }
-      if (s.op > 0.001) {
-        const img = ctx.createImageData(w, h)
-        const d = img.data
-        for (let i = 0; i < d.length; i += 4) {
-          const v = (Math.random() * 255) | 0
-          d[i] = v; d[i + 1] = v; d[i + 2] = v; d[i + 3] = 255
-        }
-        ctx.putImageData(img, 0, 0)
-      }
+      if (s.op > 0.001) drawStatic(ctx, w, h)
       canvas.style.opacity = String(s.op)
       if (s.phase === 'idle') { raf = 0; return } // stop the loop when settled
       raf = requestAnimationFrame(loop)

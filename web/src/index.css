@@ -146,5 +146,63 @@ code {
   pointer-events: none;
   opacity: 0;
   display: block;
+}
+
+/* Chunky blocks for the low-res dissolve canvases (no browser smoothing). */
+.tv-static-overlay,
+.stage-arrival-fuzz,
+.stage-fuzz,
+.landing-fuzz,
+.arrival-fuzz {
   image-rendering: pixelated;
 }
+
+/* SLAM navigation HUD: bottom-center hint + STOP, over the live map. */
+.lv-nav {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+.lv-nav-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  font: 700 11px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.08em;
+  color: #4a453c;
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid rgba(17, 16, 13, 0.14);
+  border-radius: 999px;
+  box-shadow: 0 4px 18px rgba(17, 16, 13, 0.12);
+}
+.lv-nav-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9a938a;
+}
+.lv-nav-hint.go { color: #1f5f8b; }
+.lv-nav-hint.go .lv-nav-dot { background: #2f7db0; box-shadow: 0 0 7px #2f7db0; animation: lv-nav-pulse 1s infinite; }
+.lv-nav-hint.done { color: #2f7d3f; }
+.lv-nav-hint.done .lv-nav-dot { background: #2f9d54; box-shadow: 0 0 7px #2f9d54; }
+@keyframes lv-nav-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.lv-nav-stop {
+  pointer-events: auto;
+  padding: 7px 14px;
+  font: 700 11px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.1em;
+  color: #fff;
+  background: #d4483a;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(212, 72, 58, 0.35);
+}
+.lv-nav-stop:hover { background: #c33f32; }

@@ -78,11 +78,10 @@ function SyncCamera() {
 // Continuous engine idle: high-freq vibration + slow rock, always running so the
 // parked cart looks alive. `punch` adds the drive-in suspension bump.
 function engineShake(b, now, punch = 0) {
-  const vib = Math.sin(now * 43) * 0.006 + Math.sin(now * 27) * 0.004
-  const rock = Math.sin(now * 2.4) * 0.02
-  b.position.y = rock + vib + punch
-  b.rotation.z = Math.sin(now * 39) * 0.012
-  b.rotation.x = Math.sin(now * 33) * 0.009
+  // Engine idle animation disabled: the cart sits still (no vibration/rock).
+  b.position.y = 0
+  b.rotation.z = 0
+  b.rotation.x = 0
 }
 
 // Cart drives along the floor in WORLD space from screen-left to the apple, then

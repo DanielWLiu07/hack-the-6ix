@@ -1,77 +1,21 @@
-// GET /stream - MJPEG.
+// GET /stream - MJPEG arm-camera feed.
 // If ROBOT_STREAM_URL is set (vision-infer's annotated MJPEG on :8080), proxy it.
-// Otherwise serve a generated moving test pattern so the dashboard <img> works today.
+// Otherwise there is NO feed: respond 503 so the dashboard shows NOT CONNECTED.
+// No synthetic/test-pattern frames - the arm cam only ever shows the real camera
+// (data rule: no fabricated streams in the UI).
 
 import http from 'node:http';
-import { encode } from 'jpeg-js';
 
-const BOUNDARY = 'ht6frame';
-const W = 320;
-const H = 240;
-const FPS = 5;
-
-// test pattern
-let tick = 0;
-function renderTestFrame() {
-  const data = Buffer.alloc(W * H * 4);
-  const t = tick++;
-  const cx = W / 2 + Math.sin(t / 10) * 90;
-  const cy = H / 2 + Math.cos(t / 13) * 60;
-  for (let y = 0; y < H; y++) {
-    for (let x = 0; x < W; x++) {
-      const i = (y * W + x) * 4;
-      // gradient background
-      let r = (x / W) * 80;
-      let g = 30 + (y / H) * 60;
-      let b = 60;
-      // sweeping bar
-      if (Math.abs(x - ((t * 7) % W)) < 4) { r = 200; g = 200; b = 40; }
-      // bouncing "fruit" blob
-      const d = Math.hypot(x - cx, y - cy);
-      if (d < 18) { r = 220; g = 50; b = 50; }
-      data[i] = r; data[i + 1] = g; data[i + 2] = b; data[i + 3] = 255;
-    }
-  }
-  return encode({ data, width: W, height: H }, 70).data;
-}
-
-// One shared encode loop for ALL test-pattern viewers. Previously each client
-// opened its own setInterval and ran a full synchronous jpeg-js encode, so N
-// dashboards/phones meant N encodes/sec blocking the event loop (and stalling
-// every Socket.IO emit). Now we encode a single frame per tick and fan it out,
-// and the timer only runs while at least one client is connected.
-const streamClients = new Set();
-let streamTimer = null;
-
-function pumpTestPattern() {
-  const jpg = renderTestFrame();
-  const header = `--${BOUNDARY}\r\nContent-Type: image/jpeg\r\nContent-Length: ${jpg.length}\r\n\r\n`;
-  for (const res of streamClients) {
-    res.write(header);
-    res.write(jpg);
-    res.write('\r\n');
-  }
-}
-
-function serveTestPattern(res) {
-  res.writeHead(200, {
-    'Content-Type': `multipart/x-mixed-replace; boundary=${BOUNDARY}`,
+function noFeed(res) {
+  if (res.headersSent) return;
+  res.writeHead(503, {
+    'Content-Type': 'text/plain',
     'Cache-Control': 'no-cache, no-store',
-    Connection: 'close',
     'Access-Control-Allow-Origin': '*',
   });
-  streamClients.add(res);
-  if (!streamTimer) streamTimer = setInterval(pumpTestPattern, 1000 / FPS);
-  res.on('close', () => {
-    streamClients.delete(res);
-    if (streamClients.size === 0 && streamTimer) {
-      clearInterval(streamTimer);
-      streamTimer = null;
-    }
-  });
+  res.end('arm camera not connected');
 }
 
-// proxy
 function proxyRobotStream(url, res) {
   const upstream = http.get(url, (up) => {
     res.writeHead(up.statusCode || 200, {
@@ -82,8 +26,8 @@ function proxyRobotStream(url, res) {
     up.pipe(res);
   });
   upstream.on('error', (err) => {
-    console.warn('[stream] robot stream unreachable, using test pattern:', err.message);
-    if (!res.headersSent) serveTestPattern(res);
+    console.warn('[stream] robot stream unreachable:', err.message);
+    noFeed(res);
   });
   res.on('close', () => upstream.destroy());
 }
@@ -91,5 +35,5 @@ function proxyRobotStream(url, res) {
 export function streamHandler(req, res) {
   const url = process.env.ROBOT_STREAM_URL;
   if (url) proxyRobotStream(url, res);
-  else serveTestPattern(res);
+  else noFeed(res);
 }

@@ -38,6 +38,25 @@
 .pov-view { position: absolute; inset: 0; }
 .pov-main canvas { display: block; width: 100% !important; height: 100% !important; }
 
+/* ARM CAM renders as a large centered rectangle, not a fullscreen fill.
+   Leaves room on the right for the fleet + chat panel. */
+.pov-cam-frame {
+  position: absolute;
+  top: 88px;
+  bottom: 132px;
+  left: 0;
+  right: 0;
+  width: min(52vw, 760px);
+  margin-inline: auto;          /* centered on screen, clears the right drawer */
+  border-radius: 16px;
+  box-shadow: 0 10px 44px rgba(0, 0, 0, 0.16);
+  border: 1px solid var(--edge, rgba(0, 0, 0, 0.12));
+  display: grid;
+  place-items: center;
+}
+@media (max-width: 900px) {
+  .pov-cam-frame { width: auto; left: 20px; right: 20px; top: 76px; bottom: 120px; }
+}
 .pov-cam { overflow: hidden; background: #fffdfa; }
 .pov-cam-img {
   width: 100%;
@@ -112,7 +131,7 @@
 
 /* HUD layer */
 .pov-hud { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
-.pov-hud button, .pov-hud a { pointer-events: auto; }
+.pov-hud button, .pov-hud a, .pov-hud .pov-fringe-h { pointer-events: auto; }
 
 /* faint corner ticks */
 .pov-tick { position: absolute; width: 18px; height: 18px; border: 1.5px solid var(--edge); opacity: 0.45; }
@@ -473,12 +492,12 @@
    HUD system as the bottom chips (frosted glass, ink text), over any tab. */
 .pov-fleetbar {
   position: absolute;
-  left: 0;
+  right: 0;                 /* fleet + chat live on the RIGHT side */
   top: 64px;
   bottom: 108px;
   z-index: 9;
   display: flex;
-  align-items: stretch;
+  align-items: stretch;      /* [tab][body]: body flush-right, pull-tab on its inner edge */
   max-width: 92vw;
 }
 .pov-fleetbar-tab {
@@ -490,8 +509,8 @@
   padding: 12px 5px;
   background: var(--glass);
   border: 1px solid var(--edge);
-  border-left: 0;
-  border-radius: 0 8px 8px 0;
+  border-right: 0;
+  border-radius: 8px 0 0 8px;
   box-shadow: var(--glass-hi);
   backdrop-filter: var(--blur);
   color: var(--dim);
@@ -507,13 +526,47 @@
   padding: 12px;
   background: var(--glass);
   border: 1px solid var(--edge);
-  border-left: 0;
-  border-radius: 0 12px 12px 0;
-  box-shadow: var(--glass-hi), 8px 0 28px rgba(17, 16, 13, 0.12);
+  border-right: 0;
+  border-radius: 12px 0 0 12px;
+  box-shadow: var(--glass-hi), -8px 0 28px rgba(17, 16, 13, 0.12);
   backdrop-filter: var(--blur);
 }
 
 .povf { display: flex; flex-direction: column; width: 100%; min-height: 0; gap: 8px; color: var(--txt); }
+
+/* Two side-by-side tabs at the top: FLEET | FARMHAND. */
+.povf-tabs { display: flex; gap: 6px; flex: none; }
+.povf-tab {
+  flex: 1 1 0;
+  padding: 8px 6px;
+  font: 700 10px/1 var(--ui-mono); letter-spacing: 0.1em;
+  color: var(--dim); text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--edge); border-radius: 8px;
+  cursor: pointer; transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.povf-tab:hover { color: var(--txt); border-color: rgba(17, 16, 13, 0.28); }
+.povf-tab.on { color: var(--ink); background: rgba(17, 16, 13, 0.06); border-color: var(--ink); }
+
+/* Active pane fills the rest of the panel height. */
+.povf-pane { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; }
+.povf-pane-chat { gap: 8px; }
+.povf-pane-chat .povf-cmd { flex: 1 1 auto; height: auto; min-height: 0; }
+
+/* Scanned-rover splat header in the FLEET tab. */
+.povf-splat {
+  position: relative; flex: none;
+  height: 168px; border-radius: 10px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 20%, rgba(255,255,255,0.55), rgba(17,16,13,0.05));
+  border: 1px solid var(--edge);
+}
+.povf-splat canvas { display: block; width: 100% !important; height: 100% !important; }
+.povf-splat-tag {
+  position: absolute; left: 8px; bottom: 7px;
+  font: 700 8px/1 var(--ui-mono); letter-spacing: 0.12em; color: var(--faint);
+  background: rgba(255, 255, 255, 0.6); padding: 3px 6px; border-radius: 4px;
+}
+
 .povf-sec-head {
   display: flex; align-items: center; justify-content: space-between;
   font: 700 9px/1 var(--ui-mono); letter-spacing: 0.14em; color: var(--faint);
@@ -553,3 +606,19 @@
 @media (max-height: 620px) {
   .povf-cmd { height: 200px; }
 }
+
+/* machine-fringe height slider (replaces the CLEAR toggle) */
+.pov-fringe-h {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 11px;
+  border: 1px solid var(--edge);
+  background: var(--glass);
+  box-shadow: var(--glass-hi);
+  border-radius: 8px;
+  backdrop-filter: var(--blur);
+}
+.pov-fringe-h .lab { font: 600 0.58rem var(--ui-mono); letter-spacing: 0.14em; color: var(--faint); }
+.pov-fringe-h input[type="range"] { width: 84px; accent-color: var(--ink); cursor: pointer; }
+.pov-fringe-h .val { font: 600 0.62rem var(--ui-mono); color: var(--txt); min-width: 22px; text-align: right; }
