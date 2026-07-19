@@ -184,6 +184,24 @@ def run_hub(server_url, duration, rate=10.0, emit_scan=True):
     t_sim = 0.0
     last_scan = last_pose = last_map = last_nav = 0.0
     cur_goal = None            # active destination [x,y] in SLAM frame, or None
+
+    # Pre-build the whole map with a fast internal patrol lap (NO emit), then park
+    # the rover and hold. The dashboard sees a complete, static map from the first
+    # frame and the robot never appears to wander/spin - it just sits in the mapped
+    # room until an operator clicks a destination. (Set SLAM_PREBUILD=0 to instead
+    # watch it map live.) On the real Pi this whole block is skipped (use_icp).
+    prebuild = os.environ.get("SLAM_PREBUILD", "1") != "0"
+    if not use_icp and prebuild:
+        lap = int(os.environ.get("SLAM_PREBUILD_SCANS", "520"))
+        for _ in range(lap):
+            robot.step(dt)
+            p = sim.make_payload(robot, t_sim, 360, rng)
+            t_sim += dt
+            prod.on_scan_gt(p["points"], (robot.x, robot.y, robot.theta))
+        robot.hold = True   # frozen from the first emitted frame
+        print(f"[slam] map pre-built ({prod.n} scans) - rover parked + holding",
+              file=sys.stderr)
+
     start = time.time()
     try:
         while duration is None or (time.time() - start) < duration:

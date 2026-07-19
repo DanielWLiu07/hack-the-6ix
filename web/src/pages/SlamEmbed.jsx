@@ -25,6 +25,7 @@ export default function SlamEmbed() {
         showScans
         showSlam
         navigable
+        demoToggle
       />
     </div>
   )

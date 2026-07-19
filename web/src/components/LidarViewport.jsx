@@ -142,7 +142,7 @@ function SlamMap({ showFreeSpace, occupiedColor, freeColor }) {
 // glides to the live slam_pose and yaws to the heading. A small ground dot marks
 // the exact pose so position stays readable even if the splat is subtle/offset;
 // a cone stands in while the splat streams in.
-function PoseMarker({ poseRef, color }) {
+function PoseMarker({ poseRef, color, splatRot, splatScale }) {
   const grp = useRef()
   const spin = useRef()
   const target = useRef(new THREE.Vector3()).current
@@ -181,7 +181,7 @@ function PoseMarker({ poseRef, color }) {
             </mesh>
           }
         >
-          <group rotation={ROBOT_SPLAT_ROT} scale={ROBOT_SPLAT_SCALE}>
+          <group rotation={splatRot ?? ROBOT_SPLAT_ROT} scale={splatScale ?? ROBOT_SPLAT_SCALE}>
             <Splat src={ROBOT_SPLAT_URL} />
           </group>
         </Suspense>
@@ -667,10 +667,11 @@ export default function LidarViewport({
   slamMarkerColor = '#f5a524',
   navigable = false,
   navColor = '#2f7db0',
+  demoToggle = false,
 }) {
   const [worldFailed, setWorldFailed] = useState(false)
   const [navState, setNavState] = useState(null)
-  const { emit } = useRobot()
+  const { emit, demo, toggleDemo } = useRobot()
   const handleWorldFail = () => {
     setWorldFailed(true)
     onWorldFail?.()
@@ -720,6 +721,16 @@ export default function LidarViewport({
           navColor={navColor}
         />
       </Canvas>
+      {demoToggle && (
+        <button
+          className={`lv-demo ${demo ? 'on' : ''}`}
+          onClick={toggleDemo}
+          title="Play a self-contained SLAM demo when there is no live robot connection"
+        >
+          <i className="lv-demo-dot" />
+          {demo ? 'DEMO ON' : 'DEMO'}
+        </button>
+      )}
       {navigable && (
         <div className="lv-nav">
           <span className={`lv-nav-hint ${navState?.active ? 'go' : ''} ${navState?.reached ? 'done' : ''}`}>

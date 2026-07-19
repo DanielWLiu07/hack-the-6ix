@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { io } from 'socket.io-client'
 import { startSim } from './sim.js'
+import { startSlamDemo } from './slamDemo.js'
 
 export const SERVER_URL =
   import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
@@ -44,6 +45,11 @@ export function RobotProvider({ children, authToken = null, authReady = true }) 
   const [telemetry, setTelemetry] = useState(null)
   const [detections, setDetections] = useState([])
   const [picks, setPicks] = useState([])
+  // SLAM demo: local frozen+navigable map feed for when there is no live hub
+  // (deployed site). Operator-toggled; routes nav_goal to the demo, not a socket.
+  const [demo, setDemo] = useState(false)
+  const demoRef = useRef(false)
+  demoRef.current = demo
 
   useEffect(() => {
     const offs = [
@@ -69,6 +75,7 @@ export function RobotProvider({ children, authToken = null, authReady = true }) 
     socketRef.current = socket
     socket.on('connect', () => setConnected(true))
     socket.on('disconnect', () => setConnected(false))
+    const SLAM_EVENTS = new Set(['lidar_scan', 'slam_map', 'slam_pose', 'nav_path'])
     for (const ev of [
       'telemetry',
       'detection',
@@ -76,22 +83,36 @@ export function RobotProvider({ children, authToken = null, authReady = true }) 
       'lidar_scan',
       'slam_map',
       'slam_pose',
+      'nav_path',
       'nl_action',
       'fleet',
     ]) {
-      socket.on(ev, (payload) => bus.push(ev, payload))
+      socket.on(ev, (payload) => {
+        // While the local SLAM demo is on it owns the map: drop live slam_* so the
+        // two feeds don't fight (the demo is meant for the no-hub deployment).
+        if (demoRef.current && SLAM_EVENTS.has(ev)) return
+        bus.push(ev, payload)
+      })
     }
     return () => socket.disconnect()
   }, [bus, authReady, authToken])
 
+  // Demo feed lives alongside the socket: when on, it pushes slam_* into the bus.
+  useEffect(() => {
+    if (!demo) return undefined
+    return startSlamDemo(bus)
+  }, [bus, demo])
+
   const emit = useCallback((event, payload = {}) => {
-    if (SIM) bus.onCommand?.(event, payload)
+    if (SIM || demoRef.current) bus.onCommand?.(event, payload)
     else socketRef.current?.emit(event, payload)
   }, [bus])
 
+  const toggleDemo = useCallback(() => setDemo((d) => !d), [])
+
   const value = useMemo(
-    () => ({ connected, sim: SIM, telemetry, detections, picks, emit, bus }),
-    [connected, telemetry, detections, picks, emit, bus],
+    () => ({ connected, sim: SIM, demo, toggleDemo, telemetry, detections, picks, emit, bus }),
+    [connected, demo, toggleDemo, telemetry, detections, picks, emit, bus],
   )
   return <RobotContext.Provider value={value}>{children}</RobotContext.Provider>
 }

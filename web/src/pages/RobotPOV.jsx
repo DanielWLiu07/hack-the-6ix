@@ -167,20 +167,32 @@ export default function RobotPOV() {
   })
   // ?edit=1 turns the machine-fringe into a 3D-prop editor on the cam tab (drag
   // props, tweak, add from the palette, copy the layout back to fringeProps.js).
+  // Fringe editor is a local-dev tool only: `import.meta.env.DEV` is false in
+  // production builds, so ?edit=1 does nothing on the deployed site (no editor
+  // panel, no drag handles - the fringe stays locked for the main deployment).
   const editFringe =
-    new URLSearchParams(window.location.search).has('edit') && tab === 'cam'
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).has('edit') &&
+    tab === 'cam'
   const [isFs, setIsFs] = useState(false)
-  // Machine-fringe height: how far the top/side machine models hang into the
-  // frame. The HUD slider sets it and it persists. 1 = fully shown, 0 = tucked
-  // off-screen (the old "cleared" look). No auto-hide - the fringe stays put at
-  // whatever height you choose.
-  const [fringeHeight, setFringeHeight] = useState(() => {
-    const v = parseFloat(localStorage.getItem('pov-fringe-height') ?? '1')
-    return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1
+  // Machine-fringe spread: independent up/down split of the deco. Two HUD
+  // sliders, both persist. 0 = baked layout; UP lifts the top cluster, DOWN
+  // drops the bottom cluster, by that many world units - independently.
+  const [fringeUp, setFringeUp] = useState(() => {
+    const v = parseFloat(localStorage.getItem('pov-fringe-up') ?? '0.45')
+    return Number.isFinite(v) ? Math.max(0, Math.min(5, v)) : 0.45
+  })
+  const [fringeDown, setFringeDown] = useState(() => {
+    const v = parseFloat(localStorage.getItem('pov-fringe-down') ?? '0.2')
+    return Number.isFinite(v) ? Math.max(0, Math.min(5, v)) : 0.2
   })
   useEffect(() => {
-    localStorage.setItem('pov-fringe-height', String(fringeHeight))
-  }, [fringeHeight])
+    localStorage.setItem('pov-fringe-up', String(fringeUp))
+  }, [fringeUp])
+  useEffect(() => {
+    localStorage.setItem('pov-fringe-down', String(fringeDown))
+  }, [fringeDown])
+  const [spreadCopied, setSpreadCopied] = useState(false)
 
   // Live gate. OFF by default so no socket-sourced data (which may be a stand-in
   // robot / camera test pattern, indistinguishable from real hardware here)
@@ -270,7 +282,7 @@ export default function RobotPOV() {
   }
 
   return (
-    <div className={`pov-root ${fringeHeight < 0.1 ? 'decluttered' : ''}`} ref={rootRef}>
+    <div className="pov-root" ref={rootRef}>
       <ArrivalFuzz />
       <BackToStage />
    {/* active sensor view */}
@@ -283,7 +295,7 @@ export default function RobotPOV() {
           WebGL context in THIS document: the camera tab has no 3D canvas, and
           both the SLAM and iPhone tabs render their 3D inside isolated iframes
           (/pov-slam and phone.html), each with its own context. */}
-      <RobotFringe edit={editFringe} reveal={fringeHeight} />
+      <RobotFringe edit={editFringe} spreadUp={fringeUp} spreadDown={fringeDown} />
 
    {/* HUD */}
       <div className="pov-hud">
@@ -386,18 +398,43 @@ export default function RobotPOV() {
             </div>
 
             <div className="pov-top-r">
-              <label className="pov-fringe-h" title="Machine-fringe height">
-                <span className="lab">FRINGE</span>
+              <label className="pov-fringe-h" title="Lift the top deco up">
+                <span className="lab">UP</span>
                 <input
                   type="range"
                   min="0"
-                  max="1"
-                  step="0.01"
-                  value={fringeHeight}
-                  onChange={(e) => setFringeHeight(parseFloat(e.target.value))}
+                  max="5"
+                  step="0.05"
+                  value={fringeUp}
+                  onChange={(e) => setFringeUp(parseFloat(e.target.value))}
                 />
-                <span className="val">{Math.round(fringeHeight * 100)}</span>
+                <span className="val">{fringeUp.toFixed(1)}</span>
               </label>
+              <label className="pov-fringe-h" title="Drop the bottom deco down">
+                <span className="lab">DOWN</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="5"
+                  step="0.05"
+                  value={fringeDown}
+                  onChange={(e) => setFringeDown(parseFloat(e.target.value))}
+                />
+                <span className="val">{fringeDown.toFixed(1)}</span>
+              </label>
+              <button
+                className="pov-fs"
+                onClick={() => {
+                  navigator.clipboard
+                    ?.writeText(`up ${fringeUp.toFixed(2)}  down ${fringeDown.toFixed(2)}`)
+                    .catch(() => {})
+                  setSpreadCopied(true)
+                  setTimeout(() => setSpreadCopied(false), 1200)
+                }}
+                title="Copy the current UP / DOWN spread values"
+              >
+                {spreadCopied ? 'COPIED' : 'COPY'}
+              </button>
               <button className="pov-fs" onClick={toggleFs} title="Fullscreen">
                 {isFs ? 'EXIT FS' : 'FULL'}
               </button>

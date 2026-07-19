@@ -206,3 +206,27 @@ code {
   box-shadow: 0 4px 18px rgba(212, 72, 58, 0.35);
 }
 .lv-nav-stop:hover { background: #c33f32; }
+
+/* DEMO toggle (bottom-left): play a local SLAM demo when no live hub. */
+.lv-demo {
+  position: absolute;
+  left: 16px;
+  bottom: 18px;
+  z-index: 7;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  font: 700 11px/1 ui-monospace, Menlo, monospace;
+  letter-spacing: 0.12em;
+  color: #4a453c;
+  background: rgba(255, 253, 248, 0.92);
+  border: 1px solid rgba(17, 16, 13, 0.16);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(17, 16, 13, 0.12);
+}
+.lv-demo:hover { border-color: rgba(17, 16, 13, 0.3); }
+.lv-demo-dot { width: 8px; height: 8px; border-radius: 50%; background: #9a938a; }
+.lv-demo.on { color: #1f5f8b; border-color: #2f7db0; }
+.lv-demo.on .lv-demo-dot { background: #2f7db0; box-shadow: 0 0 7px #2f7db0; }
