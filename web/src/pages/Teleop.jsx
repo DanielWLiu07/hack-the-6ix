@@ -1,8 +1,31 @@
 import { Component, Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { io } from 'socket.io-client'
 import { useRobot, useRobotEvent } from '../lib/robot.jsx'
 import BackToStage from '../components/BackToStage.jsx'
 import ArrivalFuzz from '../components/ArrivalFuzz.jsx'
 import './teleop.css'
+
+// The rover's OWN drive server (App Lab web_ui on the Uno Q). Drive/estop/clear
+// go straight here - self-contained on the robot, no laptop hub / robot_node in
+// the path. Everything else (pick, voice) still uses the hub via useRobot().
+// Override the address with VITE_BOARD_URL if the board's IP changes.
+const BOARD_URL = import.meta.env.VITE_BOARD_URL || 'http://100.111.103.46:7000'
+
+// Direction inversion, matched to the working standalone page: BOTH true means
+// the whole robot was mirrored (up drove backward AND turning was reversed).
+// Flip a flag if only one axis is wrong.
+const INVERT_THROTTLE = true
+const INVERT_STEER = true
+
+// Re-mix an (l,r) pair through the inversion so it's identical for gamepad,
+// keyboard and on-screen sources. thr = forward/back, str = turn.
+function applyInvert(l, r) {
+  let thr = (l + r) / 2
+  let str = (l - r) / 2
+  if (INVERT_THROTTLE) thr = -thr
+  if (INVERT_STEER) str = -str
+  return [clamp1(thr + str), clamp1(thr - str)]
+}
 
 const SpeechRecognitionCtor =
   typeof window !== 'undefined'
@@ -180,7 +203,7 @@ function _ControllerCallouts({ buttons, sticks }) {
 }
 
 function TeleopInner() {
-  const { emit, connected, sim } = useRobot()
+  const { emit } = useRobot()
   const [padName, setPadName] = useState(null)
   const [pairStatus, setPairStatus] = useState('idle')
   const [sticks, setSticks] = useState({ l: 0, r: 0 })
@@ -192,7 +215,10 @@ function TeleopInner() {
   const [listening, setListening] = useState(false)
   const [voiceText, setVoiceText] = useState(null)
   const [voiceAction, setVoiceAction] = useState(null)
+  const [boardConnected, setBoardConnected] = useState(false)
+  const [requireDeadman, setRequireDeadman] = useState(true)
   const recognitionRef = useRef(null)
+  const boardRef = useRef(null) // dedicated socket to the rover's own drive server
 
   const heldRef = useRef({ l: 0, r: 0 }) // on-screen button drive
   const keysRef = useRef(new Set()) // currently-held keyboard codes
@@ -201,11 +227,15 @@ function TeleopInner() {
   const padIndexRef = useRef(null)
   const estoppedRef = useRef(false)
   estoppedRef.current = estopped
+  const requireDeadmanRef = useRef(true) // read fresh inside the fixed control loop
+  requireDeadmanRef.current = requireDeadman
+  const tickRef = useRef(0) // throttles UI re-renders below the emit rate
   // live input state consumed by the rigged 3D controller (written every tick)
   const inputRef = useRef({ lx: 0, ly: 0, rx: 0, ry: 0, btn: {} })
   // latest action handlers, so the keydown listener never goes stale
   const actionsRef = useRef({})
 
+  const boardEmit = (ev, payload = {}) => boardRef.current?.emit(ev, payload)
   const doPick = (target) => {
     emit('pick', { target })
     setLastAction(`pick -> ${target}`)
@@ -214,13 +244,35 @@ function TeleopInner() {
     setEstopped(true)
     emit('estop', {})
     emit('drive', { l: 0, r: 0 })
+    boardEmit('estop', {})            // stop the real rover at the MCU
+    boardEmit('drive', { l: 0, r: 0 })
     setLastAction('ESTOP')
   }
   const clearEstop = () => {
     setEstopped(false)
+    boardEmit('clear', {})            // actually clear the MCU e-stop (was client-only before)
     setLastAction('estop cleared (drive re-enabled)')
   }
   actionsRef.current = { doPick, doEstop, clearEstop }
+
+  // Dedicated socket to the rover's own drive server (App Lab web_ui on the Uno
+  // Q). This is the path that actually moves the motors; the hub is no longer in
+  // the loop for driving.
+  useEffect(() => {
+    // Connect SAME-ORIGIN through the Vite dev proxy (see vite.config.js): the
+    // browser talks to :5173/rover-io, Vite forwards it to the board's socket.io
+    // server-side. This avoids the board's broken cross-origin CORS. polling-first
+    // so the handshake negotiates before the websocket upgrade.
+    const socket = io({ path: '/rover-io', transports: ['polling', 'websocket'] })
+    boardRef.current = socket
+    socket.on('connect', () => setBoardConnected(true))
+    socket.on('disconnect', () => setBoardConnected(false))
+    return () => {
+      try { socket.emit('drive', { l: 0, r: 0 }) } catch { /* ignore */ }
+      socket.disconnect()
+      boardRef.current = null
+    }
+  }, [])
 
   // Voice commands via the browser Web Speech API (no external service). The
   // transcript is sent to the hub as nl_command; FarmHand's parsed reply comes
@@ -385,8 +437,13 @@ function TeleopInner() {
         ly = -dz(pad.axes[1] ?? 0)
         rx = dz(pad.axes[2] ?? 0)
         ry = -dz(pad.axes[3] ?? 0)
-        gl = ly
-        gr = ry
+        // Split-stick (PS5): LEFT stick Y = throttle (fwd/back), RIGHT stick X =
+        // steer (left/right). Inversion is applied once to the final command.
+        gl = clamp1(ly + rx)
+        gr = clamp1(ly - rx)
+        // Deadman: only drive while R2 (buttons[7]) is held, unless disabled.
+        const r2 = pad.buttons[7]?.value ?? (pad.buttons[7]?.pressed ? 1 : 0)
+        if (requireDeadmanRef.current && r2 < 0.15) { gl = 0; gr = 0 }
         gpDriving = gl !== 0 || gr !== 0
         const val = (i) => pad.buttons[i]?.value ?? (pad.buttons[i]?.pressed ? 1 : 0)
         gbtn.cross = val(0); gbtn.circle = val(1); gbtn.square = val(2); gbtn.triangle = val(3)
@@ -438,12 +495,22 @@ function TeleopInner() {
 
 
       if (estoppedRef.current) { l = 0; r = 0; if (src !== 'idle') src = 'estop' }
-      setSticks({ l, r })
-      setDriveSrc(estoppedRef.current ? 'estop' : src)
-      emit('drive', { l: +l.toFixed(2), r: +r.toFixed(2) })
-    }, 100)
+      // One inversion for every input source, so up = forward everywhere.
+      ;[l, r] = applyInvert(l, r)
+      const drive = { l: +l.toFixed(2), r: +r.toFixed(2) }
+      boardRef.current?.emit('drive', drive) // the real rover (its own server)
+      emit('drive', drive)                   // hub/sim too (harmless if nothing there)
+      // The emit is cheap; the React state updates re-render, so refresh the
+      // readout ~10 Hz while still commanding at 30 Hz.
+      tickRef.current = (tickRef.current + 1) % 3
+      if (tickRef.current === 0) {
+        setSticks({ l, r })
+        setDriveSrc(estoppedRef.current ? 'estop' : src)
+      }
+    }, 33)
     return () => {
       clearInterval(id)
+      boardRef.current?.emit('drive', { l: 0, r: 0 })
       emit('drive', { l: 0, r: 0 })
     }
   }, [emit]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -475,8 +542,8 @@ function TeleopInner() {
         <span className="teleop-kicker">FARMLAND // REMOTE PILOT</span>
         <h1>DUALSENSE TELEOP</h1>
       </header>
-      {!connected && !sim && (
-        <p className="teleop-offline">Server offline. Commands will not reach the robot.</p>
+      {!boardConnected && (
+        <p className="teleop-offline">Rover link down ({BOARD_URL}). Drive commands will not reach the robot — is the teleop app running on the Uno Q?</p>
       )}
       <section className="teleop-scene" aria-label="Live controller scene">
         <ModelBoundary stage>
@@ -535,8 +602,19 @@ function TeleopInner() {
             <button className="pair-controller" onClick={pairController}>
               {pairStatus === 'searching' ? 'Press a PS5 button...' : padName ? 'Controller paired' : 'Pair PS5 controller'}
             </button>
+            <span className={boardConnected ? 'on' : 'off'}>
+              {boardConnected ? '● rover link up' : '○ rover link down'}
+            </span>
+            <label style={{ display: 'inline-flex', gap: '.4rem', alignItems: 'center' }}>
+              <input
+                type="checkbox"
+                checked={requireDeadman}
+                onChange={(e) => setRequireDeadman(e.target.checked)}
+              />
+              hold R2 (deadman)
+            </label>
             <span>
-              L {sticks.l.toFixed(2)} · R {sticks.r.toFixed(2)} · drive @ 10 Hz
+              L {sticks.l.toFixed(2)} · R {sticks.r.toFixed(2)} · drive @ 30 Hz
             </span>
             <span>last: {lastAction ?? '-'}</span>
             {voiceText && (

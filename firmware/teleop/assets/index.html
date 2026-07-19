@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Rover Teleop</title>
+<style>
+  :root {
+    --bg:#0d1117; --panel:#161b22; --line:#30363d; --txt:#e6edf3; --muted:#8b949e;
+    --ok:#2ea043; --warn:#d29922; --stop:#f85149; --accent:#388bfd;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--txt);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }
+  body { display:flex; flex-direction:column; gap:12px; padding:14px; max-width:760px; margin:0 auto; }
+  h1 { font-size:18px; margin:0; letter-spacing:1px; }
+  .row { display:flex; gap:12px; flex-wrap:wrap; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .grow { flex:1 1 200px; }
+  .k { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+  .v { font-size:16px; margin-top:2px; }
+  .big { font-size:26px; font-weight:700; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--muted); margin-right:6px; vertical-align:middle; }
+  .dot.on { background:var(--ok); } .dot.off { background:var(--stop); } .dot.warn{ background:var(--warn); }
+  #state.IDLE { color:var(--muted); } #state.DRIVE { color:var(--ok); } #state.ESTOP { color:var(--stop); }
+  .bars { display:flex; gap:10px; }
+  .bar { flex:1; height:120px; background:#0b0f14; border:1px solid var(--line); border-radius:8px; position:relative; overflow:hidden; }
+  .bar > i { position:absolute; left:0; right:0; height:50%; background:var(--accent); transition:none; }
+  .bar > i.neg { background:var(--warn); }
+  .bar > .mid { position:absolute; left:0; right:0; top:50%; height:1px; background:var(--line); }
+  .bar > span { position:absolute; bottom:4px; left:0; right:0; text-align:center; font-size:12px; color:var(--muted); }
+  button { font:inherit; color:var(--txt); background:#21262d; border:1px solid var(--line);
+    border-radius:8px; padding:12px 14px; cursor:pointer; }
+  button:active { transform:translateY(1px); }
+  .estop { background:var(--stop); border-color:#b62324; color:#fff; font-weight:700; flex:2; }
+  .clear { background:#1f6feb; border-color:#1158c7; color:#fff; flex:1; }
+  label.chk { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:13px; }
+  input[type=range]{ width:100%; }
+  /* on-screen touch pad */
+  #pad { touch-action:none; height:180px; background:#0b0f14; border:1px solid var(--line);
+    border-radius:12px; position:relative; }
+  #stick { position:absolute; width:64px; height:64px; margin:-32px 0 0 -32px; border-radius:50%;
+    background:var(--accent); left:50%; top:50%; opacity:.85; }
+  .hint { color:var(--muted); font-size:12px; line-height:1.5; }
+  kbd { background:#21262d; border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:1px 6px; font-size:12px; }
+</style>
+</head>
+<body>
+  <h1>🚜 ROVER TELEOP</h1>
+
+  <div class="row">
+    <div class="card grow">
+      <div class="k">link</div>
+      <div class="v"><span id="linkDot" class="dot"></span><span id="link">connecting…</span></div>
+    </div>
+    <div class="card grow">
+      <div class="k">controller</div>
+      <div class="v"><span id="padDot" class="dot"></span><span id="pad-name">none — use touch / keys</span></div>
+    </div>
+    <div class="card grow">
+      <div class="k">state</div>
+      <div class="big"><span id="state" class="IDLE">IDLE</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k" style="margin-bottom:8px;">left / right output</div>
+    <div class="bars">
+      <div class="bar"><div class="mid"></div><i id="barL"></i><span>L <b id="valL">0.00</b></span></div>
+      <div class="bar"><div class="mid"></div><i id="barR"></i><span>R <b id="valR">0.00</b></span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="align-items:center; justify-content:space-between;">
+      <label class="chk"><input type="checkbox" id="deadman" checked /> require deadman (hold R2 / touch / key)</label>
+      <div class="v"><span id="armDot" class="dot"></span><span id="arm">disarmed</span></div>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="k">speed cap <b id="capv">100%</b></div>
+      <input type="range" id="cap" min="20" max="100" value="100" />
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="k" style="margin-bottom:6px;">touch drive (drag) — release to stop</div>
+    <div id="pad"><div id="stick"></div></div>
+  </div>
+
+  <div class="row">
+    <button class="estop" id="btnEstop">■ E-STOP</button>
+    <button class="clear" id="btnClear">clear</button>
+  </div>
+
+  <div class="card hint">
+    <b>Left stick</b> = forward / back, <b>right stick</b> = turn left / right (PS5 split-stick).
+    Hold <kbd>R2</kbd> as deadman. <kbd>○</kbd> e-stop, <kbd>✕</kbd> clear. Keyboard:
+    <kbd>W</kbd>/<kbd>S</kbd> throttle, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>Space</kbd> e-stop.
+    Battery must be ON for the wheels to move.
+  </div>
+
+<script src="/socket.io.min.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const clamp = (v,a=-1,b=1) => Math.max(a, Math.min(b, v));
+  const dz = v => Math.abs(v) < 0.12 ? 0 : v;
+
+  // ---- control config -------------------------------------------------------
+  // Split-stick (PS5): LEFT stick Y = throttle (fwd/back), RIGHT stick X = steer.
+  // Direction inversion is applied to the FINAL command so it's consistent
+  // across gamepad, touch and keyboard. Both true = whole robot was mirrored
+  // (up drove backward AND turning was reversed). Flip a flag + refresh if wrong.
+  const INVERT_THROTTLE = true;   // left stick up should drive FORWARD
+  const INVERT_STEER    = true;   // right stick right should turn RIGHT
+
+  // ---- socket.io to this same origin (served by the Uno Q) ----
+  const socket = io({ transports:["websocket","polling"] });
+  let linked = false;
+  socket.on("connect",    () => { linked=true;  setLink(true);  });
+  socket.on("disconnect", () => { linked=false; setLink(false); });
+  socket.on("status", s => {
+    const el = $("state"); el.textContent = s.state; el.className = s.state;
+  });
+  function setLink(ok){
+    $("linkDot").className = "dot " + (ok?"on":"off");
+    $("link").textContent = ok ? "connected" : "disconnected";
+  }
+
+  // ---- input state ----
+  let cap = 1.0;
+  $("cap").oninput = e => { cap = e.target.value/100; $("capv").textContent = e.target.value+"%"; };
+  let requireDeadman = true;
+  $("deadman").onchange = e => requireDeadman = e.target.checked;
+
+  // touch pad -> {x,y} in [-1,1], active while dragging
+  const pad = $("pad"), stick = $("stick");
+  let touch = { active:false, x:0, y:0 };
+  function padXY(ev){
+    const r = pad.getBoundingClientRect();
+    const p = ev.touches ? ev.touches[0] : ev;
+    const x = clamp(((p.clientX - r.left)/r.width)*2 - 1);
+    const y = clamp(((p.clientY - r.top)/r.height)*2 - 1);
+    return { x, y };
+  }
+  function padMove(ev){ if(!touch.active) return; const {x,y}=padXY(ev);
+    touch.x=x; touch.y=y; stick.style.left=(50+x*45)+"%"; stick.style.top=(50+y*45)+"%"; ev.preventDefault(); }
+  function padEnd(){ touch.active=false; touch.x=touch.y=0; stick.style.left="50%"; stick.style.top="50%"; }
+  pad.addEventListener("pointerdown", e=>{ touch.active=true; padMove(e); pad.setPointerCapture(e.pointerId); });
+  pad.addEventListener("pointermove", padMove);
+  pad.addEventListener("pointerup", padEnd);
+  pad.addEventListener("pointercancel", padEnd);
+
+  // keyboard
+  const keys = {};
+  addEventListener("keydown", e => {
+    if (e.code === "Space"){ estop(); e.preventDefault(); return; }
+    keys[e.code] = true;
+  });
+  addEventListener("keyup", e => { keys[e.code] = false; });
+  function keyVec(){
+    let f=0,t=0;
+    if (keys.KeyW||keys.ArrowUp) f+=1;
+    if (keys.KeyS||keys.ArrowDown) f-=1;
+    if (keys.KeyA||keys.ArrowLeft) t-=1;
+    if (keys.KeyD||keys.ArrowRight) t+=1;
+    return { f, t, active:(f||t)!==0 };
+  }
+
+  // gamepad
+  let padName = "";
+  addEventListener("gamepadconnected", e => { padName = e.gamepad.id; });
+  addEventListener("gamepaddisconnected", () => { padName = ""; });
+  function readGamepad(){
+    const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+    let gp = null;
+    for (const g of gps) if (g){ gp = g; break; }
+    if (!gp){ setPad(false, padName); return null; }
+    setPad(true, gp.id);
+    // Standard gamepad mapping (PS5 DualSense in Chrome): axes = [LX,LY,RX,RY].
+    const ly = dz(gp.axes[1] || 0);          // LEFT stick Y -> throttle (up = negative)
+    const rx = dz(gp.axes[2] || 0);          // RIGHT stick X -> steer (right = positive)
+    const r2 = gp.buttons[7] ? gp.buttons[7].value : 0;   // R2 analog (standard)
+    const cross  = gp.buttons[0] && gp.buttons[0].pressed;
+    const circle = gp.buttons[1] && gp.buttons[1].pressed;
+    return { f:-ly, t:rx, r2, cross, circle };   // up = forward, right = turn right
+  }
+  function setPad(ok, name){
+    $("padDot").className = "dot " + (ok?"on":"off");
+    $("pad-name").textContent = ok ? (name||"gamepad").slice(0,28) : "none — use touch / keys";
+  }
+
+  // ---- edge-detect buttons ----
+  let prevCross=false, prevCircle=false, prevSpace=false;
+
+  // ---- main loop ~33 Hz ----
+  let estopped = false;
+  function estop(){ estopped=true; socket.emit("estop",{}); }
+  function clearEstop(){ estopped=false; socket.emit("clear",{}); }
+  $("btnEstop").onclick = estop;
+  $("btnClear").onclick = clearEstop;
+
+  function setArmed(on){
+    $("armDot").className = "dot " + (on?"on":"warn");
+    $("arm").textContent = on ? "ARMED" : "disarmed";
+  }
+
+  function tick(){
+    let f=0, t=0, armed=false;
+    const gp = readGamepad();
+
+    if (gp){
+      if (gp.circle && !prevCircle) estop();
+      if (gp.cross && !prevCross) clearEstop();
+      prevCircle = gp.circle; prevCross = gp.cross;
+      const deadman = !requireDeadman || gp.r2 > 0.15;
+      if (deadman){ f = gp.f; t = gp.t; armed = true; }
+    }
+    // touch overrides/augments when dragging (its own deadman = touching)
+    if (touch.active){ f = -touch.y; t = touch.x; armed = true; }
+    // keyboard (holding a key = deadman)
+    const kv = keyVec();
+    if (kv.active){ f = kv.f; t = kv.t; armed = true; }
+
+    // Direction inversion (applied to every input source so it stays consistent).
+    if (INVERT_THROTTLE) f = -f;
+    if (INVERT_STEER)    t = -t;
+
+    let l=0, r=0;
+    if (armed && !estopped){
+      l = clamp(f + t) * cap;
+      r = clamp(f - t) * cap;
+    }
+    setArmed(armed && !estopped);
+
+    if (linked) socket.emit("drive", { l:+l.toFixed(3), r:+r.toFixed(3) });
+    paint(l, r);
+    requestAnimationFrame(tick);
+  }
+
+  function paint(l, r){
+    $("valL").textContent = l.toFixed(2);
+    $("valR").textContent = r.toFixed(2);
+    for (const [v, bar] of [[l,"barL"],[r,"barR"]]){
+      const el = $(bar), mag = Math.min(Math.abs(v),1)*50;
+      el.className = v<0 ? "neg" : "";
+      if (v>=0){ el.style.bottom="50%"; el.style.top="auto"; el.style.height=mag+"%"; }
+      else { el.style.top="50%"; el.style.bottom="auto"; el.style.height=mag+"%"; }
+    }
+  }
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
