@@ -161,7 +161,8 @@ code {
 .lv-nav {
   position: absolute;
   left: 50%;
-  bottom: 18px;
+  /* the POV page's bottom control bar overlays the lowest ~110px of the iframe */
+  bottom: 126px;
   transform: translateX(-50%);
   z-index: 6;
   display: flex;
@@ -211,7 +212,8 @@ code {
 .lv-demo {
   position: absolute;
   left: 16px;
-  bottom: 18px;
+  /* keep clear of the POV page's bottom control bar (see .lv-nav) */
+  bottom: 126px;
   z-index: 7;
   display: inline-flex;
   align-items: center;
