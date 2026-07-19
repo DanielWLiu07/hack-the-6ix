@@ -30,7 +30,8 @@ from . import config
 from .camera import CVCamera, MockCamera
 from .detector import load_detector
 from .poses import PoseStore
-from .state_machine import ESTOP, IDLE, PickStateMachine
+from .state_machine import (
+    ALIGN, ESTOP, IDLE, SEEK, PickStateMachine, zone_region)
 
 # Demo command modes:
 #   "auto"  - autonomous: continuously SEEK/PICK/SORT on its own (autostart).
@@ -193,11 +194,12 @@ class RobotNode:
             if self._recent_nl():
                 return
             target = (data or {}).get("target", "nearest")
+            zone = (data or {}).get("zone")
             with self._lock:
-                self._present_mock_fruit(fruit=target)
+                self._present_mock_fruit(fruit=target, zone=zone)
                 # await: one pick then idle. auto: retarget ongoing picking.
                 self.sm.continuous = (self.command_mode == AUTO)
-                self.sm.start(target)
+                self.sm.start(target, zone=zone)
 
         @sio.on("estop")
         def on_estop(_data=None):
@@ -217,17 +219,44 @@ class RobotNode:
             autostart = bool((data or {}).get("autostart", True))
             self._apply_mode(AUTO if autostart else AWAIT, announce=True)
 
+        @sio.on("set_zone")
+        def on_set_zone(data):
+            """Zone from the web 3D view (drag) or a named zone. Restricts where
+            the robot looks/picks. Payload (any of):
+              {"zone": "left"|"right"|"high"|"low"|"any"}
+              {"region": {"yaw": [min,max], "pitch": [min,max]}}   # arm degrees
+              {"yaw": [min,max], "pitch": [min,max]}               # shorthand
+            (Needs server-core to relay `set_zone` to robots, same as set_mode.)
+            """
+            data = data or {}
+            zone = data.get("zone")
+            region = data.get("region")
+            if region is None and ("yaw" in data or "pitch" in data):
+                region = {k: data[k] for k in ("yaw", "pitch") if k in data}
+            with self._lock:
+                self.sm.set_zone(zone=zone, region=region)
+                # if not mid-manipulation, present a target in the zone and seek it
+                if self.sm.state in (IDLE, SEEK, ALIGN):
+                    self._present_mock_fruit(zone=zone, region=region)
+                    self.sm.continuous = (self.command_mode == AUTO)
+                    self.sm.start(self.sm.target or "nearest",
+                                  zone=zone, region=region)
+            print(f"[node] set_zone {zone or region}")
+
         @sio.on("nl_action")
         def on_nl_action(data):
-            """Rich structured command from llm-client (carries ripeness)."""
+            """Rich structured command from llm-client (carries ripeness + zone)."""
             if not data or not data.get("ok"):
                 return
             action = data.get("action") or {}
             self._last_nl = time.monotonic()
             task = action.get("task")
+            zone = action.get("zone")
             with self._lock:
                 if task in ("stop",):
                     self.sm.estop()
+                elif task == "drive":
+                    self._nl_drive(zone)
                 elif task in ("pick", "sort"):
                     fruit = action.get("fruit")
                     filt = action.get("filter")
@@ -236,31 +265,63 @@ class RobotNode:
                         tgt["fruit"] = fruit
                     if filt and filt != "any":
                         tgt["ripeness"] = filt
-                    self._present_mock_fruit(fruit=fruit, ripeness=filt)
+                    self._present_mock_fruit(fruit=fruit, ripeness=filt, zone=zone)
                     # await: one pick then idle. auto: retarget ongoing picking.
                     self.sm.continuous = (self.command_mode == AUTO)
-                    self.sm.start(tgt or "nearest")
-            print(f"[node] nl_action {task} {action.get('fruit')}/{action.get('filter')} "
-                  f"[mode={self.command_mode}]")
+                    self.sm.start(tgt or "nearest", zone=zone)
+            print(f"[node] nl_action {task} {action.get('fruit')}/"
+                  f"{action.get('filter')} zone={zone} [mode={self.command_mode}]")
 
     _last_nl = 0.0
 
     def _recent_nl(self, window=0.75):
         return (time.monotonic() - self._last_nl) < window
 
-    def _present_mock_fruit(self, fruit=None, ripeness=None):
+    def _present_mock_fruit(self, fruit=None, ripeness=None, zone=None, region=None):
         """Sim only: place the requested fruit in the mock scene so a filtered
-        command has a matching target (as if the operator presented it). No-op
-        on real hardware (real camera sees whatever fruit is physically there).
-        Only presents when a specific fruit/ripeness is asked for; a plain
-        "nearest" command uses whatever is already in view.
+        or zoned command has a matching target (as if the operator presented it).
+        No-op on real hardware (real camera sees whatever is physically there).
+        Presents when a fruit/ripeness filter OR a zone is specified; a plain
+        "nearest" command with no zone uses whatever is already in view. The
+        fruit is placed at the zone's centre (base yaw / shoulder height) so
+        SEEK finds it inside the zone.
         """
         cam = self.sm.camera
+        if not hasattr(cam, "spawn_fruit"):
+            return
         f = fruit if fruit not in (None, "any", "nearest") else None
         r = ripeness if ripeness not in (None, "any") else None
-        if (f or r) and hasattr(cam, "spawn_fruit"):
-            cam.spawn_fruit(fruit=f, ripeness=r,
-                            near_joints=self.sm.poses.get("home"))
+        reg = zone_region(zone, region)
+        if not (f or r or reg):
+            return
+        near = list(self.sm.poses.get("home"))
+        if reg.get("yaw"):
+            near[0] = sum(reg["yaw"]) / 2.0
+        if reg.get("pitch"):
+            near[1] = sum(reg["pitch"]) / 2.0
+        cam.spawn_fruit(fruit=f, ripeness=r, near_joints=near)
+
+    def _nl_drive(self, zone):
+        """NL `drive` command: a brief pulse in the requested direction, then
+        auto-stop so the rover never runs away. forward/backward move; home and
+        anything else stop (no localization to navigate home in sim)."""
+        z = str(zone or "").lower()
+        l = r = 0.0
+        if z == "forward":
+            l = r = 0.6
+        elif z == "backward":
+            l = r = -0.6
+        if self.bridge_up:
+            self.bridge.set_drive(l, r)
+        if l or r:
+            t = threading.Timer(1.2, self._drive_stop)
+            t.daemon = True
+            t.start()
+
+    def _drive_stop(self):
+        with self._lock:
+            if self.bridge_up:
+                self.bridge.set_drive(0.0, 0.0)
 
     def _apply_mode(self, mode, announce=False):
         """Set the demo command mode and reconcile the state machine."""

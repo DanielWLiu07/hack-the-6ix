@@ -49,6 +49,28 @@ flip it over REST: `curl -XPOST localhost:3001/api/robot/mode -d '{"autostart":f
 The hub replays the last `set_mode` to a robot on reconnect, so a mid-demo toggle
 survives a robot restart.
 
+### Zones (pick only a section of the workspace)
+
+A command can be scoped to a zone, so the robot searches/picks only part of its
+reach. Zones are expressed on the arm's own axes (no IK/localization needed):
+
+- `yaw` sector -> left / right section (base yaw)
+- `pitch` band -> height, up / down (shoulder)
+
+Two ways to set a zone:
+
+1. **In the NL command** (works today): FarmHand emits `zone` in `nl_action`
+   (`any|left|right`, plus `forward|backward|home` for `task:drive`). "pick a
+   ripe apple on the left" -> the robot only sweeps the left sector.
+2. **Dragged on the web 3D view** via a `set_zone` event the robot honors:
+   `{"zone":"left"}` or `{"region":{"yaw":[95,150],"pitch":[105,155]}}` (arm
+   degrees). This needs server-core to relay `set_zone` to robots and
+   web-frontend to build the drag box - the robot side is done.
+
+In sim, a zoned/filtered command also presents a matching fruit at the zone's
+centre so there is always an in-zone target. `task:drive` with
+`forward`/`backward` pulses the rover ~1.2 s then auto-stops.
+
 ### Detector selection
 
 `load_detector()` prefers, in order: ONNX (`ml/ripeness/export/model.onnx` +

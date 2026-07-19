@@ -53,3 +53,15 @@ VERIFIED end-to-end through an isolated hub (fake ui + agent + REST toggle):
 - Phase 3 `POST /api/robot/mode {autostart:true}`: autonomous picking resumes live (+2 picks, SEEK/PICK/SORT).
 - Phase 4 `{autostart:false}`: picks stop, back to IDLE.
 Tests: 16/16 pass (added 5 for mode transitions, set_mode contract, one-shot await, fruit presentation, and estop-not-unlatched-by-mode). README documents the modes + operator toggle command. No processes left running; server-core :3001 untouched. Style-rule clean (no em dashes/emojis).
+
+## [20:58] DONE - per-zone commands: robot picks only a section of the workspace
+Human wants commands scoped to an orchard section ("pick ripe apples on the left"), and eventually a zone dragged on the web 3D view. Built the robot-side enforcement. A zone is expressed on the arm's own axes so the robot enforces it with no IK/localization: `yaw` sector (left/right) + `pitch` band (height, up/down). Named presets (`left`/`right`/`high`/`low`/`any`) cover FarmHand's NL zone names; an arbitrary `{yaw:[..],pitch:[..]}` region covers a dragged box.
+- `state_machine.py`: `zone_region()` resolver + `PickStateMachine.start(target, zone=, region=)` + `set_zone()`. SEEK now sweeps only inside the zone's yaw sector and holds the shoulder in the zone's height band, so out-of-zone fruit is never looked at.
+- `robot_node.py`: `nl_action.zone` -> zoned pick; new `set_zone` event handler for the web-drag path; `task:drive` (forward/backward/home) now handled (timed drive pulse, auto-stop); sim presents a matching fruit at the zone centre.
+
+VERIFIED: offline, a left-zone command picks a left fruit and a right-zone command picks a right fruit, while a left command with the fruit placed in the RIGHT sector picks NOTHING (0 picks - proves the restriction). End-to-end through the hub: await baseline 0 picks, then `nl_action{task:pick,fruit:apple,zone:left}` -> exactly 1 pick (node log `zone=left`). Zoned NL commands work TODAY (the hub already relays nl_action). Tests now 22/22.
+
+COORDINATION (two handoffs for the drag-on-the-page path; robot side is done):
+1. @server-core: please relay `set_zone` to robots, same one-liner as `set_mode` - add `'set_zone'` to CONTROL_EVENTS (index.js:64) so a UI/agent `set_zone` reaches robots. (Optionally replay the last one on connect like set_mode.) My robot handler is already listening.
+2. @web-frontend: the drag-a-zone-box feature on the 3D view is yours. Emit `set_zone` with EITHER `{"zone":"left|right|high|low|any"}` OR `{"region":{"yaw":[min,max],"pitch":[min,max]}}` in ARM DEGREES (base yaw 0-180, shoulder 0-180; home ~90). yaw = left/right sector, pitch = height. Omit an axis to leave it unbounded. The robot restricts SEEK/pick to that box. Happy to map screen coords -> arm degrees with you if the 3D frame differs.
+No processes left running; server-core :3001 untouched. Style-rule clean.

@@ -251,6 +251,76 @@ def test_await_mode_does_not_unlatch_estop():
     assert node.sm.state == ESTOP and b.estopped
 
 
+# zones (per-section: base-yaw sector + shoulder-height band)
+
+def test_zone_region_resolution():
+    from robot_linux.state_machine import zone_region
+    assert zone_region("left") == {"yaw": [95, 150]}
+    assert zone_region("right") == {"yaw": [30, 85]}
+    assert zone_region("high") == {"pitch": [105, 155]}
+    assert zone_region("any") == {}
+    assert zone_region("garbage") == {}
+    assert zone_region(region={"yaw": [100, 140], "pitch": [100, 130]}) == \
+        {"yaw": [100, 140], "pitch": [100, 130]}
+
+
+def test_seek_restricted_to_zone_yaw():
+    from robot_linux.state_machine import SEEK_SWEEP
+    sm, _, _ = _machine()
+    sm.start("nearest", zone="left")
+    assert all(95 <= w <= 150 for w in sm._seek_waypoints())
+    sm.start("nearest")                       # no zone -> full sweep
+    assert sm._seek_waypoints() == SEEK_SWEEP
+
+
+def _drive_zoned_pick(node, b, c, zone, present):
+    node.sm.speed = INSTANT
+    picks = []
+    node.sm.on_emit = lambda k, v: picks.append(v) if k == "pick_event" else None
+    if present == "in-zone":
+        node._present_mock_fruit(zone=zone)
+    else:                                     # place fruit in the opposite sector
+        home = list(node.sm.poses.get("home"))
+        home[0] = 57                          # right sector
+        c.spawn_fruit(near_joints=home)
+    node.sm.continuous = False
+    node.sm.start("nearest", zone=zone)
+    for _ in range(4000):
+        node.sm.tick()
+        b.heartbeat()
+        if node.sm.state == IDLE and picks:
+            break
+    return picks
+
+
+def test_zoned_command_picks_in_zone():
+    node, b, c = _node()
+    assert len(_drive_zoned_pick(node, b, c, "left", "in-zone")) == 1
+
+
+def test_zoned_command_ignores_out_of_zone_fruit():
+    node, b, c = _node()
+    # command LEFT, fruit is in the RIGHT sector -> never reached
+    picks = _drive_zoned_pick(node, b, c, "left", "out-of-zone")
+    assert len(picks) == 0
+
+
+def test_present_mock_fruit_in_zone():
+    node, b, c = _node()
+    node._present_mock_fruit(zone="left")
+    assert 80 <= c.fruit[3] <= 165           # base yaw inside left sector +- spread
+
+
+def test_nl_drive_pulses_then_stops():
+    node, b, c = _node()
+    node._nl_drive("forward")
+    assert b.get_drive()["l"] > 0 and b.get_drive()["r"] > 0
+    node._drive_stop()
+    assert b.get_drive() == {"l": 0.0, "r": 0.0}
+    node._nl_drive("home")                    # home/unknown -> no movement
+    assert b.get_drive() == {"l": 0.0, "r": 0.0}
+
+
 def test_mock_bridge_clamps_and_estops():
     b = MockBridge()
     b.move_servos([999, -5, 90, 90, 90], 0)

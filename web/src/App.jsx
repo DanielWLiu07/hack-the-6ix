@@ -2,7 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useRobot } from './lib/robot.jsx'
 import { drawStatic } from './lib/crtTuneIn.js'
-import { passwordLogin } from './lib/ropg.js'
+import { passwordLogin, signupRedirect } from './lib/ropg.js'
 import { useOperator, operatorLabel } from './lib/auth.jsx'
 import './App.css'
 

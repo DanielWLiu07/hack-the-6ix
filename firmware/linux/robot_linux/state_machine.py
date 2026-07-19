@@ -24,6 +24,29 @@ IDLE, SEEK, ALIGN, PICK, SORT, DROP, ESTOP = (
 SEEK_SWEEP = [90, 60, 120, 40, 140]
 SEEK_STEP_MS = 600
 
+# A zone restricts SEEK/pick to a sub-region of the arm workspace, expressed on
+# the arm's own axes so the robot enforces it directly (no IK/localization):
+#   "yaw":   [min, max] base-yaw sector  -> left/right section
+#   "pitch": [min, max] shoulder band    -> height (up/down)
+# Either axis is optional; missing = unbounded on that axis; {} = whole space.
+# Named presets cover the FarmHand NL zone names (left/right) plus height bands;
+# an arbitrary box (e.g. dragged on the web 3D view) is passed as a region dict.
+ZONE_PRESETS = {
+    "any": {}, "": {}, None: {},
+    "left":  {"yaw": [95, 150]},
+    "right": {"yaw": [30, 85]},
+    "high":  {"pitch": [105, 155]},
+    "low":   {"pitch": [45, 90]},
+}
+
+
+def zone_region(zone=None, region=None):
+    """Resolve a zone name and/or explicit region into a {yaw?, pitch?} dict."""
+    if region:
+        return {k: list(region[k]) for k in ("yaw", "pitch")
+                if isinstance(region.get(k), (list, tuple)) and len(region[k]) == 2}
+    return dict(ZONE_PRESETS.get(zone if zone in ZONE_PRESETS else "any", {}))
+
 
 class PickStateMachine:
     def __init__(self, bridge, camera, detector, poses, on_emit=None, speed=1.0):
@@ -36,6 +59,7 @@ class PickStateMachine:
 
         self.state = IDLE
         self.target = None           # {"fruit": ..., "ripeness": ...} filter
+        self.zone = {}               # active zone region {yaw?, pitch?}
         self.current_det = None      # Detection being pursued
         self.pick_started_ts = None
         self._ticks_in_state = 0
@@ -48,16 +72,30 @@ class PickStateMachine:
 
     # control
 
-    def start(self, target="nearest"):
-        """target: 'nearest'|'apple'|'banana' or dict {fruit, ripeness}."""
+    def start(self, target="nearest", zone=None, region=None):
+        """target: 'nearest'|'apple'|'banana' or dict {fruit, ripeness[, zone]}.
+
+        zone: a named zone (e.g. 'left'); region: an explicit {yaw?, pitch?} box
+        (e.g. dragged on the web 3D view). region wins over zone.
+        """
         if self.state == ESTOP:
             return
         if isinstance(target, str):
             self.target = {} if target in ("nearest", "any", "") else {"fruit": target}
         else:
-            self.target = {k: v for k, v in (target or {}).items()
-                           if v and v not in ("any", "nearest")}
+            d = target or {}
+            if zone is None:
+                zone = d.get("zone")
+            self.target = {k: v for k, v in d.items()
+                           if k in ("fruit", "ripeness") and v and v not in ("any", "nearest")}
+        self.zone = zone_region(zone, region)
+        self._sweep_i = 0            # restart the sweep inside the new zone
         self._transition(SEEK)
+
+    def set_zone(self, zone=None, region=None):
+        """Change the active zone without changing the fruit filter/state."""
+        self.zone = zone_region(zone, region)
+        self._sweep_i = 0
 
     def stop(self):
         self.target = None
@@ -141,6 +179,20 @@ class PickStateMachine:
                    DROP: self._tick_drop}[self.state]
         handler()
 
+    def _seek_waypoints(self):
+        """Base-yaw sweep points, restricted to the zone's yaw sector if set."""
+        r = self.zone.get("yaw")
+        if not r:
+            return SEEK_SWEEP
+        lo, hi = min(r), max(r)
+        mid = (lo + hi) / 2.0
+        return [mid, lo, hi, mid]     # scan across the sector
+
+    def _seek_shoulder(self):
+        """Shoulder angle to hold during SEEK to look inside the zone's height band."""
+        r = self.zone.get("pitch")
+        return (min(r) + max(r)) / 2.0 if r else None
+
     def _tick_seek(self):
         det = self._detect()
         if det is not None:
@@ -148,10 +200,14 @@ class PickStateMachine:
             self.pick_started_ts = time.time()
             self._transition(ALIGN)
             return
-        # sweep base yaw through waypoints until something shows up
+        # sweep base yaw (and hold shoulder in the height band) within the zone
         if not self.bridge.is_moving():
             joints = self.bridge.get_joints()
-            joints[0] = SEEK_SWEEP[self._sweep_i % len(SEEK_SWEEP)]
+            wps = self._seek_waypoints()
+            joints[0] = wps[self._sweep_i % len(wps)]
+            sh = self._seek_shoulder()
+            if sh is not None:
+                joints[1] = sh
             self._sweep_i += 1
             self.bridge.move_servos(joints, self._dur(SEEK_STEP_MS))
         if self._ticks_in_state > config.SEEK_MAX_TICKS:

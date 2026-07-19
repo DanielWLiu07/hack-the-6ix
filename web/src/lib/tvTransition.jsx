@@ -22,7 +22,11 @@ export function useTvTransition() {
 // swap the route behind it.
 const COVER_MS = 60
 const HOLD_MIN_MS = 120 // minimum cover so a fast mount does not snap-reveal
-const HOLD_FALLBACK_MS = 2200 // reveal anyway if the page never signals arrival
+// Reveal anyway if the page never signals arrival. Kept short: some destinations
+// (the landing at '/') do not render ArrivalFuzz and so never call arrived(), and
+// a long fallback would freeze the static over them. Pages that DO signal reveal
+// as soon as they mount, so this only bounds the never-signal case.
+const HOLD_FALLBACK_MS = 850
 const REVEAL_MS = 640 // then clears (fades) over the destination
 const EXIT_COVER_MS = 140 // exit: only bridge the mount, then let the TV static show
 
