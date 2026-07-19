@@ -4,6 +4,10 @@
 // single App Lab app owns both the wheels and the 4-servo arm.
 //
 //   DRIVE: BTS7960 dual-PWM (5/7/6/8), slew + deadband + 500 ms watchdog + estop.
+//          D5/D6/D8 share the servo timers (D5=TIM1_CH4 w/ gripper; D6=TIM3_CH4
+//          & D8=TIM3_CH1 w/ base), so they are driven by DIRECT compare-register
+//          writes at the same 50 Hz - NOT analogWrite, which would rewrite the
+//          timer period every tick and fight the servos (the old "dadadada").
 //   ARM:   4 servos direct GPIO (D3 base, D10 shoulder, D9 elbow, D11 gripper),
 //          NON-BLOCKING interpolation in the 20 ms tick so a pose move never
 //          stalls the drive loop or starves the heartbeat.
@@ -21,14 +25,22 @@ static const int PIN_R_LPWM = 8;   // RIGHT reverse PWM
 
 static const float DEADBAND      = 0.05f;
 static const int   MIN_PWM       = 70;
-static const float SLEW_PER_TICK = 0.08f;  // gentler accel/decel (was 0.20) - less jerk;
-                                           // full 0->1 in ~250 ms. Lower = softer.
+static const float SLEW_PER_TICK  = 0.08f;  // ACCEL rate: full 0->1 in ~250 ms.
+static const float DECEL_PER_TICK = 0.04f;  // DECEL rate: gentler stop, ~500 ms
+                                            // from full. Softer than accel so
+                                            // releasing the stick eases to a
+                                            // halt instead of ending abruptly.
 static const int   TICK_MS       = 20;
 static const float L_TRIM        = 1.00f;
 static const float R_TRIM        = 0.96f;
 static const int   L_INVERT      = 0;
 static const int   R_INVERT      = 0;
 static const unsigned long WATCHDOG_MS = 500;
+
+// Writes a drive pin's PWM. D5/D6/D8 go straight to their timer compare reg
+// (defined below, after the timer bases); D7 has no timer so it stays GPIO/
+// analogWrite. Forward-declared here because writeMotor() uses it.
+static void drivePwm(int pin, int duty);
 
 static float cmdL = 0, cmdR = 0;
 static float outL = 0, outR = 0;
@@ -47,25 +59,35 @@ static float clamp1(float v) { return v > 1.0f ? 1.0f : (v < -1.0f ? -1.0f : v);
 
 static void writeMotor(int rpwm, int lpwm, float v, int invert) {
   if (invert) v = -v;
-  if (v > -DEADBAND && v < DEADBAND) v = 0;
-  int pwm = (int)(fabsf(v) * 255.0f);
-  if (pwm > 255) pwm = 255;
-  if (pwm > 0 && pwm < MIN_PWM) pwm = MIN_PWM;
-  if (v > 0) { analogWrite(rpwm, pwm); analogWrite(lpwm, 0); }
-  else if (v < 0) { analogWrite(rpwm, 0); analogWrite(lpwm, pwm); }
-  else { analogWrite(rpwm, 0); analogWrite(lpwm, 0); }
+  float a = fabsf(v);
+  int pwm = 0;
+  // Proportional stiction floor: MIN_PWM is a BIAS, not a clamp. Old code
+  // floored |v|*255 to MIN_PWM, which collapsed the whole 0..27% throttle band
+  // onto one duty (no slow crawl, jolt off the line). Now the usable range maps
+  // linearly [DEADBAND..1] -> [MIN_PWM..255] so low speed is proportional.
+  if (a >= DEADBAND) {
+    float frac = (a - DEADBAND) / (1.0f - DEADBAND);   // 0..1 above deadband
+    pwm = MIN_PWM + (int)(frac * (255 - MIN_PWM));
+    if (pwm > 255) pwm = 255;
+  }
+  if (v > 0) { drivePwm(rpwm, pwm); drivePwm(lpwm, 0); }
+  else if (v < 0) { drivePwm(rpwm, 0); drivePwm(lpwm, pwm); }
+  else { drivePwm(rpwm, 0); drivePwm(lpwm, 0); }
 }
 
 static void motorsOff() {
   cmdL = cmdR = outL = outR = 0;
-  analogWrite(PIN_L_RPWM, 0); analogWrite(PIN_L_LPWM, 0);
-  analogWrite(PIN_R_RPWM, 0); analogWrite(PIN_R_LPWM, 0);
+  drivePwm(PIN_L_RPWM, 0); drivePwm(PIN_L_LPWM, 0);
+  drivePwm(PIN_R_RPWM, 0); drivePwm(PIN_R_LPWM, 0);
 }
 
 static float slew(float out, float cmd) {
   float d = cmd - out;
-  if (d >  SLEW_PER_TICK) d =  SLEW_PER_TICK;
-  if (d < -SLEW_PER_TICK) d = -SLEW_PER_TICK;
+  // Slowing down (target magnitude below current) uses the gentler decel rate;
+  // speeding up (incl. reversing away from 0) uses the accel rate.
+  float rate = (fabsf(cmd) < fabsf(out)) ? DECEL_PER_TICK : SLEW_PER_TICK;
+  if (d >  rate) d =  rate;
+  if (d < -rate) d = -rate;
   return out + d;
 }
 
@@ -101,17 +123,32 @@ static const int POSES[NUM_POSES][4] = {
 //   gripper=pin11=PB15=TIM1_CH3N (complementary). 160 MHz/160 -> 1 us tick, ARR 20000.
 #define REG(b, o) (*(volatile uint32_t *)((b) + (o)))
 #define O_CR1 0x00
+#define O_CCMR1 0x18
 #define O_EGR 0x14
 #define O_CCMR2 0x1C
 #define O_CCER 0x20
 #define O_PSC 0x28
 #define O_ARR 0x2C
+#define O_CCR1 0x34
 #define O_CCR3 0x3C
 #define O_CCR4 0x40
 #define O_BDTR 0x44
 #define TIM1_BASE 0x40012C00UL
 #define TIM3_BASE 0x40000400UL
 #define TIM4_BASE 0x40000800UL
+
+// Drive PWM via direct compare regs, scaled to the shared 50 Hz period (ARR
+// 19999). D7 has no timer channel on this variant -> plain analogWrite (GPIO
+// fallback), which is fine because it touches none of the servo timers.
+static void drivePwm(int pin, int duty) {
+  uint32_t ccr = (uint32_t)duty * 19999u / 255u;   // 0..255 -> 0..ARR
+  switch (pin) {
+    case PIN_L_RPWM: REG(TIM1_BASE, O_CCR4) = ccr; break;  // D5 PA11 TIM1_CH4
+    case PIN_R_RPWM: REG(TIM3_BASE, O_CCR4) = ccr; break;  // D6 PB1  TIM3_CH4
+    case PIN_R_LPWM: REG(TIM3_BASE, O_CCR1) = ccr; break;  // D8 PB4  TIM3_CH1
+    case PIN_L_LPWM: analogWrite(pin, duty); break;        // D7 PB2  no timer
+  }
+}
 
 static uint32_t degToUs(int deg) {
   return (uint32_t)SERVO_MIN_US + (uint32_t)deg * (SERVO_MAX_US - SERVO_MIN_US) / 180u;
@@ -133,22 +170,37 @@ static void armPwmBegin() {
   analogWrite(PIN_SERVO_SHOULDER, 90);
   analogWrite(PIN_SERVO_ELBOW, 90);
   analogWrite(PIN_SERVO_GRIPPER, 90);
+  analogWrite(PIN_L_RPWM, 0);           // D5 -> mux TIM1_CH4 (drive, shares gripper timer)
+  analogWrite(PIN_R_RPWM, 0);           // D6 -> mux TIM3_CH4 (drive, shares base timer)
+  analogWrite(PIN_R_LPWM, 0);           // D8 -> mux TIM3_CH1 (drive, shares base timer)
   delay(10);
-  // TIM3: base CH3 (normal)
+  // TIM3: base CH3 (servo) + D6 CH4 + D8 CH1 (drive) - one timer, all 50 Hz.
   REG(TIM3_BASE, O_CR1) &= ~1u; REG(TIM3_BASE, O_PSC) = 159; REG(TIM3_BASE, O_ARR) = 19999;
-  { uint32_t m = REG(TIM3_BASE, O_CCMR2); m &= ~0x00FFu; m |= (6u << 4) | (1u << 3); REG(TIM3_BASE, O_CCMR2) = m; }
-  REG(TIM3_BASE, O_CCER) |= (1u << 8); REG(TIM3_BASE, O_CR1) |= (1u << 7);
+  { uint32_t m = REG(TIM3_BASE, O_CCMR2);
+    m &= ~0x00FFu; m |= (6u << 4) | (1u << 3);        // CH3 base OC3M PWM1 + preload
+    m &= ~0xFF00u; m |= (6u << 12) | (1u << 11);      // CH4 D6   OC4M PWM1 + preload
+    REG(TIM3_BASE, O_CCMR2) = m; }
+  { uint32_t m = REG(TIM3_BASE, O_CCMR1);
+    m &= ~0x00FFu; m |= (6u << 4) | (1u << 3);        // CH1 D8   OC1M PWM1 + preload
+    REG(TIM3_BASE, O_CCMR1) = m; }
+  REG(TIM3_BASE, O_CCER) |= (1u << 8) | (1u << 12) | (1u << 0);   // CC3E + CC4E + CC1E
+  REG(TIM3_BASE, O_CR1) |= (1u << 7);
   REG(TIM3_BASE, O_EGR) = 1u; REG(TIM3_BASE, O_CR1) |= 1u;
-  // TIM4: elbow CH3 + shoulder CH4 (normal)
+  // TIM4: elbow CH3 + shoulder CH4 (servo only, no drive conflict)
   REG(TIM4_BASE, O_CR1) &= ~1u; REG(TIM4_BASE, O_PSC) = 159; REG(TIM4_BASE, O_ARR) = 19999;
   { uint32_t m = REG(TIM4_BASE, O_CCMR2); m &= ~0x00FFu; m |= (6u << 4) | (1u << 3);
     m &= ~0xFF00u; m |= (6u << 12) | (1u << 11); REG(TIM4_BASE, O_CCMR2) = m; }
   REG(TIM4_BASE, O_CCER) |= (1u << 8) | (1u << 12); REG(TIM4_BASE, O_CR1) |= (1u << 7);
   REG(TIM4_BASE, O_EGR) = 1u; REG(TIM4_BASE, O_CR1) |= 1u;
-  // TIM1: gripper CH3N (complementary, advanced -> needs MOE)
+  // TIM1: gripper CH3N (servo, complementary) + D5 CH4 (drive, normal). Advanced
+  // timer -> MOE required for any output.
   REG(TIM1_BASE, O_CR1) &= ~1u; REG(TIM1_BASE, O_PSC) = 159; REG(TIM1_BASE, O_ARR) = 19999;
-  { uint32_t m = REG(TIM1_BASE, O_CCMR2); m &= ~0x00FFu; m |= (6u << 4) | (1u << 3); REG(TIM1_BASE, O_CCMR2) = m; }
-  REG(TIM1_BASE, O_CCER) |= (1u << 10); REG(TIM1_BASE, O_BDTR) |= (1u << 15);
+  { uint32_t m = REG(TIM1_BASE, O_CCMR2);
+    m &= ~0x00FFu; m |= (6u << 4) | (1u << 3);        // CH3 gripper OC3M PWM1 + preload
+    m &= ~0xFF00u; m |= (6u << 12) | (1u << 11);      // CH4 D5      OC4M PWM1 + preload
+    REG(TIM1_BASE, O_CCMR2) = m; }
+  REG(TIM1_BASE, O_CCER) |= (1u << 10) | (1u << 12); // CC3NE (gripper N) + CC4E (D5)
+  REG(TIM1_BASE, O_BDTR) |= (1u << 15);              // MOE
   REG(TIM1_BASE, O_CR1) |= (1u << 7); REG(TIM1_BASE, O_EGR) = 1u; REG(TIM1_BASE, O_CR1) |= 1u;
 }
 
@@ -230,13 +282,12 @@ static MsgPack::arr_t<int> rpc_get_servos() {
 }
 
 void setup() {
-  pinMode(PIN_L_RPWM, OUTPUT); pinMode(PIN_L_LPWM, OUTPUT);
-  pinMode(PIN_R_RPWM, OUTPUT); pinMode(PIN_R_LPWM, OUTPUT);
+  pinMode(PIN_L_LPWM, OUTPUT);          // D7 is the only drive pin with no timer
   pinMode(LED_BUILTIN, OUTPUT);
-  motorsOff();
 
-  armPwmBegin();                        // 50 Hz hardware PWM on all 4 servo pins
+  armPwmBegin();                        // 50 Hz HW PWM: 4 servos + D5/D6/D8 drive
   for (int i = 0; i < 4; i++) writeServo(i, armCur[i]);   // park arm at 90
+  motorsOff();                          // safe now: timers live + pins muxed
 
   Bridge.begin();
   Bridge.provide_safe("set_drive", rpc_set_drive);
