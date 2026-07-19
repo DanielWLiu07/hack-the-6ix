@@ -1,9 +1,19 @@
-"""Pick/sort state machine: SEEK -> ALIGN -> PICK -> SORT -> DROP.
+"""Pick/sort state machine: [NAV ->] SEEK -> APPROACH -> ALIGN -> PICK -> SORT -> DROP.
 
 Tick-based and non-blocking: call tick() at config.TICK_HZ; every servo move
 is issued with a duration and progress is gated on bridge.is_moving(), so the
 same code runs against MockBridge (sim) and the real MCU. `speed` scales all
 move durations (tests use a large speed so moves are instant).
+
+Two ways in to a pick:
+  * stationary (no lidar / navigate=False): SEEK sweeps the arm in place to
+    acquire a fruit, then APPROACH drives up to it. (Original PR #8 behavior.)
+  * navigating (lidar feed present): an outer NAV state ROAMs the rover around
+    (obstacle-safe, via nav.NavController + the Pi lidar feed) while the camera
+    scans; on a detection it hands to APPROACH, which is now lidar-gated so it
+    won't drive into an obstacle. After a drop it returns to NAV for the next
+    plant. NAV/roam is what makes this a rover that finds fruit, not just an arm
+    that reaches for fruit already in view.
 
 Emits events through the on_emit callback:
     on_emit("detection", payload)   # root-schema detection
@@ -15,25 +25,41 @@ import time
 
 from . import config
 from .detector import Detection
+from .nav import NavController
 from .navigation import approach_step, in_reach
-from .servoing import is_centered, servo_step
+from .servoing import bbox_error, is_centered, servo_step
 
-IDLE, SEEK, APPROACH, ALIGN, PICK, SORT, DROP, ESTOP = (
-    "IDLE", "SEEK", "APPROACH", "ALIGN", "PICK", "SORT", "DROP", "ESTOP")
+IDLE, NAV, SEEK, APPROACH, ALIGN, PICK, SORT, DROP, ESTOP = (
+    "IDLE", "NAV", "SEEK", "APPROACH", "ALIGN", "PICK", "SORT", "DROP", "ESTOP")
+
+# States that command the wheels; leaving them for a non-driving state halts.
+DRIVING = (NAV, APPROACH)
 
 # Base-yaw sweep waypoints for SEEK (degrees), visited round-robin.
 SEEK_SWEEP = [90, 60, 120, 40, 140]
 SEEK_STEP_MS = 600
 
 
+def _clamp1(v):
+    return max(-1.0, min(1.0, v))
+
+
 class PickStateMachine:
-    def __init__(self, bridge, camera, detector, poses, on_emit=None, speed=1.0):
+    def __init__(self, bridge, camera, detector, poses, on_emit=None, speed=1.0,
+                 lidar=None, nav=None):
         self.bridge = bridge
         self.camera = camera
         self.detector = detector
         self.poses = poses
         self.on_emit = on_emit or (lambda kind, payload: None)
         self.speed = speed
+
+        # outer drive-to-fruit autonomy (optional). lidar is a LidarFeed-shaped
+        # feed; nav is a NavController (default is fine, tuning is via config).
+        self.lidar = lidar
+        self.nav = nav or NavController()
+        self.navigate = False        # set by start(navigate=...)
+        self.nav_status = None       # last NavCommand, for telemetry/logs
 
         self.state = IDLE
         self.target = None           # {"fruit": ..., "ripeness": ...} filter
@@ -44,13 +70,17 @@ class PickStateMachine:
         self._sweep_i = 0
         self._seq = None             # in-flight sequence: (steps, index)
         self._det_throttle = 0
-        self.continuous = True       # go back to SEEK after DROP
+        self.continuous = True       # go back to NAV/SEEK after DROP
         self.stats = {"picks": 0, "failures": 0}
 
     # control
 
-    def start(self, target="nearest"):
-        """target: 'nearest'|'apple'|'banana' or dict {fruit, ripeness}."""
+    def start(self, target="nearest", navigate=None):
+        """target: 'nearest'|'apple'|'banana' or dict {fruit, ripeness}.
+
+        navigate: roam to a plant (NAV) before picking. Defaults to True when a
+        lidar feed was supplied, else False (stationary SEEK-then-pick).
+        """
         if self.state == ESTOP:
             return
         if isinstance(target, str):
@@ -58,10 +88,12 @@ class PickStateMachine:
         else:
             self.target = {k: v for k, v in (target or {}).items()
                            if v and v not in ("any", "nearest")}
-        self._transition(SEEK)
+        self.navigate = (self.lidar is not None) if navigate is None else navigate
+        self._transition(NAV if self.navigate else SEEK)
 
     def stop(self):
         self.target = None
+        self.bridge.set_drive(0.0, 0.0)   # halt the wheels if we were driving
         self._transition(IDLE)
 
     def estop(self):
@@ -77,9 +109,10 @@ class PickStateMachine:
 
     def _transition(self, state):
         if state != self.state:
-            # leaving APPROACH: always stop the wheels (estop already zeros them,
-            # but this covers every other exit - lost target, timeout, in-reach).
-            if self.state == APPROACH and state != APPROACH:
+            # leaving a driving state (NAV/APPROACH) for a non-driving one: halt
+            # the wheels. Covers every exit - lost target, timeout, in-reach,
+            # estop - but keeps the wheels rolling across NAV<->APPROACH.
+            if self.state in DRIVING and state not in DRIVING:
                 self.bridge.set_drive(0, 0)
             self.state = state
             self._ticks_in_state = 0
@@ -141,10 +174,29 @@ class PickStateMachine:
         if self.state in (IDLE, ESTOP):
             return
         self._ticks_in_state += 1
-        handler = {SEEK: self._tick_seek, APPROACH: self._tick_approach,
-                   ALIGN: self._tick_align, PICK: self._tick_pick,
-                   SORT: self._tick_sort, DROP: self._tick_drop}[self.state]
+        handler = {NAV: self._tick_nav, SEEK: self._tick_seek,
+                   APPROACH: self._tick_approach, ALIGN: self._tick_align,
+                   PICK: self._tick_pick, SORT: self._tick_sort,
+                   DROP: self._tick_drop}[self.state]
         handler()
+
+    def _tick_nav(self):
+        """Roam the rover around while the camera scans. On a detection, hand to
+        APPROACH (which drives up to it); otherwise drive per the lidar roam
+        planner (forward while clear, turn toward open space when blocked)."""
+        det = self._detect()
+        if det is not None:
+            self.current_det = det
+            self.pick_started_ts = time.time()
+            self._transition(APPROACH)
+            return
+        cmd = self.nav.roam(self.lidar)
+        self.bridge.set_drive(cmd.l, cmd.r)
+        self.nav_status = cmd
+        # never wedge silently: reset the counter so roam continues indefinitely
+        # (there's simply nothing to pick yet).
+        if self._ticks_in_state > config.NAV_MAX_TICKS:
+            self._ticks_in_state = 0
 
     def _tick_seek(self):
         det = self._detect()
@@ -163,21 +215,36 @@ class PickStateMachine:
         if self._ticks_in_state > config.SEEK_MAX_TICKS:
             self._ticks_in_state = 0  # keep sweeping; nothing else to do
 
+    def _resume_state(self):
+        """Where to go when a pursuit ends: keep roaming if navigating, else
+        fall back to the stationary arm sweep."""
+        return NAV if self.navigate else SEEK
+
     def _tick_approach(self):
         det = self._detect()
         if det is None:
-            # lost sight of it while driving: stop and re-scan
+            # lost sight of it while driving: stop and re-scan / re-roam
             if self._ticks_in_state > config.ALIGN_MAX_TICKS:
-                self._transition(SEEK)
+                self._transition(self._resume_state())
             return
         self.current_det = det
         if in_reach(det.bbox):
             self._transition(ALIGN)   # close enough; arm centers + picks
             return
         if self._ticks_in_state > config.APPROACH_MAX_TICKS:
-            self._transition(SEEK)    # gave up; nothing reachable, keep hunting
+            self._transition(self._resume_state())   # gave up; keep hunting
             return
         l, r = approach_step(det.bbox)
+        # lidar safety: steer by vision, but veto/taper forward translation near
+        # an obstacle or when the feed is stale (fail-safe). Rotation to hold the
+        # fruit centered is always allowed; only forward creep is gated.
+        if self.navigate and self.lidar is not None:
+            allow, scale, _ = self.nav.forward_gate(self.lidar)
+            if not allow or scale < 1.0:
+                ex, _ = bbox_error(det.bbox)
+                turn = config.APPROACH_TURN_GAIN * ex
+                fwd = config.APPROACH_FWD * scale if allow else 0.0
+                l, r = _clamp1(fwd + turn), _clamp1(fwd - turn)
         self.bridge.set_drive(l, r)
 
     def _tick_align(self):
@@ -237,4 +304,4 @@ class PickStateMachine:
             # not the bin pose the arm is currently in (SEEK's base sweep may
             # not reach an extreme bin angle).
             self.camera.spawn_fruit(near_joints=home)
-        self._transition(SEEK if self.continuous else IDLE)
+        self._transition(self._resume_state() if self.continuous else IDLE)
