@@ -5,7 +5,7 @@
 // Unknown/extra keys are errors: the assignment says payloads must match the schemas
 // *exactly*, and extra keys are how schema drift starts.
 
-const STATES = ["IDLE", "SEEK", "PICK", "SORT", "ESTOP"];
+const STATES = ["IDLE", "NAV", "SEEK", "APPROACH", "PICK", "SORT", "ESTOP"];
 const FRUITS = ["apple", "banana"];
 const RIPENESS = ["ripe", "unripe"];
 // 4 canonical bins; "apple"/"banana" allowed as the documented 2-bin fallback.

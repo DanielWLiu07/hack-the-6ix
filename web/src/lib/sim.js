@@ -4,7 +4,7 @@
 
 import { OccGrid } from './occgrid.js'
 
-const STATES = ['IDLE', 'SEEK', 'PICK', 'SORT']
+const STATES = ['IDLE', 'NAV', 'SEEK', 'APPROACH', 'PICK', 'SORT']
 const FRUITS = ['apple', 'banana']
 const RIPENESS = ['ripe', 'unripe']
 
