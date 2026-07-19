@@ -251,7 +251,10 @@ export default function RobotPOV() {
     // C1 live SLAM map. Isolated in an iframe (its own document = its own WebGL
     // context) so the machine-fringe can overlay this tab too without two heavy
     // contexts in one document dropping the map. Same trick as the iPhone tab.
-    view = feedsOn ? (
+    // ALWAYS rendered, even with no hub connection: the embed owns its empty
+    // state and its DEMO toggle, which exists precisely for the offline case
+    // (gating it on feedsOn made the demo unreachable when it was needed).
+    view = (
       <div className="pov-view">
         <iframe
           title="Live SLAM map"
@@ -259,8 +262,6 @@ export default function RobotPOV() {
           style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
         />
       </div>
-    ) : (
-      <NotConnected sub="no live scan" />
     )
   } else {
     // iPhone-lidar reconstruction (static scan; renders even offline)

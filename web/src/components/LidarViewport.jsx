@@ -671,7 +671,7 @@ export default function LidarViewport({
 }) {
   const [worldFailed, setWorldFailed] = useState(false)
   const [navState, setNavState] = useState(null)
-  const { emit, demo, toggleDemo } = useRobot()
+  const { emit, demo, toggleDemo, connected } = useRobot()
   const handleWorldFail = () => {
     setWorldFailed(true)
     onWorldFail?.()
@@ -680,11 +680,13 @@ export default function LidarViewport({
     emit('nav_goal', { ts: Date.now(), x: Math.round(xy[0] * 1000) / 1000, y: Math.round(xy[1] * 1000) / 1000 })
   const cancelNav = () => emit('nav_goal', { ts: Date.now(), cancel: true })
 
-  const navHint = navState?.reached
-    ? 'ARRIVED · click to set a new destination'
-    : navState?.active
-      ? 'NAVIGATING to destination...'
-      : 'click the map to declare a destination'
+  const navHint = !connected && !demo
+    ? 'NO LIVE SCAN · press DEMO to play a stand-in map'
+    : navState?.reached
+      ? 'ARRIVED · click to set a new destination'
+      : navState?.active
+        ? 'NAVIGATING to destination...'
+        : 'click the map to declare a destination'
 
   return (
     <>
