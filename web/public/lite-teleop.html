@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HT6 lite teleop</title>
+<style>
+  :root { --bg:#0d1117; --panel:#161b22; --edge:#2b3340; --tx:#e6edf3; --dim:#8b949e;
+          --grn:#3fb950; --red:#f85149; --amb:#d29922; }
+  * { box-sizing:border-box; -webkit-user-select:none; user-select:none; }
+  body { margin:0; background:var(--bg); color:var(--tx);
+         font:15px/1.4 ui-monospace,Menlo,Consolas,monospace; }
+  header { display:flex; align-items:center; gap:10px; padding:10px 16px;
+           border-bottom:1px solid var(--edge); background:var(--panel); flex-wrap:wrap; }
+  .dot { width:11px; height:11px; border-radius:50%; background:var(--red); }
+  .dot.on { background:var(--grn); box-shadow:0 0 8px var(--grn); }
+  h1 { font-size:15px; margin:0; letter-spacing:.5px; }
+  .sub { color:var(--dim); font-size:12px; }
+  main { max-width:520px; margin:0 auto; padding:16px; }
+  .warn { background:#2d2410; border:1px solid var(--amb); color:#f0c674; border-radius:8px;
+          padding:8px 12px; font-size:13px; margin-bottom:14px; }
+  .bars { background:var(--panel); border:1px solid var(--edge); border-radius:10px; padding:14px; margin-bottom:16px; }
+  .row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:2px; }
+  .bar { position:relative; height:20px; background:#0b0f14; border:1px solid var(--edge);
+         border-radius:5px; margin:4px 0 10px; overflow:hidden; }
+  .bar .mid { position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--edge); }
+  .bar .fill { position:absolute; top:0; bottom:0; left:50%; background:var(--grn); }
+  .bar .fill.neg { background:var(--amb); }
+  .pad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+  .pad button { padding:22px 0; font-size:22px; background:var(--panel); color:var(--tx);
+                border:1px solid var(--edge); border-radius:10px; touch-action:none; cursor:pointer; }
+  .pad button:active, .pad button.on { background:#22303f; border-color:var(--grn); }
+  .pad .blank { visibility:hidden; }
+  .estop { width:100%; padding:18px; font-size:18px; font-weight:700; letter-spacing:1px;
+           background:var(--red); color:#fff; border:none; border-radius:10px; cursor:pointer; }
+  .estop.cleared { background:#30363d; }
+  .hint { color:var(--dim); font-size:12px; margin-top:14px; text-align:center; }
+  b.k { color:var(--tx); background:#22303f; padding:1px 6px; border-radius:4px; }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="dot"></span>
+  <h1>HT6 LITE TELEOP</h1>
+  <span class="sub" id="hub">connecting...</span>
+  <span class="sub" id="pad" style="margin-left:auto">controller: none</span>
+  <span class="sub" id="robot"></span>
+</header>
+<main>
+  <div class="warn" id="warn" style="display:none">No robot connected to the hub. Start the bridge (drive_bridge.py) or the sim, or your commands go nowhere.</div>
+
+  <div class="bars">
+    <div class="row"><span>LEFT track</span><span id="lval">0.00</span></div>
+    <div class="bar"><div class="mid"></div><div class="fill" id="lbar"></div></div>
+    <div class="row"><span>RIGHT track</span><span id="rval">0.00</span></div>
+    <div class="bar"><div class="mid"></div><div class="fill" id="rbar"></div></div>
+    <div class="sub" id="src">idle - sending drive @ 10 Hz</div>
+  </div>
+
+  <div class="pad">
+    <div class="blank"></div>
+    <button data-l="0.7"  data-r="0.7"  id="fwd">forward</button>
+    <div class="blank"></div>
+    <button data-l="-0.6" data-r="0.6"  id="left">left</button>
+    <button data-l="0"    data-r="0"    id="stop">stop</button>
+    <button data-l="0.6"  data-r="-0.6" id="right">right</button>
+    <div class="blank"></div>
+    <button data-l="-0.7" data-r="-0.7" id="back">back</button>
+    <div class="blank"></div>
+  </div>
+
+  <button class="estop" id="estop">EMERGENCY STOP</button>
+
+  <div class="hint">Controller: left stick = drive (up = forward, sideways = turn), circle/B = e-stop, cross/A = clear.
+  <br>Keys: <b class="k">W</b><b class="k">A</b><b class="k">S</b><b class="k">D</b> or arrows,
+  <b class="k">space</b> = e-stop, <b class="k">C</b> = clear. Or hold the on-screen buttons.</div>
+</main>
+
+<script>
+const HUB = 'http://' + (location.hostname || 'localhost') + ':3001';
+document.getElementById('hub').textContent = HUB;
+const $ = id => document.getElementById(id);
+
+const s = document.createElement('script');
+s.src = HUB + '/socket.io/socket.io.js';
+s.onerror = () => $('hub').textContent = 'cannot reach hub at ' + HUB + ' (is scripts/demo.sh up?)';
+s.onload = start;
+document.head.appendChild(s);
+
+function start(){
+  const socket = io(HUB, { transports:['websocket','polling'], auth:{ role:'ui' } });
+  socket.on('connect',    () => { $('dot').classList.add('on'); $('hub').textContent = HUB + ' connected'; });
+  socket.on('disconnect', () => { $('dot').classList.remove('on'); $('hub').textContent = HUB + ' disconnected'; });
+  // robot presence: we get telemetry only if a robot is emitting
+  let lastTel = 0;
+  socket.on('telemetry', () => { lastTel = Date.now(); });
+
+  const keys = new Set();
+  const held = { l:0, r:0 };       // on-screen buttons
+  let estopped = false;
+  const clamp1 = v => Math.max(-1, Math.min(1, v));
+
+  addEventListener('keydown', e => {
+    if (['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code)) e.preventDefault();
+    if (e.code === 'Space') { doEstop(); return; }
+    if (e.code === 'KeyC') { estopped = false; $('estop').classList.add('cleared'); $('estop').textContent='EMERGENCY STOP'; return; }
+    keys.add(e.code);
+  });
+  addEventListener('keyup', e => keys.delete(e.code));
+  addEventListener('blur', () => keys.clear());
+
+  // on-screen hold buttons
+  document.querySelectorAll('.pad button').forEach(b => {
+    const set = () => { if (b.id!=='stop'){ held.l = +b.dataset.l; held.r = +b.dataset.r; } else { held.l=held.r=0; } b.classList.add('on'); };
+    const clr = () => { held.l = 0; held.r = 0; b.classList.remove('on'); };
+    // capture the pointer so a small finger drift off the button doesn't release
+    // it (that caused stop/go stutter). Release only on pointer up/cancel.
+    b.addEventListener('pointerdown', e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch { /* ignore */ } set(); });
+    b.addEventListener('pointerup', clr);
+    b.addEventListener('pointercancel', clr);
+  });
+
+  $('estop').addEventListener('click', () => estopped ? clearEstop() : doEstop());
+  function doEstop(){ estopped = true; socket.emit('estop', {}); socket.emit('drive',{l:0,r:0});
+    $('estop').classList.remove('cleared'); $('estop').textContent='ESTOPPED - click / C to clear'; }
+  function clearEstop(){ estopped = false; $('estop').classList.add('cleared'); $('estop').textContent='EMERGENCY STOP'; }
+
+  const has = (...c) => c.some(x => keys.has(x));
+  function setBar(bar,val,v){ const w=Math.abs(v)*50; const el=$(bar);
+    el.style.width=w+'%'; if(v<0){el.style.left=(50-w)+'%';el.classList.add('neg');} else {el.style.left='50%';el.classList.remove('neg');}
+    $(val).textContent=v.toFixed(2); }
+
+  // gamepad: browsers only expose it after the first button press
+  let padIndex = null, padPrev = [];
+  addEventListener('gamepadconnected', e => { padIndex = e.gamepad.index; });
+  addEventListener('gamepaddisconnected', e => { if (e.gamepad.index === padIndex) padIndex = null; });
+
+  // 10 Hz control loop
+  setInterval(() => {
+    let l, r, src;
+    // --- gamepad (left stick, arcade: up=fwd, x=turn; circle/B=estop, cross/A=clear) ---
+    let gl = 0, gr = 0, gpActive = false;
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+    const pad = pads.find(p => p.index === padIndex) || pads[0];
+    if (pad) {
+      $('pad').textContent = 'controller: ' + (pad.id || 'gamepad').slice(0, 22);
+      const dz = v => Math.abs(v) < 0.14 ? 0 : v;
+      const lx = dz(pad.axes[0] || 0), ly = -dz(pad.axes[1] || 0);
+      gl = clamp1(ly + lx); gr = clamp1(ly - lx);
+      gpActive = gl !== 0 || gr !== 0;
+      const b = i => pad.buttons[i] && pad.buttons[i].pressed;
+      if (b(1) && !padPrev[1]) doEstop();      // circle / B
+      if (b(0) && !padPrev[0]) clearEstop();   // cross / A
+      padPrev = pad.buttons.map(x => x.pressed);
+    } else {
+      $('pad').textContent = 'controller: none (press a button to wake it)';
+    }
+    // --- keyboard ---
+    const kFwd = (has('KeyW','ArrowUp')?1:0) - (has('KeyS','ArrowDown')?1:0);
+    const kTurn = (has('KeyD','ArrowRight')?1:0) - (has('KeyA','ArrowLeft')?1:0);
+    // priority: gamepad > keyboard > on-screen
+    if (gpActive) { l = gl; r = gr; src='gamepad'; }
+    else if (kFwd || kTurn) { l = clamp1(kFwd+kTurn)*0.85; r = clamp1(kFwd-kTurn)*0.85; src='keyboard'; }
+    else if (held.l || held.r) { l = held.l; r = held.r; src='on-screen'; }
+    else { l = 0; r = 0; src='idle'; }
+    if (estopped) { l = 0; r = 0; src='ESTOP'; }
+    socket.emit('drive', { l:+l.toFixed(2), r:+r.toFixed(2) });
+    setBar('lbar','lval',l); setBar('rbar','rval',r);
+    $('src').textContent = src + ' - sending drive @ 10 Hz';
+    const robotUp = Date.now() - lastTel < 1500;
+    $('robot').textContent = robotUp ? 'robot: connected' : 'robot: none';
+    $('warn').style.display = robotUp ? 'none' : 'block';
+  }, 100);
+}
+</script>
+</body>
+</html>
