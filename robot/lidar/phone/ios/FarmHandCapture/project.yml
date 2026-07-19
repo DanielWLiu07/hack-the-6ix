@@ -1,0 +1,24 @@
+name: FarmHandCapture
+options:
+  bundleIdPrefix: dev.danielwliu
+  deploymentTarget:
+    iOS: "17.0"
+targets:
+  FarmHandCapture:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    info:
+      path: Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSCameraUsageDescription: Scans the scene with the LiDAR camera to build a live 3D world for the FarmHand dashboard.
+        NSLocalNetworkUsageDescription: Streams the live 3D scan to the FarmHand laptop on your local network.
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_VERSION: "5.9"
+        GENERATE_INFOPLIST_FILE: false
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 6N55MD7SSM
