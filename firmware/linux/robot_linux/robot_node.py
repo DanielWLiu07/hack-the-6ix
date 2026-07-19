@@ -20,6 +20,7 @@ Run (real UNO Q bridge):  python -m robot_linux.robot_node
 """
 
 import argparse
+import os
 import sys
 import threading
 import time
@@ -47,10 +48,11 @@ def _norm_mode(mode):
 
 class RobotNode:
     def __init__(self, bridge, camera, detector, poses, server_url,
-                 command_mode=AWAIT):
+                 command_mode=AWAIT, lidar=None):
         self.bridge = bridge
         self.server_url = server_url
         self.command_mode = _norm_mode(command_mode)
+        self.lidar = lidar               # LidarFeed-shaped feed, or None
 
         self.sio = socketio.Client(
             reconnection=True, reconnection_delay=1, reconnection_delay_max=5)
@@ -63,7 +65,7 @@ class RobotNode:
         self._last_hb_attempt = 0.0
 
         self.sm = PickStateMachine(
-            bridge, camera, detector, poses, on_emit=self._on_emit)
+            bridge, camera, detector, poses, on_emit=self._on_emit, lidar=lidar)
         self._register_handlers()
 
     # emit path
@@ -91,11 +93,11 @@ class RobotNode:
                 state = ESTOP
             battery = self.bridge.battery_v()
         # The web telemetry schema (server-core) only accepts a coarse state set
-        # {IDLE, SEEK, PICK, SORT, ESTOP}; report the fine-grained drive-to-fruit
-        # APPROACH as SEEK so the hub doesn't drop the frame - which would also
-        # drop the live drive values we want on the dashboard. Remove this line
-        # once server-core adds APPROACH to the telemetry state enum.
-        if state == "APPROACH":
+        # {IDLE, SEEK, PICK, SORT, ESTOP}; report the fine-grained drive states
+        # (NAV roam + APPROACH) as SEEK so the hub doesn't drop the frame - which
+        # would also drop the live drive values we want on the dashboard. Remove
+        # once server-core adds NAV/APPROACH to the telemetry state enum.
+        if state in ("NAV", "APPROACH"):
             state = "SEEK"
         return {
             "ts": int(time.time() * 1000),
@@ -306,12 +308,36 @@ class RobotNode:
             pass
         finally:
             self._stop.set()
+            if self.lidar is not None:
+                try:
+                    self.lidar.stop()
+                except Exception:
+                    pass
             if self.sio.connected:
                 self.sio.disconnect()
             loop.join(timeout=2)
 
 
+def _build_lidar(args):
+    """Attach a lidar feed when navigating (roam + obstacle safety).
+
+    --sim: a MockLidarFeed (open field) so drive-nav runs headless.
+    hardware: the real LidarFeed TCP client to the Pi's direct_feed.py.
+    Returns None when not navigating (stationary SEEK-then-pick).
+    """
+    if not getattr(args, "navigate", False):
+        return None
+    if args.sim:
+        from .lidar_mock import MockLidarFeed
+        print("[lidar] sim: MockLidarFeed (open field)")
+        return MockLidarFeed().start()
+    from .lidar_feed import LidarFeed
+    print(f"[lidar] connecting Pi feed {args.lidar_host}:{args.lidar_port}")
+    return LidarFeed(args.lidar_host, args.lidar_port).start()
+
+
 def build(args):
+    lidar = _build_lidar(args)
     if args.sim:
         from .bridge import MockBridge
         bridge = MockBridge()
@@ -353,7 +379,7 @@ def build(args):
     else:
         mode = AWAIT
     return RobotNode(bridge, camera, detector, poses, args.server,
-                     command_mode=mode)
+                     command_mode=mode, lidar=lidar)
 
 
 def main(argv=None):
@@ -370,6 +396,15 @@ def main(argv=None):
     ap.add_argument("--real-detector", action="store_true",
                     help="in --sim, still load ONNX/HSV instead of MockDetector")
     ap.add_argument("--seed", type=int, default=None, help="MockCamera RNG seed")
+    ap.add_argument("--navigate", action="store_true",
+                    help="drive-to-fruit autonomy: roam (lidar) to find a plant "
+                         "then pick, instead of picking only what's in reach")
+    ap.add_argument("--lidar-host",
+                    default=os.environ.get("LIDAR_FEED_HOST", "rpi.local"),
+                    help="Pi direct_feed host (default env LIDAR_FEED_HOST)")
+    ap.add_argument("--lidar-port", type=int,
+                    default=int(os.environ.get("LIDAR_FEED_PORT", "8766")),
+                    help="Pi direct_feed TCP port")
     args = ap.parse_args(argv)
     node = build(args)
     print(f"[node] server={args.server} sim={args.sim} mode={node.command_mode}")

@@ -51,6 +51,16 @@ APPROACH_TURN_GAIN = 0.6     # steer gain: bbox x-error [-1..1] -> tank differen
 APPROACH_AREA_FRAC = 0.10    # bbox area / frame area >= this => in reach, stop
 APPROACH_MAX_TICKS = 300     # ~15 s at TICK_HZ before giving up -> back to SEEK
 
+# NAV (roam + lidar safety): the OUTER autonomy layer. When a lidar feed is
+# present the rover ROAMs (drives around, obstacle-safe) while the camera scans;
+# on a detection it hands to APPROACH. nav.forward_gate() also makes APPROACH
+# obstacle-aware. All distances in meters; drive speeds normalized [-1, 1].
+DRIVE_SEARCH = float(os.environ.get("DRIVE_SEARCH", "0.4"))       # fwd speed while roaming
+DRIVE_TURN = float(os.environ.get("DRIVE_TURN", "0.55"))         # in-place turn speed when blocked
+NAV_STOP_DIST_M = float(os.environ.get("NAV_STOP_DIST_M", "0.35"))  # forward reflex stop distance
+NAV_SLOW_DIST_M = float(os.environ.get("NAV_SLOW_DIST_M", "0.80"))  # start tapering forward speed here
+NAV_MAX_TICKS = int(os.environ.get("NAV_MAX_TICKS", "2000"))       # roam budget before re-centering the counter
+
 MIN_CONF = float(os.environ.get("MIN_CONF", "0.5"))
 
 BINS = ["apple_ripe", "apple_unripe", "banana_ripe", "banana_unripe"]

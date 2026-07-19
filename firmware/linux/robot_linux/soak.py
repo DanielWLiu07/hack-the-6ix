@@ -31,12 +31,22 @@ from .poses import PoseStore
 from .state_machine import DROP, IDLE, PickStateMachine
 
 
-def run_soak(cycles=100, speed=20.0, tick_hz=250.0, seed=1, verbose=True):
-    """Run `cycles` full pick/sort cycles; return a stats dict."""
+def run_soak(cycles=100, speed=20.0, tick_hz=250.0, seed=1, verbose=True,
+             navigate=False):
+    """Run `cycles` full pick/sort cycles; return a stats dict.
+
+    navigate=True prepends the drive-to-fruit NAV/roam stage each cycle (via a
+    MockLidarFeed open field), soak-testing the full autonomy loop
+    NAV -> APPROACH -> ALIGN -> PICK -> SORT -> DROP -> NAV.
+    """
     bridge = MockBridge()
     cam = MockCamera(bridge, seed=seed)
     det = MockDetector(cam)
-    sm = PickStateMachine(bridge, cam, det, PoseStore(), speed=speed)
+    lidar = None
+    if navigate:
+        from .lidar_mock import MockLidarFeed
+        lidar = MockLidarFeed()
+    sm = PickStateMachine(bridge, cam, det, PoseStore(), speed=speed, lidar=lidar)
     sm.continuous = True
 
     picks = []           # each completed pick_event payload
@@ -222,11 +232,14 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--model-check", action="store_true",
                     help="also load + inference-soak the final ONNX model")
+    ap.add_argument("--navigate", action="store_true",
+                    help="soak the full drive-to-fruit loop (NAV/roam -> pick), "
+                         "not just the stationary SEEK-then-pick loop")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args(argv)
 
     s = run_soak(cycles=args.cycles, speed=args.speed, tick_hz=args.tick_hz,
-                 seed=args.seed, verbose=not args.quiet)
+                 seed=args.seed, verbose=not args.quiet, navigate=args.navigate)
     mc = model_check() if args.model_check else None
     _print_report(s, mc)
     ok = (s["success_rate"] == 1.0 and s["stalls"] == 0 and s["tick_errors"] == 0
