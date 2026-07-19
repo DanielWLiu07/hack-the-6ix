@@ -87,8 +87,7 @@ function engineShake(b, now, punch = 0) {
 
 // Cart drives along the floor in WORLD space from screen-left to the apple, then
 // yaws to face the camera. Triggered by the apple slam (startRef).
-function RollingRobot({ fixRef, startRef }) {
-  const splatUrl = useSplatBlobUrl(SPLAT_URL) // blob: URL so drei gets a Content-Length (see splatBlob.js)
+function RollingRobot({ fixRef, startRef, splatUrl }) {
   const outer = useRef(null) // world placement (position + yaw + world scale)
   const rig = useRef(null) // engine shake + drive bounce
   const fix = useRef(null) // splat orientation (SPLAT_FIX / tune)
@@ -227,6 +226,10 @@ function TunePanel({ fixRef }) {
 }
 
 export default function RobotRollIn() {
+  // Blob: URL for the splat, created ABOVE the Canvas/Suspense so it stays stable
+  // when <Splat> suspends while loading (otherwise the boundary remounts the hook
+  // and revokes the blob, thrashing a refetch loop). See splatBlob.js.
+  const splatUrl = useSplatBlobUrl(SPLAT_URL)
   const fixRef = useRef({ rotation: [0, 0, 0], scale: 1, target: [...TARGET] })
   useMemo(() => { fixRef.current = { rotation: [...SPLAT_FIX.rotation], scale: SPLAT_FIX.scale, target: [...TARGET] } }, [])
   // The cart waits off-screen until the EXACT apple-impact frame. The scene posts
@@ -256,7 +259,7 @@ export default function RobotRollIn() {
         <SyncCamera />
         <SplatBoundary>
           <Suspense fallback={null}>
-            <RollingRobot fixRef={fixRef} startRef={started} />
+            <RollingRobot fixRef={fixRef} startRef={started} splatUrl={splatUrl} />
           </Suspense>
         </SplatBoundary>
       </Canvas>
