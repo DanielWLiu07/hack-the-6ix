@@ -1,8 +1,8 @@
 # BRIDGE.md - MCU <-> Linux RPC protocol (UNO Q)
 
-**Owner: fw-tools. This document is the contract.** `fw-mcu` (STM32 sketch) and
-`fw-linux` (Python) both conform to it. If something here must change, post a
-BLOCKED status entry and let master arbitrate - do not drift silently.
+**This document is the contract.** The STM32 sketch (`firmware/mcu/`) and the
+Linux side (`firmware/linux/`, Python) both conform to it. If something here
+must change, change it here first - do not drift silently.
 
 There are two transports for the *same* command set:
 
@@ -11,7 +11,7 @@ There are two transports for the *same* command set:
    judging boundary.
 2. **Serial bench protocol** - plain text over USB serial, implemented by the
    sketch's bench-test mode. Lets us exercise the MCU with no Linux side
-   (fw-tools' `bench.py` drives it, humans can type it into a monitor).
+   (`firmware/tools/bench.py` drives it, humans can type it into a monitor).
 
 Semantics (names, args, units, timing, error behavior) are identical on both.
 
@@ -22,7 +22,7 @@ Semantics (names, args, units, timing, error behavior) are identical on both.
 | Quantity | Type | Range / unit |
 |---|---|---|
 | Drive command `l`, `r` | float | −1.0 ... +1.0 normalized tank drive. +1 = full forward. MCU maps to PWM+direction. |
-| Joint angles `joints[5]` | int | degrees, 0–180. Order: `[base, shoulder, elbow, wrist, gripper]` (PCA9685 ch 0–4). |
+| Joint angles `joints[5]` | int | degrees, 0-180. Order: `[base, shoulder, elbow, wrist, gripper]` (PCA9685 ch 0-4). |
 | `duration_ms` | int | 100 ... 5000. Time to interpolate from current pose to target. MCU clamps out-of-range values. |
 | Distance | int | cm (ultrasonic). |
 | Battery | int | millivolts. `0` = not sensed (battery ADC is optional, see PINOUT.md). |
@@ -60,7 +60,7 @@ are still tracked and reported in `get_status()` while a higher state is active.
 | `set_drive(l, r)` | float, float | int state (see §2) | Ignored (returns state) unless state is `OK`/`OBSTACLE`. In `OBSTACLE`, forward components are zeroed. |
 | `move_servos(joints, duration_ms)` | int[5], int | int state | Starts interpolated move. Ignored in `ESTOP`/`WATCHDOG`. |
 | `heartbeat()` | - | int state | Linux calls at **5 Hz** (same tick as telemetry). Feeds the 500 ms watchdog. |
-| `estop()` | - | int state (always 3) | Immediate. Also emitted by fw-linux when it receives the Socket.IO `estop` event. |
+| `estop()` | - | int state (always 3) | Immediate. Also emitted by the Linux node when it receives the Socket.IO `estop` event. |
 | `clear_estop()` | - | int state | Exits `ESTOP` (to whatever lower state applies). Does **not** resume prior motion - Linux must re-command. |
 | `get_status()` | - | int[10] (below) | Poll at 5 Hz for telemetry; don't poll faster than 20 Hz. |
 | `zero_all()` | - | int state | Interpolated move of all 5 servos to 90° over 1500 ms. For assembly/horn alignment. |
@@ -73,8 +73,8 @@ are still tracked and reported in `get_status()` while a higher state is active.
                         joint degrees (int)       (l/r × 100)       no echo
 ```
 
-fw-linux maps this straight into the root-schema `telemetry` event
-(`arm` = j0...j4, `drive.l/r` = pct/100, `state` string comes from fw-linux's own
+the Linux node maps this straight into the root-schema `telemetry` event
+(`arm` = j0...j4, `drive.l/r` = pct/100, `state` string comes from the Linux node's own
 task state machine, except MCU state 3 -> `"ESTOP"` always wins).
 
 **No MCU->Linux push calls in v1.** Linux learns everything by polling
@@ -83,7 +83,7 @@ MCU, so push adds no safety; polling keeps both sides simpler. If we later
 want instant obstacle events, we'll add a Bridge notification `on_state(state)`
 - coordinate via status files first.)
 
-### Timeout & error behavior (Linux side - fw-linux implements)
+### Timeout & error behavior (Linux side - the Linux node implements)
 
 - Per-call timeout **250 ms** -> retry once -> if the retry also fails, mark
   bridge **DOWN**: stop issuing motion calls, set telemetry `state` to
@@ -95,7 +95,7 @@ want instant obstacle events, we'll add a Bridge notification `on_state(state)`
 
 ## 4. App Lab Bridge binding (the real transport) - VERIFIED on-desk
 
-**MCU side** (verified by fw-tools against the shipped libraries, 17 Jul):
+**MCU side** (verified against the shipped libraries, 17 Jul):
 the bridge is the **`Arduino_RouterBridge`** library (Library Manager,
 tested v0.4.3) - a Zephyr wrapper of `Arduino_RPClite` speaking
 **MsgPack-RPC** to an rpclib-compatible router on the Linux side. FQBN
@@ -136,13 +136,13 @@ returns a 10-element MsgPack int array (`MsgPack::arr_t<int>`), order per §3.
 Python wrapper (`arduino.app_utils` / `app_bridge` - exists only on the
 board's Debian image, exact import TBC on first board contact) or, worst
 case, a plain Python `msgpack-rpc` client against the router socket.
-fw-linux: keep the transport behind your `MockBridge` interface so swapping
+the Linux node: keep the transport behind your `MockBridge` interface so swapping
 in the real client is one file.
 
 ## 5. Serial bench protocol (fallback + bench-test transport)
 
 USB CDC serial, **115200 baud**, newline-terminated ASCII, single-letter
-commands, space-separated args. Implemented by fw-mcu's bench mode; identical
+commands, space-separated args. Implemented by the MCU firmware's bench mode; identical
 handler functions behind it as §4. Human-typeable in any serial monitor.
 
 ### Commands (host -> MCU)

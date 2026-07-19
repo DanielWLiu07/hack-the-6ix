@@ -1,15 +1,15 @@
-"""Robot node: the fw-linux runtime that ties everything together.
+"""Robot node: the the Linux node runtime that ties everything together.
 
 Wires MCU bridge + camera + detector + pick/sort state machine to the laptop
-Socket.IO hub (server-core). It:
+Socket.IO hub (the hub). It:
 
   * connects to SERVER_URL with handshake ``auth={"role": "robot"}``
   * runs the state-machine tick at config.TICK_HZ
   * heartbeats the MCU bridge at config.HEARTBEAT_HZ (feeds the 500 ms watchdog)
   * emits ``telemetry`` at config.TELEMETRY_HZ and forwards ``detection`` /
-    ``pick_event`` as the state machine produces them (root-CLAUDE.md schemas)
+    ``pick_event`` as the state machine produces them (docs/SCHEMAS.md schemas)
   * handles inbound control events ``drive`` / ``arm_pose`` / ``pick`` /
-    ``estop`` and the richer ``nl_action`` from llm-client
+    ``estop`` and the richer ``nl_action`` from the NL client
 
 Bridge timeout/DOWN handling follows firmware/BRIDGE.md §3: a failing bridge
 call marks the bridge DOWN, telemetry state pins to "ESTOP", motion commands
@@ -190,7 +190,7 @@ class RobotNode:
 
         @sio.on("pick")
         def on_pick(data):
-            # server-core maps nl_action -> pick; ignore that echo so we don't
+            # the hub maps nl_action -> pick; ignore that echo so we don't
             # abort an nl-initiated pick (see on_nl_action debounce).
             if self._recent_nl():
                 return
@@ -211,7 +211,7 @@ class RobotNode:
         def on_set_mode(data):
             """Live demo-mode toggle from the hub.
 
-            server-core's contract (index.js) is `set_mode {autostart: bool}`:
+            the hub's contract (index.js) is `set_mode {autostart: bool}`:
             autostart=false pauses autonomy (await-command), true resumes
             autonomous picking. The hub also replays the last set_mode to a
             robot on connect, so a mid-demo toggle survives a robot reconnect.
@@ -221,7 +221,7 @@ class RobotNode:
 
         @sio.on("nl_action")
         def on_nl_action(data):
-            """Rich structured command from llm-client (carries ripeness)."""
+            """Rich structured command from the NL client (carries ripeness)."""
             if not data or not data.get("ok"):
                 return
             action = data.get("action") or {}
@@ -376,7 +376,7 @@ def build(args):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="fw-linux robot node")
+    ap = argparse.ArgumentParser(description="the Linux node robot node")
     ap.add_argument("--sim", action="store_true",
                     help="use MockBridge + MockCamera (no hardware)")
     ap.add_argument("--server", default=config.SERVER_URL,

@@ -1,7 +1,7 @@
 """MCU bridge abstraction.
 
-The RPC surface matches firmware/CLAUDE.md (and will be reconciled with
-firmware/BRIDGE.md once fw-tools publishes it):
+The RPC surface matches firmware/BRIDGE.md (and will be reconciled with
+firmware/BRIDGE.md once firmware/tools publishes it):
 
     set_drive(l, r)                  # normalized -1..1 tank drive
     move_servos(joints[5], duration_ms)
@@ -149,8 +149,8 @@ class AppLabBridge(Bridge):
     """Real UNO Q bridge via Arduino App Lab Bridge RPC.
 
     Import is deferred so dev machines without App Lab still load the package.
-    Method names follow firmware/CLAUDE.md; adjust to firmware/BRIDGE.md when
-    fw-tools finalizes it.
+    Method names follow firmware/BRIDGE.md; adjust to firmware/BRIDGE.md when
+    firmware/tools finalizes it.
     """
 
     def __init__(self):

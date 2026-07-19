@@ -1,6 +1,6 @@
 # Impact & ROI Methodology
 
-**Owner: worker `db`.** This is the defensible-numbers doc for the pitch - the
+This is the defensible-numbers doc for the pitch - the
 methodology, constants, and sources behind every "kg waste avoided", "kg CO₂e
 avoided", "X kg/hr", and "robot paid for Y% of itself" figure we put on stage or
 in Devpost. If a judge asks *"where does that number come from?"*, the answer is
@@ -32,7 +32,7 @@ source of truth for the math; this doc is the source of truth for the *why*.
 **Pitch framing ("Battery, not Blood"):** the losses above are driven heavily by
 **labour shortage and slow/absent grading at the point of harvest**. A low-cost
 robot that *picks AND sorts by type + ripeness in the field* attacks exactly the
-harvest-to-shelf slice - the ~13–40% gap - instead of the retail/consumer slice
+harvest-to-shelf slice - the ~13-40% gap - instead of the retail/consumer slice
 that most food-waste tech targets.
 
 > Honesty guardrail: we cite these as the **systemic context** (how big the
@@ -135,8 +135,8 @@ roi_pct         = value_created / robot_cost_or_subscription × 100
 
 | Fruit | Price used | Per-lb equivalent | Source |
 |---|---|---|---|
-| banana | **$1.40/kg** | ≈ $0.63/lb | BLS/FRED *Bananas, per lb, US city avg* (series `APU0000711211`), ~$0.62/lb 2024–25 - our number matches almost exactly |
-| apple  | **$2.10/kg** | ≈ $0.95/lb | Conservative vs. USDA ERS *Fruit & Vegetable Prices* (fresh apples retail typically **$1.30–1.70/lb ≈ $2.90–3.75/kg**); BLS Red Delicious series ran ~$1.30/lb until discontinued 2017. We deliberately use a below-retail figure. |
+| banana | **$1.40/kg** | ≈ $0.63/lb | BLS/FRED *Bananas, per lb, US city avg* (series `APU0000711211`), ~$0.62/lb 2024-25 - our number matches almost exactly |
+| apple  | **$2.10/kg** | ≈ $0.95/lb | Conservative vs. USDA ERS *Fruit & Vegetable Prices* (fresh apples retail typically **$1.30-1.70/lb ≈ $2.90-3.75/kg**); BLS Red Delicious series ran ~$1.30/lb until discontinued 2017. We deliberately use a below-retail figure. |
 
 ### Labour-saved constant
 

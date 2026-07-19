@@ -27,14 +27,14 @@ training to fix exactly that.
 2. Eval rigor (foundational, no GPU). Expand held-out from 30 -> 100+ with typos/
    slang/multi-turn. Report: exact-match, per-field, valid-JSON rate, OVER-CLARIFY
    rate, latency. Publish before/after trajectories for the Devpost writeup.
-   Owner overlap: llm-data owns data/eval_set.jsonl - coordinate.
+   Note: data/eval_set.jsonl is shared - keep it in sync.
 
 3. Guided decoding / structured outputs. Force the two valid JSON shapes at rollout
    (GRPO `structured_outputs`) and serve (`response_format`) time -> ~100% valid JSON,
    faster training, more reliable demo. Client already supports response_format.
 
 4. Targeted data augmentation. Add misspelling/slang variants mapped to correct
-   actions (directly closes the typo gap). llm-data owns data/ - coordination item.
+   actions (directly closes the typo gap). data/ is shared - keep it in sync.
 
 5. OPD distillation (third algorithm to showcase). Warm-start from the SFT adapter,
    distill the managed teacher (GLM-5.2) on hard cases -> "SFT -> distillation -> RL"

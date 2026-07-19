@@ -8,7 +8,7 @@ banana is held in a cluttered scene - the hand/face are separate COCO classes it
 simply ignores. Ripeness is then read from the color inside each detected box
 (yellow banana = ripe, green = unripe; red apple = ripe, green = unripe).
 
-Returns the same root-CLAUDE.md detection dicts as the other detectors, so it
+Returns the same docs/SCHEMAS.md detection dicts as the other detectors, so it
 drops into sort_pipeline.py / camera_detect.py via classify()/classify_all().
 
     python3 mediapipe_detect.py --image photo.jpg

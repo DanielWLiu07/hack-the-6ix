@@ -1,6 +1,6 @@
 # FarmHand NL-command end-to-end demo transcript
 
-_llm-client - 10 commands driven through the LIVE hub (:3001)_
+_the NL client - 10 commands driven through the LIVE hub (:3001)_
 
 Chain per command: **web UI** `nl_command` -> hub -> **farmhand service** (trained model + strict schema validation) -> hub -> **UI echo** + **robot forward**.
 

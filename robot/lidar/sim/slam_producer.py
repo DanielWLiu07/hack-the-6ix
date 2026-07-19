@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""SLAM producer: lidar_scan -> slam_pose + slam_map (master-approved schema).
+"""SLAM producer: lidar_scan -> slam_pose + slam_map (schema).
 
 Subscribes to the hub's `lidar_scan` stream (from the sim today, the real
 RPLIDAR C1 later - identical input), recovers pose with scan-to-map ICP
@@ -9,7 +9,7 @@ publishes:
     slam_pose {ts, x, y, theta}                      ~2 Hz   (theta in RADIANS)
     slam_map  {ts, resolution, width, height, origin, data}   <=0.5 Hz
 
-per the root CLAUDE.md schema addendum. This is the producer side of the SLAM
+per the docs/SCHEMAS.md schema addendum. This is the producer side of the SLAM
 map feature; the web lidar page renders the grid under the live scan.
 
 Usage:
@@ -116,7 +116,7 @@ def run_hub(server_url, duration, rate=10.0, emit_scan=True):
     drives the sim, and emits `lidar_scan` (throttled to 2 Hz for the schema),
     `slam_pose` (2 Hz), and `slam_map` (<=0.5 Hz) as one coherent robot, so the
     web's scan-decay view and the SLAM map always agree. On the Pi the same role
-    applies, with the real lidar reader as the scan source (coordinate: lidar-pi).
+    applies, with the real lidar reader as the scan source (coordinate: the lidar node).
     """
     import socketio
     import sim

@@ -1,4 +1,4 @@
-# firmware/tools - build/flash/bench tooling (owner: fw-tools)
+# firmware/tools - build/flash/bench tooling (owner: firmware/tools)
 
 ## Scripts
 
@@ -8,7 +8,7 @@
 | `flash.sh` | Compile + upload `firmware/mcu`. `--check` = compile only. Env: `PORT`, `ARDUINO_FQBN`, `SKETCH`. |
 | `monitor.sh` | Serial monitor @ 115200 (BRIDGE.md §5). Env: `PORT`, `BAUD`. |
 | `bench.py` | Python client for the serial bench protocol - interactive REPL + automated smoke test of every RPC. `python3 bench.py --help`. |
-| `mock_mcu.py` | Mock MCU serving BRIDGE.md §5 on a pty - executable spec for fw-mcu, hardware-free integration target for fw-linux. `--selftest` runs bench.py against it (18/18 green). |
+| `mock_mcu.py` | Mock MCU serving BRIDGE.md §5 on a pty - executable spec for the MCU firmware, hardware-free integration target for the Linux node. `--selftest` runs bench.py against it (18/18 green). |
 
 ## UNO Q board setup notes
 
@@ -24,7 +24,7 @@ STM32U585 (MCU side). How code gets on each:
    `Arduino_RouterBridge` (the Bridge RPC - see ../BRIDGE.md §4) and
    `Adafruit PWM Servo Driver Library`. `setup.sh` installs all of it;
    a scratch blink sketch compiles clean (63 KB / 768 KB flash).
-3. **`flash.sh --check`** gives fw-mcu compile feedback with no board
+3. **`flash.sh --check`** gives the MCU firmware compile feedback with no board
    attached, against the real `unoq` FQBN. This repo keeps `mcu/` and
    `linux/` separate so both are testable off-board; bundling into an App
    Lab app is a copy job at the venue.
@@ -32,7 +32,7 @@ STM32U585 (MCU side). How code gets on each:
    - Power via USB-C (bench) - the 5V buck rail is only needed for servos.
    - Connect: `adb devices` should list the Linux side; App Lab discovers it.
    - Confirm the App Lab Bridge RPC API names (BRIDGE.md §4 caveat) from the
-     bundled RPC example, post them in `status/fw-tools.md`.
+     bundled RPC example and update BRIDGE.md if they differ.
    - The MCU's USB CDC serial shows up on the *Linux side*, not the laptop -
      run `bench.py` **on the board** (it's plain pyserial), or bench over
      App Lab's serial passthrough.

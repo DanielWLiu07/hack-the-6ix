@@ -1,5 +1,5 @@
 // GET /stream - MJPEG arm-camera feed.
-// If ROBOT_STREAM_URL is set (vision-infer's annotated MJPEG on :8080), proxy it.
+// If ROBOT_STREAM_URL is set (the vision module's annotated MJPEG on :8080), proxy it.
 // Otherwise there is NO feed: respond 503 so the dashboard shows NOT CONNECTED.
 // No synthetic/test-pattern frames - the arm cam only ever shows the real camera
 // (data rule: no fabricated streams in the UI).

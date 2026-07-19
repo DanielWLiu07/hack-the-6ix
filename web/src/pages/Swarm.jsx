@@ -6,7 +6,7 @@ import '../swarm.css'
 // Swarm - fleet command center. Renders every robot the hub currently sees on a
 // shared top-down map (live dots + heading + fading trail) beside a status
 // roster. Source is the server-aggregated `fleet` event ONLY (schema addendum
-// in root CLAUDE.md); no fabricated robots. Empty until robots connect.
+// in docs/SCHEMAS.md); no fabricated robots. Empty until robots connect.
 
 const VB_W = 1000
 const VB_H = 700

@@ -32,7 +32,7 @@ Style: no emojis, no em dashes anywhere (team rule).
   transit, ripe sells now, the over-ripe tail is the loss. Grading by ripeness at
   harvest routes each fruit to where it will not rot.
 
-Sort classes are the four bins above (schema in root CLAUDE.md). If a bin
+Sort classes are the four bins above (schema in docs/SCHEMAS.md). If a bin
 mechanism is tight on time, fall back to two bins (apple vs banana) and still
 show the type sort.
 

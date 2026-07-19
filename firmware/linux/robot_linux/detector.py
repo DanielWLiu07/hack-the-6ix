@@ -2,11 +2,11 @@
 
 Priority order in load_detector():
   1. OnnxDetector  - ml/ripeness/export/model.onnx + classes.json (YOLOv8n)
-  2. HSVDetector   - vision-infer's robot/vision/hsv_detector.py fallback
+  2. HSVDetector   - the vision module's robot/vision/hsv_detector.py fallback
   3. MockDetector  - synthetic ground truth from MockCamera (dev/sim)
 
 All detectors return a list of Detection; Detection.to_event() emits the
-root-CLAUDE.md "detection" schema payload.
+docs/SCHEMAS.md "detection" schema payload.
 """
 
 import json
@@ -135,7 +135,7 @@ class OnnxDetector:
 
 
 class HSVDetector:
-    """Adapter around vision-infer's robot/vision/hsv_detector.py."""
+    """Adapter around the vision module's robot/vision/hsv_detector.py."""
 
     name = "hsv"
 
@@ -145,7 +145,7 @@ class HSVDetector:
     def detect(self, frame):
         dets = []
         for d in self._detect(frame):
-            # vision-infer returns root-schema detection dicts
+            # the vision module returns root-schema detection dicts
             dets.append(Detection(d["fruit"], d["ripeness"],
                                   d.get("conf", 0.5), list(d["bbox"])))
         return dets

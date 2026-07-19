@@ -1,4 +1,4 @@
-// Persistence layer entry point. server-core usage:
+// Persistence layer entry point. the hub usage:
 //
 //   import { createDb } from './db/index.js';
 //   const db = await createDb({ uri: process.env.MONGODB_URI });

@@ -23,12 +23,12 @@ python3 -m pytest tests/ -q
 ## Pi provisioning
 
 1. Flash Raspberry Pi OS Lite (64-bit) with Raspberry Pi Imager.
-   In Imager's settings (gear icon): hostname `lidar-pi`, enable SSH,
+   In Imager's settings (gear icon): hostname `the lidar node`, enable SSH,
    user `pi`, and preload the **phone hotspot** Wi-Fi SSID/password.
-2. Boot, then `ssh pi@lidar-pi.local`.
+2. Boot, then `ssh pi@the lidar node.local`.
 3. `sudo apt update && sudo apt install -y git python3-venv`
 4. Copy this directory over (or clone the repo):
-   `scp -r robot/lidar/pi pi@lidar-pi.local:~/lidar`
+   `scp -r robot/lidar/pi pi@the lidar node.local:~/lidar`
 5. Serial permission: `sudo usermod -aG dialout pi` then re-login.
 6. Test: plug in lidar, `LIDAR_PORT=$(ls /dev/ttyUSB*) SERVER_URL=http://<laptop-ip>:3001 ~/lidar/run.sh`
    (omit `LIDAR_PORT` to autodetect).

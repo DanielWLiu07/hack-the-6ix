@@ -1,4 +1,4 @@
-// ESP32 WROOM-32 (DevKitC) — BTS7960 dual-PWM drive test (standalone).
+// ESP32 WROOM-32 (DevKitC) - BTS7960 dual-PWM drive test (standalone).
 // Validates the drive base while waiting for a replacement Uno Q. No App Lab.
 //
 // Wiring:

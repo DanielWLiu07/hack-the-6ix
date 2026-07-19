@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fw-tools: open a serial monitor on the MCU (115200 8N1 per BRIDGE.md §5).
+# firmware/tools: open a serial monitor on the MCU (115200 8N1 per BRIDGE.md §5).
 #   ./monitor.sh                    # auto-detect port
 #   PORT=/dev/cu.usbmodemX ./monitor.sh
 set -euo pipefail

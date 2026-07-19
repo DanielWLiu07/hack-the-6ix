@@ -33,5 +33,5 @@ but more open-loop drift smear (no loop closure); 16 s is the tuned sweet spot.
 - Talking point: "This map is built **on the Pi**, from lidar alone - the same
   edge-compute story as the on-device fruit vision. No cloud in the loop."
 - These are generated from the simulator so footage exists before the physical
-  C1 is mounted; swap in a real capture at the venue if time allows (lidar-pi
+  C1 is mounted; swap in a real capture at the venue if time allows (the lidar node
   owns the real device - the emit schema is identical).

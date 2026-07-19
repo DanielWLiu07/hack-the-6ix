@@ -4,7 +4,7 @@ import { io } from "socket.io-client";
 export const SERVER_URL = process.env.SERVER_URL || "http://localhost:3001";
 
 // role is advisory: sent as both a query param and an auth field so whichever
-// convention server-core picks ("role" query / auth) is covered. If the hub
+// convention the hub picks ("role" query / auth) is covered. If the hub
 // just broadcasts to everyone, role is ignored and tests still work.
 export function connect(role = "browser", opts = {}) {
   return connectTo(SERVER_URL, role, opts);
@@ -86,7 +86,7 @@ export const SAMPLES = {
   slam_pose: { ts: 1752768000000, x: 1.0, y: 0.5, theta: 0.3 },
 };
 
-// Spawn a private, isolated hub (server-core's index.js) on `port`, with Base44
+// Spawn a private, isolated hub (the hub's index.js) on `port`, with Base44
 // forwarding forced OFF so test pick_events never reach the real Orchard OS
 // webhook. Resolves { proc, url, close() } once the hub is accepting sockets.
 // Used by integration tests that need determinism + write side effects the

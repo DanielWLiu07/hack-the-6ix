@@ -1,16 +1,3 @@
-<!--
-  DEVPOST_SUBMISSION.md - PASTE-READY Devpost form fields.
-  Assembled by llm-client (night shift). One field per section header below;
-  copy the body straight into the matching Devpost box. Numbers are folded in
-  from tonight's FINAL evidence and cross-checked against source docs:
-    - vision v0 metrics ...... status/vision-train.md [DONE v0 complete] + docs/QUALCOMM.md
-    - SLAM room-tour ......... status/lidar-sim.md [Phase-2 a/b]
-    - impact numbers ......... docs/IMPACT.md (db) + web/server/db/impact.js
-    - FarmHand LLM ........... ml/freesolo-agent (eval.py, DEMO_TRANSCRIPT.md)
-  Two live TODOs flagged inline: (1) trained-FarmHand eval number, (2) on-board
-     UNO Q YOLOv8n FPS. Both are "fill when measured" - do not invent.
--->
-
 # Devpost submission - FarmHand ("Battery, not Blood")
 
 ## Project name
@@ -21,7 +8,7 @@ An autonomous rover + robotic arm that picks *and* sorts fruit by ripeness at th
 point of harvest - on-device AI on a 5 W edge board, plain-English commands, no cloud.
 
 ## Elevator pitch / summary
-30–40% of food is lost between harvest and shelf, much of it to labor shortage and
+30-40% of food is lost between harvest and shelf, much of it to labor shortage and
 slow grading. FarmHand is a low-cost rover with a 5-DOF arm and an eye-in-hand
 camera that detects 3D-printed apples and bananas, classifies fruit type + ripeness
 with **on-device AI on the Arduino UNO Q**, picks each fruit, and drops it into the
@@ -107,8 +94,6 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
 - **Building against hardware that arrived late.** Every subsystem was built and
   tested against mocks/sim (fake robot, synthetic camera, simulated lidar) so the
   whole demo runs end-to-end with one command even without the physical robot.
-- **A 14-worker parallel build.** We coordinated a large fleet through shared status
-  files and frozen message schemas so nothing drifted.
 
 ## Accomplishments that we're proud of
 - **Genuinely on-device AI** - detection *and* ripeness classification run inside the
@@ -132,7 +117,7 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
 - On the UNO Q, the real design win is *where you draw the MPU/MCU line* - put
   safety on the real-time side and it survives a crashed AI process.
 - Edge inference isn't just a Qualcomm requirement, it's the Green-AI story: ~5 W on
-  the board vs. a 70–300 W cloud GPU per frame, no video ever leaving the farm.
+  the board vs. a 70-300 W cloud GPU per frame, no video ever leaving the farm.
 - Under-claiming impact numbers (conservative constants, cited sources) makes them
   survive judge Q&A; inflated ones don't.
 
@@ -170,7 +155,7 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
 - **MLH - MongoDB Atlas** and **MLH - Auth0** - both live in the web stack.
 
 ## Links (fill at submission)
-- **Live dashboard:** _(Vercel URL - deploy worker posts it)_
+- **Live dashboard:** _(Vercel URL)_
 - **Repo:** https://github.com/DanielWLiu07/hack-the-6ix
 - **Demo video:** _(≤3 min - shot list in `docs/PITCH.md`)_
 
@@ -179,7 +164,7 @@ gates teleop; Vercel hosts the frontend; a Base44 webhook forwards every pick ev
 ### Evidence index (for the "how do you know?" questions)
 | Claim | File |
 |---|---|
-| Vision v0 metrics (mAP 0.993 / P 0.988 / R 0.986) | `status/vision-train.md`, `ml/ripeness/export/` |
+| Vision v0 metrics (mAP 0.993 / P 0.988 / R 0.986) | `ml/ripeness/export/`, `docs/QUALCOMM.md` |
 | On-device split + FPS harness | `docs/QUALCOMM.md`, `robot/vision/bench.py` |
 | Impact math + sources | `docs/IMPACT.md`, `web/server/db/impact.js` |
 | FarmHand eval (93.3% baseline) | `ml/freesolo-agent/data/eval.py` |

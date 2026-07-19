@@ -1,4 +1,4 @@
-// MongoDB backend (Atlas or mongodb-memory-server). Collections per web/CLAUDE.md:
+// MongoDB backend (Atlas or mongodb-memory-server). Collections per docs/DATA.md:
 // pick_events, detections, telemetry (capped). Stats come from aggregation
 // pipelines so /api/stats stays fast even with a weekend of pick_events.
 

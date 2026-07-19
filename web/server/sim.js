@@ -1,9 +1,9 @@
 // sim.js - fake robot client. Connects to the hub as role=robot and emits
 // plausible telemetry (5 Hz), detections, pick_events and lidar_scans per the
-// root CLAUDE.md schemas. Responds to drive / pick / estop.
+// docs/SCHEMAS.md schemas. Responds to drive / pick / estop.
 //
 //   SERVER_URL=http://localhost:3001 npm run sim
-//   SIM_LIDAR=0 to disable lidar frames (e.g. when lidar-sim's is running)
+//   SIM_LIDAR=0 to disable lidar frames (e.g. when the lidar sim's is running)
 
 import fs from 'node:fs';
 import path from 'node:path';

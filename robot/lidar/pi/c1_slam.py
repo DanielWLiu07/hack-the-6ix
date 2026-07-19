@@ -17,7 +17,7 @@ STATIONARY sensor:
    endpoint = occupied), rolling so it follows the robot, capped 128x128 per the
    schema. This denoises dynamic objects and yields a clean room map.
 
-Self-contained (numpy + pyserial + python-socketio). Emits per root-CLAUDE.md:
+Self-contained (numpy + pyserial + python-socketio). Emits per docs/SCHEMAS.md:
   lidar_scan {ts, points:[[x,y]]}                 ~4 Hz
   slam_pose  {ts, x, y, theta}   (theta RADIANS)  ~4 Hz
   slam_map   {ts, resolution, width, height, origin, data(base64 uint8)}  <=0.5 Hz

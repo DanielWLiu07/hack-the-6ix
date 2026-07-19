@@ -15,8 +15,8 @@ this module if present (see .env.example). Freesolo serves trained models over
 an OpenAI-compatible API: POST <FARMHAND_URL>/chat/completions with a
 `Authorization: Bearer <FREESOLO_API_KEY>` header and model=<FARMHAND_MODEL>.
 
-Action schema (matches root CLAUDE.md + llm-data's dataset spec, see
-status/llm-data.md 22:12 - validated output always carries all 4 keys):
+Action schema (matches docs/SCHEMAS.md and the dataset spec; validated
+output always carries all 4 keys):
   {"task": "pick|sort|stop|drive", "fruit": "apple|banana|any",
    "filter": "ripe|unripe|any", "zone": "any|left|right|forward|backward|home"}
 

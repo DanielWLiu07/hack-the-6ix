@@ -83,7 +83,7 @@ CODE=$(curl -s -o /tmp/check-stack-health.$$ -w '%{http_code}' --max-time 3 "$SE
 if [ "$CODE" = "200" ]; then
   HEALTH=$(cat /tmp/check-stack-health.$$)
   case "$HEALTH" in
-    *'"agent":0'*) warn "no FarmHand agent connected (nl_command->nl_action will get no reply until llm-client's service.py runs)" ;;
+    *'"agent":0'*) warn "no FarmHand agent connected (nl_command->nl_action will get no reply until the NL client's service.py runs)" ;;
     *'"agent":'*)  ok "FarmHand agent connected (NL command path live)" ;;
   esac
   case "$HEALTH" in

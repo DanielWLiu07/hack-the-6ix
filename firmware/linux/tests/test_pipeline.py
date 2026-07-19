@@ -1,4 +1,4 @@
-"""Offline tests for the fw-linux pick/sort pipeline and robot node.
+"""Offline tests for the the Linux node pick/sort pipeline and robot node.
 
 No sockets, no hardware: MockBridge + MockCamera + MockDetector run the state
 machine at a large `speed` so moves are instant. Run: pytest -q
@@ -223,7 +223,7 @@ def test_auto_mode_runs_continuously():
 
 
 def test_set_mode_autostart_contract():
-    # server-core's contract: set_mode {autostart: bool}
+    # the hub's contract: set_mode {autostart: bool}
     from robot_linux.robot_node import AUTO, AWAIT, _norm_mode
     node, b, c = _node(mode=AWAIT)
     node._apply_mode(AUTO if True else AWAIT)     # autostart:true

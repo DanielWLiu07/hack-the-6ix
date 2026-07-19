@@ -9,7 +9,7 @@ The closed loop needs a detector that sees MockCamera's synthetic frames, so
 the *behavioral* soak uses MockDetector. The final exported model
 (ml/ripeness/export/model.onnx) can't detect synthetic blobs, so it is
 verified separately by --model-check: load via the real loader + an inference
-soak (latency + stability), confirming fw-linux consumes the final artifact.
+soak (latency + stability), confirming the Linux node consumes the final artifact.
 
 Run:  python -m robot_linux.soak --cycles 100
       python -m robot_linux.soak --cycles 100 --model-check

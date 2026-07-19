@@ -1,4 +1,4 @@
-"""End-to-end nl_command demo driver (llm-client phase-2).
+"""End-to-end nl_command demo driver (the NL client phase-2).
 
 Connects to the LIVE hub (:3001) as two clients:
   - a 'ui'    client: emits nl_command (like the web NL box) and receives the
@@ -96,7 +96,7 @@ def main():
 def render(rows):
     out = []
     out.append("# FarmHand NL-command end-to-end demo transcript\n")
-    out.append("_llm-client - 10 commands driven through the LIVE hub (:3001)_\n")
+    out.append("_the NL client - 10 commands driven through the LIVE hub (:3001)_\n")
     out.append("Chain per command: **web UI** `nl_command` -> hub -> **farmhand service** "
                "(trained model + strict schema validation) -> hub -> **UI echo** + **robot forward**.\n")
     ok = sum(1 for _, _, a, _, _ in rows if a and a.get("ok"))

@@ -1,6 +1,6 @@
 # Base44 Venture Builder Challenge - "Orchard OS"
 
-**Prize: $2,000 CAD (winner) / $1,000 CAD (runner-up).** Judged on execution IN Base44 - this is a SEPARATE build on base44.com (50 free credits at the event), not our React app. One teammate owns it (~4–6 focused hours). This doc is the complete build brief: paste the prompts in order.
+**Prize: $2,000 CAD (winner) / $1,000 CAD (runner-up).** Judged on execution IN Base44 - this is a SEPARATE build on base44.com (50 free credits at the event), not our React app. One teammate owns it (~4-6 focused hours). This doc is the complete build brief: paste the prompts in order.
 
 ## The venture (one sentence)
 
@@ -10,7 +10,7 @@ Why this wins the rubric: we're the only team whose Base44 "venture" is powered 
 
 ## Rubric mapping (100 pts)
 
-- **Problem & Market (20)**: labor shortage -> 30–40% post-harvest loss; target = small/mid orchards (<50 ha) that can't afford industrial automation. Named user: "Maria, 20-ha apple orchard, can't hire pickers."
+- **Problem & Market (20)**: labor shortage -> 30-40% post-harvest loss; target = small/mid orchards (<50 ha) that can't afford industrial automation. Named user: "Maria, 20-ha apple orchard, can't hire pickers."
 - **Product & Innovation (20)**: robotics-as-a-service booking + live field telemetry - not another generic dashboard.
 - **UX & Workflow (20)**: 3-step booking flow; one glanceable operator dashboard.
 - **Execution in Base44 (20)**: full data model, auth, charts, and a REAL webhook ingesting pick data from our robot's server (see Integration below).
@@ -22,7 +22,7 @@ Why this wins the rubric: we're the only team whose Base44 "venture" is powered 
 Rules of engagement: **each message ≈ 1 credit, so consolidate hard** (few rich prompts, not many small ones). Spend credits ONLY on things that score their rubric: Base44-native features (in-app AI agent, integrations, auth, styling-by-reference), personality, and the live-robot moment. Anything the machine got 80% right, leave it - polish costs credits and their judges explicitly don't want perfect.
 
 **P1 - mega-skeleton (1 credit).** One consolidated prompt:
-"Build a SaaS app called **Orchard OS** - small orchard operators book autonomous robot harvest runs and watch the robot pay for itself. Personality: warm, farmer-first, tagline 'Battery, not Blood.' Entities: Farm (name, location, hectares, crops), Field (farm, crop, ripeness_window), HarvestJob (field, date, status requested/scheduled/in_progress/complete, est_yield_kg), Robot (name, status, battery, current_job), PickReport (job, fruit_type apple/banana, ripeness ripe/unripe, bin, timestamp, success). Users belong to a Farm; include login. Pages: (a) landing with the problem - 30–40% of food never makes it from harvest to shelf - and a Book Demo CTA; (b) a 3-step 'Book a Harvest' wizard (field -> date window -> confirm with est. cost at $0.12/kg and est. waste avoided) creating a requested HarvestJob; (c) operator dashboard: active job card, today's PickReports grouped by fruit+ripeness as a bar chart, success rate, season kg total, and an ROI widget - (kg × $2.10/kg apples, $1.40/kg bananas) minus subscription - phrased as 'your robot has paid for X% of itself'; (d) admin fleet page: robots w/ battery + assign requested jobs. Seed 2 farms, 4 fields, 1 complete job with 120 PickReports over 2 hours, 1 in_progress job."
+"Build a SaaS app called **Orchard OS** - small orchard operators book autonomous robot harvest runs and watch the robot pay for itself. Personality: warm, farmer-first, tagline 'Battery, not Blood.' Entities: Farm (name, location, hectares, crops), Field (farm, crop, ripeness_window), HarvestJob (field, date, status requested/scheduled/in_progress/complete, est_yield_kg), Robot (name, status, battery, current_job), PickReport (job, fruit_type apple/banana, ripeness ripe/unripe, bin, timestamp, success). Users belong to a Farm; include login. Pages: (a) landing with the problem - 30-40% of food never makes it from harvest to shelf - and a Book Demo CTA; (b) a 3-step 'Book a Harvest' wizard (field -> date window -> confirm with est. cost at $0.12/kg and est. waste avoided) creating a requested HarvestJob; (c) operator dashboard: active job card, today's PickReports grouped by fruit+ripeness as a bar chart, success rate, season kg total, and an ROI widget - (kg × $2.10/kg apples, $1.40/kg bananas) minus subscription - phrased as 'your robot has paid for X% of itself'; (d) admin fleet page: robots w/ battery + assign requested jobs. Seed 2 farms, 4 fields, 1 complete job with 120 PickReports over 2 hours, 1 in_progress job."
 
 **P2 - webhook ingest (1 credit).** "Add an API endpoint that accepts POST {job_id, fruit, ripeness, bin, success, ts} with a shared-secret header check and creates a PickReport live on the dashboard." -> paste resulting URL+secret into `web/server/.env` (`BASE44_WEBHOOK_URL`, `BASE44_SECRET`) - our forwarder is already built and tested; this is the live-robot judging moment.
 
@@ -38,7 +38,7 @@ Rules of engagement: **each message ≈ 1 credit, so consolidate hard** (few ric
 
 ## Integration with our robot (the killer demo)
 
-Our Express server (`web/server/`) forwards every real `pick_event` to Orchard OS's webhook (env: `BASE44_WEBHOOK_URL`, `BASE44_SECRET`). During judging: robot picks a fruit on stage -> PickReport appears in Orchard OS seconds later -> ROI ticks up. server-core has this as a queued task (see BROADCAST).
+Our Express server (`web/server/`) forwards every real `pick_event` to Orchard OS's webhook (env: `BASE44_WEBHOOK_URL`, `BASE44_SECRET`). During judging: robot picks a fruit on stage -> PickReport appears in Orchard OS seconds later -> ROI ticks up.
 
 ## Demo script (2 min)
 
@@ -59,6 +59,6 @@ Our Express server (`web/server/`) forwards every real `pick_event` to Orchard O
 ## Checklist
 
 - [ ] Base44 account created (free plan is enough; `BOSTON50` if credits run dry)
-- [ ] Prompts 1–6 executed, flows manually tested
-- [ ] Webhook secret shared with server-core via .env (never in git)
+- [ ] Prompts 1-6 executed, flows manually tested
+- [ ] Webhook secret shared with the hub via .env (never in git)
 - [ ] Devpost: select Base44 track; screenshots + this narrative

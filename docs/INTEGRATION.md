@@ -1,6 +1,6 @@
 # INTEGRATION.md - first power-on hardware runbook
 
-**Owner: fw-tools.** This is the checklist for the moment the *real* robot
+This is the checklist for the moment the *real* robot
 arrives and gets powered for the first time. The whole software stack is
 already demoable on mocks (`scripts/demo.sh`) - this runbook is about bringing
 up **physical** hardware **incrementally and safely**, one subsystem at a time,
@@ -64,7 +64,7 @@ Power on with the **motor driver VM and the servo V+ still disconnected** if you
 can (bring logic up first). Then measure:
 
 - [ ] UNO Q logic rail = **3.3 V** (±0.1).
-- [ ] Servo buck output = **5.0–5.2 V** under no load. Re-check it does **not**
+- [ ] Servo buck output = **5.0-5.2 V** under no load. Re-check it does **not**
       sag below ~4.7 V when a single servo moves (§3d) - sag = brownout = the
       board resets mid-pick.
 - [ ] Motor driver VM = battery voltage (~11.1 V for 3S).
@@ -113,7 +113,7 @@ Safety-state cheat-sheet (BRIDGE.md §2) - every command replies `OK <state>`:
       never a snap. Repeat per joint with small deltas.
 - [ ] **Gripper clamp**: creep the gripper channel toward closed in small steps
       and find the angle where it grips a printed apple *without stalling*. That
-      angle bounds `GRIP_MIN_US`/`GRIP_MAX_US` in fw-mcu - full 180° strips the
+      angle bounds `GRIP_MIN_US`/`GRIP_MAX_US` in the MCU firmware - full 180° strips the
       gears. Record the safe range.
 
 ### 3c. Ultrasonic reflex
@@ -165,7 +165,7 @@ serial letters you just tested.
 
 ## 5. Canned pick (the P0 demo)
 
-- [ ] Using fw-linux's pose recorder, jog to and save the pick approach, grasp,
+- [ ] Using the Linux node's pose recorder, jog to and save the pick approach, grasp,
       lift, carry, and each bin-drop pose (`apple_ripe`/`apple_unripe`/
       `banana_ripe`/`banana_unripe`).
 - [ ] Replay the full **pick -> sort -> drop** sequence on a real 3D-printed apple.
@@ -191,9 +191,9 @@ self-sufficient. In rough order of escalation:
    ```
    The mock robot auto-runs SEEK->PICK->SORT with live-looking telemetry,
    detections, pick_events, and lidar. Judges see the same dashboard.
-   - `HT6_ROBOT_SIM=1 scripts/demo.sh up` swaps in server-core's built-in
+   - `HT6_ROBOT_SIM=1 scripts/demo.sh up` swaps in the hub's built-in
      `sim.js` robot if the Python node's venv is unhappy.
-   - server-core's **force-sim panic switch** (see `docs/DEPLOY.md`) can flip the
+   - the hub's **force-sim panic switch** (see `docs/DEPLOY.md`) can flip the
      hub to simulated telemetry live, without restarting anything, if the real
      robot drops mid-demo.
 4. **Recorded footage** of the canned pick (§5) is the final fallback - always

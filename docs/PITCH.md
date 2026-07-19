@@ -20,7 +20,7 @@ you start talking. If anything is red, OP flips the sim panic switch
 
 ## The script (with running clock)
 
-### 0:00 – 0:25 · Environmental hook  - **A**
+### 0:00 - 0:25 · Environmental hook  - **A**
 > _(No slides. A holds up one 3D-printed apple.)_
 >
 > "Thirty to forty percent of the world's food is lost between the harvest and
@@ -33,7 +33,7 @@ you start talking. If anything is red, OP flips the sim panic switch
 
 **[25s]** - _A steps back; B takes over. OP makes sure a fruit is in view._
 
-### 0:25 – 1:05 · The live pick  - **B** narrates, **OP** runs it
+### 0:25 - 1:05 · The live pick  - **B** narrates, **OP** runs it
 > "FarmHand is a rover with a 5-DOF arm and a camera **on the hand** - eye-in-hand.
 > Right now it's looking for fruit on its own. Watch."
 >
@@ -53,7 +53,7 @@ you start talking. If anything is red, OP flips the sim panic switch
 **[40s -> 1:05]** - _If the arm stalls, B keeps talking and OP triggers the
 scripted replay; never wait in silence._
 
-### 1:05 – 1:35 · The dashboard  - **B**, **OP** brings up the screen
+### 1:05 - 1:35 · The dashboard  - **B**, **OP** brings up the screen
 > "Everything it just did streamed live to our dashboard." _(OP switches to the
 > web app.)_ "State machine, battery, the arm's joint angles, the lidar map from
 > a 360° scanner on board - and every pick logged.
@@ -66,7 +66,7 @@ scripted replay; never wait in silence._
 **[30s -> 1:35]** - _OP leaves the dashboard up; advances to the architecture
 slide on B's next line._
 
-### 1:35 – 2:10 · The dual-brain - MPU/MCU  - **B**, slide up
+### 1:35 - 2:10 · The dual-brain - MPU/MCU  - **B**, slide up
 > "How does a robot this small run AI **and** stay safe? The Arduino **UNO Q**
 > has two brains, and we split the robot on the line that matters - **safety and
 > latency.**
@@ -80,7 +80,7 @@ slide on B's next line._
 
 **[35s -> 2:10]** - _OP switches to the dashboard's NL command box for the finale._
 
-### 2:10 – 2:45 · FarmHand - natural language  - **B**, **OP** types
+### 2:10 - 2:45 · FarmHand - natural language  - **B**, **OP** types
 > "Last thing. You shouldn't need to be an engineer to run this. So we trained a
 > language model - **FarmHand** - to take plain English." _(OP types
 > **"pick all ripe apples"** and hits enter.)_
@@ -98,7 +98,7 @@ slide on B's next line._
 
 **[35s -> 2:45]**
 
-### 2:45 – 3:00 · Close  - **A**
+### 2:45 - 3:00 · Close  - **A**
 > "Picks, sorts, and grades fruit at the point of harvest - in plain English, on
 > **5 watts**, with no cloud. Less waste, lower prices, and nobody breaking their
 > back in the sun.

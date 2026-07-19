@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# fw-tools: compile (and if possible upload) the MCU sketch.
+# firmware/tools: compile (and if possible upload) the MCU sketch.
 #
 #   ./flash.sh                 # compile + upload firmware/mcu to auto-detected board
 #   ./flash.sh --check         # compile only (no board needed) - CI-style sanity
@@ -18,7 +18,7 @@ say() { printf '\033[1;32m[flash]\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31m[flash]\033[0m %s\n' "$*" >&2; exit 1; }
 
 command -v arduino-cli >/dev/null 2>&1 || die "arduino-cli not found - run ./setup.sh first"
-ls "$SKETCH"/*.ino >/dev/null 2>&1 || die "no .ino in $SKETCH (fw-mcu not started yet?)"
+ls "$SKETCH"/*.ino >/dev/null 2>&1 || die "no .ino in $SKETCH (the MCU firmware not started yet?)"
 
 # resolve FQBN
 if [ -z "${ARDUINO_FQBN:-}" ]; then

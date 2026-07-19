@@ -1,4 +1,4 @@
-// Arduino Uno (ATmega328P, 5V logic) — BTS7960 / IBT-2 dual-PWM drive test.
+// Arduino Uno (ATmega328P, 5V logic) - BTS7960 / IBT-2 dual-PWM drive test.
 // Standalone jog test for a 2-motor drive base. No enable pins driven in code.
 //
 // Wiring:

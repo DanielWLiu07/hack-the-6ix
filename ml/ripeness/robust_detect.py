@@ -11,7 +11,7 @@ signature, so a face, a window, or a brick wall simply do not match:
     green  (H 36-85, sat)        -> apple_unripe if round, banana_unripe if long
 
 Each signature gets its own mask + gap-bridging close + shape/size gate, then all
-detections are de-duplicated. Returns root-CLAUDE.md detection dicts, so it drops
+detections are de-duplicated. Returns docs/SCHEMAS.md detection dicts, so it drops
 into classify_folder.py / sort_pipeline.py in place of the ONNX detector.
 
     python3 robust_detect.py --image photo.jpg

@@ -1,4 +1,4 @@
-// ESP32-C3 Supermini — BTS7960 dual-PWM drive test (standalone).
+// ESP32-C3 Supermini - BTS7960 dual-PWM drive test (standalone).
 // 3.3V logic. Validates the drive base. No App Lab.
 //
 // Wiring:

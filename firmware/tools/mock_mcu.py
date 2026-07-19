@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""fw-tools: mock MCU - reference implementation of BRIDGE.md §5 over a pty.
+"""firmware/tools: mock MCU - reference implementation of BRIDGE.md §5 over a pty.
 
 Serves the serial bench protocol exactly as the real sketch must, including
 the safety state machine, 20 ms servo interpolation and the 500 ms watchdog.
 Uses:
   * verify bench.py with no hardware:      python3 mock_mcu.py   (prints port)
-  * fw-linux integration target pre-board: point your serial layer at the pty
-  * fw-mcu: executable spec - if bench.py passes against this and fails
+  * the Linux node integration target pre-board: point your serial layer at the pty
+  * the MCU firmware: executable spec - if bench.py passes against this and fails
     against your sketch, the sketch is wrong (or this file and BRIDGE.md are,
     in which case post status).
 

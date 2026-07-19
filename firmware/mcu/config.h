@@ -1,5 +1,5 @@
 // config.h - all pins, limits, and tuning in one place.
-// Pins are TBD until fw-tools publishes firmware/PINOUT.md; change ONLY here.
+// Pins are TBD until firmware/tools publishes firmware/PINOUT.md; change ONLY here.
 // Protocol constants (states, rates, clamps) come from firmware/BRIDGE.md -
 // do not change them without a BLOCKED status entry to master.
 #pragma once

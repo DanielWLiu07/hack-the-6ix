@@ -1,17 +1,6 @@
-<!--
-  DEVPOST.md - shared Devpost draft. SECTION OWNERSHIP:
-    - Top matter + track index ........ skeleton by llm-client (edit via master)
-    - Freesolo LLM track .............. llm-client (this file's author)
-    - FarmHand demo shot list ......... llm-client
-    - Qualcomm UNO Q track ............ vision-infer  (append below the marker)
-    - Deloitte AI-for-Green ........... vision-infer  (append below the marker)
-  Other workers: add your track section under its stub header; don't rewrite
-  another owner's section. Numbers here are LIVE as of the timestamps noted.
--->
-
 # Battery, not Blood - Autonomous Fruit-Picking & Sorting Robot
 
-> 30–40% of food is lost between harvest and shelf - much of it to labor
+> 30-40% of food is lost between harvest and shelf - much of it to labor
 > shortage and slow, brutal stoop labor. **FarmHand** is a low-cost rover +
 > 5-DOF arm that **picks _and_ sorts** fruit at the point of harvest: an
 > eye-in-hand camera classifies fruit type + ripeness with **on-device AI on
@@ -163,12 +152,6 @@ guaranteed-working end-to-end take even if live hardware misbehaves._
 
 ---
 
-<!-- ============================================================ -->
-<!-- vision-infer: APPEND your two sections BELOW this marker.    -->
-<!-- Keep the ## headers + anchors exactly as stubbed so the      -->
-<!-- track index links above resolve.                             -->
-<!-- ============================================================ -->
-
 ## Qualcomm UNO Q track - on-device AI
 
 **The one-liner:** fruit detection *and* ripeness classification run **on the
@@ -225,7 +208,7 @@ camera framerate. Full table + methodology: `docs/QUALCOMM.md`.
 
 ## Deloitte AI-for-Green - quantified impact
 
-**The problem, in numbers.** 30–40 % of food is lost between harvest and shelf,
+**The problem, in numbers.** 30-40 % of food is lost between harvest and shelf,
 much of it to labor shortage and slow, late grading. A low-cost robot that
 **picks *and* sorts by ripeness at the point of harvest** attacks that loss gap
 directly - fruit is graded into the right bin the moment it's picked instead of
@@ -242,7 +225,7 @@ these from *actual* `pick_event`s in real time (`web/server/store.js`,
 - **Waste avoided = 0.15 kg × successful picks** -> on the order of **~60 kg/hr**
   graded at harvest, for one arm.
 - **CO₂e avoided = waste_avoided × 2.5 kg CO₂e/kg** (conservative end of the FAO
-  food-wastage-footprint range, 2–4) -> **~150 kg CO₂e/hr**. We say "conservative"
+  food-wastage-footprint range, 2-4) -> **~150 kg CO₂e/hr**. We say "conservative"
   on stage.
 
 Every figure the judges see ticks up live as the robot picks - the impact/ROI
@@ -251,8 +234,8 @@ widget is driven by real pick data (`/api/stats` -> `waste_avoided_kg`,
 
 **Green AI - the compute itself is sustainable.** The perception model runs
 inside the UNO Q's **~5 W envelope**, on-device. Compare a cloud-inference path:
-the GPU accelerator alone draws **~70–300 W**, before datacenter PUE overhead
-(~1.5–2×) and the per-frame energy of streaming video off-site. Grading at the
+the GPU accelerator alone draws **~70-300 W**, before datacenter PUE overhead
+(~1.5-2×) and the per-frame energy of streaming video off-site. Grading at the
 edge is an order-of-magnitude energy win *per inference* - and it works in a
 connectivity-poor field with no datacenter round-trip and no video leaving the
 farm (privacy + resilience). Efficient quantized edge inference is itself the

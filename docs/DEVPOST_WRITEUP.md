@@ -1,14 +1,3 @@
-<!--
-  DEVPOST_WRITEUP.md - POLISHED, paste-ready Devpost narrative.
-  Applies the team style rule (no em dashes, no emojis), the apple + banana
-  strategy, the pitch-craft research (docs/TRACK_PITCHES.md), and the impact
-  honesty guardrails (docs/IMPACT.md). Every number here is carried over
-  unchanged from the verified drafts (DEVPOST_SUBMISSION.md, DEVPOST.md,
-  status/vision-train.md, ml/freesolo-agent). Do not invent numbers; fill the
-  two flagged TODOs only when measured. This is the human-facing form copy;
-  DEVPOST.md stays the per-track technical appendix.
--->
-
 # FarmHand: Battery, not Blood
 
 ## Project name
@@ -194,7 +183,7 @@ playstation-controller (Gamepad API)
 - MLH MongoDB Atlas and MLH Auth0. Both live in the web stack.
 
 ## Links (fill at submission)
-- Live dashboard: (Vercel URL, deploy worker posts it)
+- Live dashboard: (Vercel URL)
 - Repo: https://github.com/DanielWLiu07/hack-the-6ix
 - Demo video: (under 3 minutes, shot structure in docs/PITCH.md and
   docs/TRACK_PITCHES.md)
@@ -204,7 +193,7 @@ playstation-controller (Gamepad API)
 ### Evidence index (for the "how do you know?" questions)
 | Claim | File |
 |---|---|
-| Vision v0 metrics (mAP 0.993, P 0.988, R 0.986) | status/vision-train.md, ml/ripeness/export/ |
+| Vision v0 metrics (mAP 0.993, P 0.988, R 0.986) | ml/ripeness/export/, docs/QUALCOMM.md |
 | On-device split and FPS harness | docs/QUALCOMM.md, robot/vision/bench.py |
 | Impact math and sources | docs/IMPACT.md, web/server/db/impact.js |
 | FarmHand eval (96.7% GRPO, 93.3% baseline) | ml/freesolo-agent/data/eval.py |

@@ -11,11 +11,11 @@ SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:3001")
 
 POSES_PATH = Path(os.environ.get("POSES_PATH", LINUX_DIR / "poses.json"))
 
-# Model artifacts exported by ml/ripeness (vision-train worker)
+# Model artifacts exported by ml/ripeness
 MODEL_PATH = Path(os.environ.get("MODEL_PATH", REPO_ROOT / "ml/ripeness/export/model.onnx"))
 CLASSES_PATH = Path(os.environ.get("CLASSES_PATH", REPO_ROOT / "ml/ripeness/export/classes.json"))
 
-# vision-infer's HSV fallback detector lives here
+# the vision module's HSV fallback detector lives here
 HSV_DETECTOR_DIR = Path(os.environ.get("HSV_DETECTOR_DIR", REPO_ROOT / "robot/vision"))
 
 CAMERA_INDEX = int(os.environ.get("CAMERA_INDEX", "0"))

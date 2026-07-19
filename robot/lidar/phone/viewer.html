@@ -4,7 +4,7 @@
 
   Loads the phone-scanned colored world (world.glb) AND overlays the live
   RPLIDAR C1 `lidar_scan` ring in the SAME frame, with decay. This is the
-  reference web-frontend copies into the dashboard's lidar view, and doubles
+  reference the web app copies into the dashboard's lidar view, and doubles
   as offline demo-backup footage.
 
   Run:
@@ -251,7 +251,7 @@ function startLive() {
     gotLive = true; scanCount++; lastPts = m.points.length;
     addScan(m.points, performance.now());
   });
-  sock.on('slam_update', (m) => {          // needs server-core relay (see DEPLOY.md)
+  sock.on('slam_update', (m) => {          // needs the hub relay (see DEPLOY.md)
     if (!m || !Array.isArray(m.cells)) return;
     setSlam(m.cells, m.pose);
   });

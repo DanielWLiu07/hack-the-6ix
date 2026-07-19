@@ -35,7 +35,7 @@
 COMMON GROUND across everything. Fuse on battery lead if available.
 ```
 
-- 30 kg servos stall at 3–5 A **each**. Two moving together will kill a shared rail - this is why the servo rail is isolated.
+- 30 kg servos stall at 3-5 A **each**. Two moving together will kill a shared rail - this is why the servo rail is isolated.
 - Brown-out symptom: Pi/UNO Q reboots when arm lifts. If seen -> check servo rail sag with multimeter first.
 - E-stop: physical battery disconnect (XT60 pull) within reach at all times. LiPo safety: never charge unattended, fireproof bag.
 

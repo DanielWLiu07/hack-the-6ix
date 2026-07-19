@@ -17,7 +17,7 @@ pip install python-socketio[client] numpy onnxruntime pytest requests
 ## Run
 
 Everything runs against mocks with no hardware. `SERVER_URL` (env) or
-`--server` points at server-core's hub (default `http://localhost:3001`).
+`--server` points at the hub's hub (default `http://localhost:3001`).
 
 ```bash
 # Full robot node: SM + telemetry/detection/pick_event to the hub,
@@ -43,7 +43,7 @@ stage (otherwise the autonomous loop masks whether a command caused the pick):
   In sim, a filtered command (e.g. "pick a ripe banana") also presents the
   requested fruit in the mock scene so there is always a matching target.
 
-Toggle live via the hub, using server-core's contract `set_mode {autostart: bool}`
+Toggle live via the hub, using the hub's contract `set_mode {autostart: bool}`
 (`autostart:false` pauses autonomy into await, `true` resumes). The operator can
 flip it over REST: `curl -XPOST localhost:3001/api/robot/mode -d '{"autostart":false}'`.
 The hub replays the last `set_mode` to a robot on reconnect, so a mid-demo toggle
@@ -52,7 +52,7 @@ survives a robot restart.
 ### Detector selection
 
 `load_detector()` prefers, in order: ONNX (`ml/ripeness/export/model.onnx` +
-`classes.json`) -> vision-infer's HSV fallback (`robot/vision/hsv_detector.py`) ->
+`classes.json`) -> the vision module's HSV fallback (`robot/vision/hsv_detector.py`) ->
 `MockDetector` (synthetic ground truth). In `--sim` the node forces
 `MockDetector` (the real models see nothing in MockCamera's synthetic frames);
 pass `--real-detector` to run the ONNX/HSV path against a live camera in sim.
@@ -89,7 +89,7 @@ because the real model can't see MockCamera's synthetic frames.
 ## Verified
 
 - Full pick cycle emits schema-correct `detection` / `pick_event` (correct bins
-  `apple_ripe`...`banana_unripe`); `telemetry` payload matches root-CLAUDE.md.
+  `apple_ripe`...`banana_unripe`); `telemetry` payload matches docs/SCHEMAS.md.
 - Node runs a steady 20 Hz control loop, 5 Hz telemetry + heartbeat, and picks
-  end-to-end against server-core's live hub (REST `/api/stats` aggregates them).
+  end-to-end against the hub's live hub (REST `/api/stats` aggregates them).
 - `drive`/`arm_pose`/`pick`/`estop`/`nl_action` inbound handling; latched estop.

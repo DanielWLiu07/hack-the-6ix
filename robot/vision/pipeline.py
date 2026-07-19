@@ -3,7 +3,7 @@
 Run:  python3 pipeline.py [--source camera|synthetic]
 
 Serves on 0.0.0.0:PORT (default 8080):
-    /stream       multipart MJPEG, annotated frames (server-core /stream proxies this)
+    /stream       multipart MJPEG, annotated frames (the hub /stream proxies this)
     /detections   latest detections as JSON: {"ts":..., "detections":[...]}
     /health       {"ok":true,"detector":"hsv|onnx","fps":...,"source":...}
 
@@ -18,7 +18,7 @@ No camera attached (or --source synthetic): falls back to the synthetic scene
 generator so the stream + detections work end-to-end today.
 
 Detections are also printed to stdout as JSON lines (one per change) so a
-parent process (fw-linux) can consume them without HTTP if it prefers -
+parent process (the Linux node) can consume them without HTTP if it prefers -
 though the supported interface is `detector.load_detector()` in-process.
 """
 

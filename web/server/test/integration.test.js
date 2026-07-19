@@ -1,5 +1,5 @@
 // Phase-2 integration tests: the NL-command (FarmHand) routing path and the
-// robot-client persistence path, exercised end-to-end through server-core's hub.
+// robot-client persistence path, exercised end-to-end through the hub's hub.
 //
 // These run against a PRIVATE hub instance we spawn (Base44 forwarding OFF) so
 // that (a) results are deterministic regardless of who's connected to the shared
@@ -52,11 +52,11 @@ test("hub routes nl_command from ui to the FarmHand agent", async () => {
 });
 
 // OBSERVED BEHAVIOR (not a failure): the hub also relays raw nl_command to
-// robots, because nl_command sits in server-core's generic CONTROL_EVENTS list
+// robots, because nl_command sits in the hub's generic CONTROL_EVENTS list
 // (index.js:83-92) which fan-outs to robots, in addition to the agent routing.
-// Per root CLAUDE.md, nl_command is meant to reach the robot only *structured*
+// Per docs/SCHEMAS.md, nl_command is meant to reach the robot only *structured*
 // (via FarmHand -> nl_action). The robot ignores the raw copy, so this is
-// harmless today - logged as an informational finding for server-core, not
+// harmless today - logged as an informational finding for the hub, not
 // asserted here. This test pins the current behavior so a future change is
 // visible in the diff.
 test("hub currently also relays raw nl_command to robots (documents status quo)", async () => {

@@ -38,11 +38,11 @@ python3 process.py scan.glb                 # aligns (identity) + optimizes to <
 python3 process.py scan.ply --z-up --recenter-floor --yaw-deg 90
 ```
 
-`web/public/world.glb` already exists (the synthetic sample) - **web-frontend can
+`web/public/world.glb` already exists (the synthetic sample) - **the web app can
 build against it now**. Re-run `process.py` at the venue to swap in the real scan;
 same output path, no web code change needed.
 
-## Coordinate conventions - web-frontend read this
+## Coordinate conventions - the web app read this
 
 `world.glb` is authored in the **glTF / three.js frame** (right-handed, meters):
 
@@ -70,7 +70,7 @@ const Z = -x;          // robot forward(+x) -> into scene (−Z)
 
 That's it - no rotation matrix needed, it's just an axis swap + negation. The C1
 ring will sit inside the `world.glb` room at the correct place and heading.
-(If the physical C1 is mounted rotated, lidar-pi bakes that into `ANGLE_OFFSET_DEG`
+(If the physical C1 is mounted rotated, the lidar node bakes that into `ANGLE_OFFSET_DEG`
 on the Pi side, so the points you receive are already in the robot frame above.)
 
 ### Loading (plain three.js, no decoder needed)
@@ -107,7 +107,7 @@ need `MeshoptDecoder` wired up - coordinate first.
 
 A self-contained three.js page that loads `world.glb` **and** overlays the live
 C1 `lidar_scan` ring (decaying cyan->blue) in the same frame - the conventions
-above, made runnable. It's the reference web-frontend copies into the dashboard
+above, made runnable. It's the reference the web app copies into the dashboard
 lidar view, and it doubles as offline demo-backup footage.
 
 ```bash

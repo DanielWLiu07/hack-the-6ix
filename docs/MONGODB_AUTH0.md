@@ -2,8 +2,8 @@
 
 **Goal:** not "we have a database and a login button" (what most teams show) but a
 **tight synergy** where the two sponsors reinforce each other and a real product
-need. Owner of the DB side: worker `db`. Auth0 UI/gating: web-frontend +
-server-core.
+need.
+
 
 ## The one-sentence synergy (lead with this to judges)
 
@@ -25,9 +25,9 @@ purpose-built collections) - not bolted-on.
 |---|---|---|
 | **Time Series collection** | `telemetry` is a native Atlas Time Series collection (timeField `time`, `seconds` granularity, 1 h TTL) - purpose-built for the robot's 1 Hz sensor stream, not a plain collection | live on `ht6` (verify: `db.getCollectionInfos({name:'telemetry'})[0].type === 'timeseries'`) |
 | **Aggregation pipelines** | `/api/stats` = one `$facet` (totals/by-fruit/by-ripeness/by-bin + window); `/api/timeseries` = `$mod` time-bucketing + `$switch` kg; detection stats = `$group` | `web/server/db/mongo.js` |
-| **Operator-attributed audit** | optional `operator` (Auth0 `sub`/email) on `pick_events` + `commands`, sparse-indexed; `getPicks({operator})` / `getCommands({operator})` | db layer (needs server-core to stamp it - see below) |
+| **Operator-attributed audit** | optional `operator` (Auth0 `sub`/email) on `pick_events` + `commands`, sparse-indexed; `getPicks({operator})` / `getCommands({operator})` | db layer (needs the hub to stamp it - see below) |
 | **Impact aggregation** | waste-avoided / CO₂e / throughput computed in-DB + app layer from real picks | `docs/IMPACT.md` |
-| **Atlas Charts** (recommended) | embed a live Atlas Chart (picks/hr, yield) in the dashboard - visible "powered by Atlas" proof judges love | web-frontend: create a chart on `ht6.pick_events`, embed the iframe |
+| **Atlas Charts** (recommended) | embed a live Atlas Chart (picks/hr, yield) in the dashboard - visible "powered by Atlas" proof judges love | the web app: create a chart on `ht6.pick_events`, embed the iframe |
 | **Atlas Search** (stretch) | full-text index on `commands.text` -> "search everything anyone asked the robot" | optional |
 
 **Why Time Series is the flagship:** it's the clearest signal we chose Atlas
@@ -56,7 +56,7 @@ Today: `web/src/main.jsx` + `pages/Teleop.jsx` gate teleop behind Auth0 login
    `https://ht6/roles`) custom claim to the ID/access token.
 2. **Server-side enforcement (not just hidden UI).** The hub must **verify the
    Auth0 JWT** on control events (`drive`/`arm_pose`/`pick`/`estop`/`nl_command`)
-   and reject non-operators - hiding a button isn't security. (server-core: verify
+   and reject non-operators - hiding a button isn't security. (the hub: verify
    the RS256 JWT against the Auth0 JWKS on the socket handshake; attach the
    verified identity to the socket.)
 3. **Identity -> Atlas attribution.** From the verified token, stamp
@@ -79,10 +79,10 @@ Today: `web/src/main.jsx` + `pages/Teleop.jsx` gate teleop behind Auth0 login
 - **db (me) - DONE:** Time Series telemetry, aggregation pipelines, `operator`
   attribution fields + sparse indexes + `getPicks/getCommands({operator})`,
   `recordCommand`. Live on `ht6`, tested both backends.
-- **server-core:** verify Auth0 JWT on the socket handshake + control events;
+- **the hub:** verify Auth0 JWT on the socket handshake + control events;
   stamp `operator` onto `pick_event`/`command` before storing; wire the new REST
   routes (`/api/activity`, `/api/timeseries`, `/api/sessions`, `/api/commands`).
-- **web-frontend:** RBAC-aware UI (operator vs viewer), pass the Auth0 access
+- **the web app:** RBAC-aware UI (operator vs viewer), pass the Auth0 access
   token on the socket handshake, per-operator audit panel, embed an Atlas Chart.
 - **master:** add `operator` as an OPTIONAL field to the root `pick_event`/`command`
   schemas (additive, nullable - db already supports it).

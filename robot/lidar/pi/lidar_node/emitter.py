@@ -1,6 +1,6 @@
 """Socket.IO client that ships `lidar_scan` events to the laptop hub.
 
-Payload (root CLAUDE.md, do not drift):
+Payload (docs/SCHEMAS.md, do not drift):
     "lidar_scan" {"ts": <epoch_s>, "points": [[x, y], ...]}   # meters, ≤360
 """
 

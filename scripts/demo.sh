@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # demo.sh - ONE command to boot the whole "Battery, not Blood" demo stack.
-# (owner: fw-tools - phase-4 demo readiness)
+# (owner: firmware/tools - phase-4 demo readiness)
 #
 #   scripts/demo.sh            bring the whole stack up (idempotent - safe to re-run)
 #   scripts/demo.sh up         ... same as no arg
@@ -18,8 +18,8 @@
 #
 # Env overrides:
 #   SERVER_URL       hub URL robot+lidar dial (default http://localhost:3001)
-#   HT6_ROBOT_SIM=1  use server-core's built-in sim.js as the robot instead of the
-#                    fw-linux node (sim.js also emits lidar_scan -> lidar sim auto-skipped).
+#   HT6_ROBOT_SIM=1  use the hub's built-in sim.js as the robot instead of the
+#                    the Linux node node (sim.js also emits lidar_scan -> lidar sim auto-skipped).
 #                    Demo panic fallback if the Python robot venv is unhappy.
 #   HT6_SKIP="..."   space-separated svc names to NOT start (e.g. "web lidar")
 #   HT6_DEMO_DIR     where logs + pidfiles live (default /tmp/ht6-demo)
@@ -150,7 +150,7 @@ cmd_up() {
   start hub port:3001 "$ROOT/web/server" -- node index.js || true
   wait_hub || { bad "aborting - the hub is the spine; nothing else works without it"; exit 1; }
 
-  # FarmHand NL service (llm-client): answers nl_command via the trained Freesolo
+  # FarmHand NL service (the NL client): answers nl_command via the trained Freesolo
   # model (ml/freesolo-agent/client/.env FARMHAND_URL) or built-in rules if unset,
   # with graceful fallback. Needs only the hub. Without it the NL box has no responder.
   # Client deps are light (python-socketio) so we bootstrap the venv on a fresh clone.
@@ -161,8 +161,8 @@ cmd_up() {
     skip "farmhand: ml/freesolo-agent/client venv unavailable, NL command box will have no responder"
   fi
 
-  # Robot: prefer the real fw-linux node when its venv exists; otherwise (fresh
-  # clone, or HT6_ROBOT_SIM=1) use server-core's built-in sim.js robot, which
+  # Robot: prefer the real the Linux node node when its venv exists; otherwise (fresh
+  # clone, or HT6_ROBOT_SIM=1) use the hub's built-in sim.js robot, which
   # needs no python and also emits lidar_scan. The proc pattern matches either
   # source so we never stack two robots onto one dashboard.
   local use_sim_robot=0
@@ -214,7 +214,7 @@ cmd_status() {
       | sed 's/^/         health: /' 2>/dev/null || true
   else bad "hub    :3001 down"; fi
 
-  proc_up "robot_linux\.robot_node" && ok "robot  fw-linux node (mock) running" \
+  proc_up "robot_linux\.robot_node" && ok "robot  the Linux node node (mock) running" \
     || { proc_up "sim\.js" && ok "robot  server sim.js running" || bad "robot  not running"; }
   proc_up "freesolo-agent/client/service\.py" && ok "farmhand NL responder running" \
     || bad "farmhand NL responder not running (nl_command has no answer)"

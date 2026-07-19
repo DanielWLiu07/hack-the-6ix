@@ -3,7 +3,7 @@
 
 Bonus deliverable (Phase 2) on top of the SFT set. Teaches the model to *prefer*
 the correct, machine-parseable action over plausible-but-wrong alternatives -
-the failure modes that actually bite us in production (llm-client rejects any
+the failure modes that actually bite us in production (the NL client rejects any
 non-JSON or schema-violating output, so an SFT model that occasionally lapses
 into prose or guesses a field silently drops the command).
 
@@ -85,7 +85,7 @@ def prose_of(rng, act):
     return "Okay, doing that now."
 
 
-# Schema-violating JSON: right intent, but a shape llm-client rejects.
+# Schema-violating JSON: right intent, but a shape the NL client rejects.
 def bad_json(rng, act):
     kind = rng.choice(["extra_key", "drop_key", "bad_enum", "wrapped", "trailing"])
     if kind == "extra_key":

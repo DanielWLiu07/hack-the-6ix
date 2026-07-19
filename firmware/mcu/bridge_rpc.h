@@ -6,7 +6,7 @@
 //
 // Per the §4 caveat the concrete Bridge API (header name, provide/call
 // signatures, array-arg support) must be verified against the App Lab
-// runtime on OUR board; fw-tools posts the confirmed names during board
+// runtime on OUR board; firmware/tools posts the confirmed names during board
 // setup. Until then this glue targets Arduino_RouterBridge and is
 // compile-guarded: on a vanilla core it compiles away and the bench serial
 // transport still provides the full command set.

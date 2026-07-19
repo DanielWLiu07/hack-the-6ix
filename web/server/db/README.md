@@ -1,6 +1,6 @@
 # ht6-db - persistence layer (owner: worker `db`)
 
-Drop-in storage module for the telemetry server. **server-core:** import it
+Drop-in storage module for the telemetry server. **the hub:** import it
 relatively - no install steps needed, dependencies live in `db/node_modules`:
 
 ```js
@@ -16,12 +16,12 @@ const db = await createDb({ uri: process.env.MONGODB_URI }); // all args optiona
 - `db.backend` tells you which one you got (`'mongo' | 'memory'`).
 
 This folder is its own npm package (`type: module`) so it works regardless of
-how server-core's package.json is configured. CommonJS consumers on Node 22 can
+how the hub's package.json is configured. CommonJS consumers on Node 22 can
 `require('./db/index.js')` too.
 
 ## Interface
 
-All record/get methods are async. Payloads are the root `CLAUDE.md` Socket.IO
+All record/get methods are async. Payloads are the docs/SCHEMAS.md Socket.IO
 schemas, stored verbatim (a `ts` in epoch-ms is stamped in if missing/zero).
 
 | Method | Notes |
@@ -40,11 +40,11 @@ schemas, stored verbatim (a `ts` in epoch-ms is stamped in if missing/zero).
 | `getActivity({ since })` | Time-in-state, e-stop count, battery curve from the telemetry window - `{total_ms,state_durations,active_pct,estop_count,battery:{now,min,max,series}}`. For `GET /api/activity`. |
 | `close()` | On shutdown. |
 
-**server-core:** the new read methods are each a one-line route (`return await
+**the hub:** the new read methods are each a one-line route (`return await
 db.getX(req.query)`) - `GET /api/timeseries`, `/api/sessions`, `/api/activity`,
 `/api/commands`, `/api/telemetry/latest`. The one **write** hookup is
 `db.recordCommand({text, action, accepted, source})` on the `nl_command` path
-(after llm-client validates). All `getStats` changes are **additive** (`window`,
+(after the NL client validates). All `getStats` changes are **additive** (`window`,
 `throughput`, `detections.avg_conf`) - safe to ignore if unused; nothing existing
 changed shape.
 

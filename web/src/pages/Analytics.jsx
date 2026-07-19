@@ -21,7 +21,7 @@ const WINDOWS = [
   { key: 'all', label: 'All time', span: 'this session', ms: 0 },
 ]
 
-// Server /api/stats shape (server-core): { totals:{picks,successes,failures,
+// Server /api/stats shape (the hub): { totals:{picks,successes,failures,
 // success_rate}, by_bin, avg_pick_duration_ms, waste_avoided_kg, co2e_avoided_kg }
 function normalizeStats(s) {
   if (!s) return null

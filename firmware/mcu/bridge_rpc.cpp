@@ -21,7 +21,7 @@ static int rpc_set_drive(float l, float r) { return rpc::set_drive(l, r); }
 
 // BRIDGE.md §4 (VERIFIED) pins move_servos to 6 flat int args
 // (j0..j4, duration_ms) - flat scalars marshal trivially over MsgPack-RPC;
-// conceptually still joints[5]+duration_ms. fw-linux's MockBridge packs the
+// conceptually still joints[5]+duration_ms. the Linux node's MockBridge packs the
 // same 6 scalars.
 static int rpc_move_servos(int j0, int j1, int j2, int j3, int j4,
                            int duration_ms) {

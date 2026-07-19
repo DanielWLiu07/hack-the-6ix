@@ -4,7 +4,7 @@
     python3 export.py                              # uses runs/detect/v0/weights/best.pt
     python3 export.py --weights path/to/best.pt
 
-Deliverable contract (root CLAUDE.md): export/model.onnx + export/classes.json.
+Deliverable contract (docs/SCHEMAS.md): export/model.onnx + export/classes.json.
 firmware/linux loads model.onnx via onnxruntime; model.int8.onnx is the smaller/
 faster variant for the UNO Q if accuracy holds (check with infer_test.py).
 """

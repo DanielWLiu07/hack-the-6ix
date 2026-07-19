@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """make_sample.py - generate a synthetic colored "world" GLB.
 
-This exists so web-frontend can build & test the 3D lidar view BEFORE a real
+This exists so the web app can build & test the 3D lidar view BEFORE a real
 iPhone lidar scan exists. It emits a small, vertex-colored room (floor, four
 walls, a table, and a couple of fruit-colored props) authored in the SAME
-coordinate frame that `process.py` targets and that web-frontend overlays the
+coordinate frame that `process.py` targets and that the web app overlays the
 live C1 `lidar_scan` points onto. See README.md ("Coordinate conventions").
 
 Frame (glTF / three.js, right-handed):
@@ -29,7 +29,7 @@ try:
 except ImportError:
     sys.exit("trimesh not installed - run: pip install -r requirements.txt")
 
-# repo-root-relative default output (matches web-frontend's loader path)
+# repo-root-relative default output (matches the web app's loader path)
 _HERE = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_OUT = os.path.normpath(os.path.join(_HERE, "..", "..", "..", "web", "public", "world.glb"))
 

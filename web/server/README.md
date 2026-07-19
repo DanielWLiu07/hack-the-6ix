@@ -1,6 +1,6 @@
 # ht6-server - telemetry hub
 
-Express + Socket.IO hub relaying robot <-> browser events per the root `CLAUDE.md` schemas.
+Express + Socket.IO hub relaying robot <-> browser events per the docs/SCHEMAS.md schemas.
 Runs on the laptop at the venue (NOT Vercel). Own npm package - install/run from this dir.
 
 ## Run
@@ -18,7 +18,7 @@ npm run sim      # fake robot (separate terminal) - unblocks all frontend work
 | `PORT` | 3001 | hub port |
 | `MONGODB_URI` | - | if set, persist to Atlas; else in-memory |
 | `MONGODB_DB` | `ht6` | database name |
-| `ROBOT_STREAM_URL` | - | vision-infer's MJPEG URL (e.g. `http://<uno-q>:8080/`); else `/stream` serves a test pattern |
+| `ROBOT_STREAM_URL` | - | the vision module's MJPEG URL (e.g. `http://<uno-q>:8080/`); else `/stream` serves a test pattern |
 | `BASE44_WEBHOOK_URL` | - | if set, POST every `pick_event` to Base44 Orchard OS (docs/BASE44.md); unset = forwarding off |
 | `BASE44_SECRET` | - | shared secret sent as `X-Base44-Secret` header on each forward |
 | `BASE44_JOB_ID` | - | optional HarvestJob id tagged onto every forwarded PickReport |
@@ -38,9 +38,9 @@ or connect plain and emit `register {"role":"robot"|"farmhand"}` (`farmhand` ≡
 - **robot** -> hub -> all uis: `telemetry` `detection` `pick_event` `lidar_scan`.
   Payloads are schema-validated (see `schemas.js`); invalid ones are dropped silently.
 - **ui/agent** -> hub -> all robots: `drive` (clamped to [-1,1]) `arm_pose` `pick` `estop` `nl_command` `set_mode`.
-- `set_mode {autostart:bool}` is the demo toggle: `false` pauses the robot's autonomous cycle so an NL command visibly drives it (relayed to robots; the sim honors it, fw-linux mirrors it). Replayed to a robot that reconnects.
+- `set_mode {autostart:bool}` is the demo toggle: `false` pauses the robot's autonomous cycle so an NL command visibly drives it (relayed to robots; the sim honors it, the Linux node mirrors it). Replayed to a robot that reconnects.
 - `nl_command` from a ui additionally goes to all **agent** clients.
-- **agent** replies `nl_action {ts, text, ok, action|clarification|error}` (llm-client's
+- **agent** replies `nl_action {ts, text, ok, action|clarification|error}` (the NL client's
   contract). Hub echoes `nl_action` to uis; when `ok && action` it also forwards
   `nl_action` to robots and maps basics: `task:"stop"` -> `estop`, `task:"pick"|"sort"` ->
   `pick {target: fruit|'nearest'}`.

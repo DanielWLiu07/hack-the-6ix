@@ -1,7 +1,7 @@
-// ESP32-C3 — continuous motor run for the battery-toggle test.
+// ESP32-C3 - continuous motor run for the battery-toggle test.
 // Drives BOTH motors gently forward so movement appears when you flick the
 // battery on. Serial: s=stop  f=both fwd  b=both back  l=left only  r=right only
-// ⚠ PROP THE ROBOT SO THE WHEELS ARE OFF THE TABLE — it will drive forward.
+// WARNING: PROP THE ROBOT SO THE WHEELS ARE OFF THE TABLE - it will drive forward.
 const int L_RPWM=4, L_LPWM=5, R_RPWM=6, R_LPWM=7;
 const int PWM_FREQ=1000, PWM_RES=8;
 const float DEADBAND=0.05f;

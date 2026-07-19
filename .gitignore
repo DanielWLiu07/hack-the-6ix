@@ -22,3 +22,8 @@ web/public/scene/*
 !web/public/scene/models/
 robot/lidar/phone/ios/
 web/public/scene/
+
+# internal build notes, not for the public repo
+status/
+CLAUDE.md
+**/CLAUDE.md

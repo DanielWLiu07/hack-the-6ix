@@ -1,6 +1,6 @@
 # Deploy runbook
 
-Owner: deploy worker. Covers the Vercel frontend, env vars, and venue networking.
+Covers the Vercel frontend, env vars, and venue networking.
 
 ## What's deployed where
 
@@ -37,7 +37,7 @@ vercel env add VITE_SERVER_URL production   # paste the server URL when prompted
 vercel deploy --prod --yes                  # rebuild so it's baked in
 ```
 
-Server-side env (`web/server/.env`, gitignored, never on Vercel): `MONGODB_URI`, robot MJPEG URL - see server-core/db status files.
+Server-side env (`web/server/.env`, gitignored, never on Vercel): `MONGODB_URI`, robot MJPEG URL - see web/server/README.md.
 
 ## Venue networking plan
 
@@ -54,11 +54,11 @@ Problem: venue WiFi usually isolates clients, and judges' phones need the dashbo
    Take the printed `https://...` URL -> `vercel env add VITE_SERVER_URL production` -> redeploy. One-time ~2 min at the venue. (Quick-tunnel URLs change per run - start it once, early, and leave it running.)
 2. **Local-only fallback** - judges join the hotspot and open `http://<laptop-ip>:5173` (Vite dev server) or a `vite preview` build directly from the laptop. Plain HTTP throughout, no mixed content. Vercel then serves only as the static "it's deployed" proof with simulated data.
 
-**CORS**: the server must allow the Vercel origin, not just `localhost:5173`. Server-core: allow `https://hack-the-6ix-chi.vercel.app` (or reflect origin - hackathon).
+**CORS**: the server must allow the Vercel origin, not just `localhost:5173`. The hub: allow `https://hack-the-6ix-chi.vercel.app` (or reflect origin - hackathon).
 
 ## Demo panic switch (force-sim)
 
-> Added by **server-core** per master phase-4 directive. Owned/maintained in `web/server/` (`panic.js`).
+> Added by **the hub**. Owned/maintained in `web/server/` (`panic.js`).
 
 If the real robot dies mid-judging, the dashboard would freeze and the demo dies with
 it. The hub can spawn `sim.js` as a fallback data source on demand so telemetry, picks,
@@ -88,9 +88,9 @@ curl -X POST localhost:3001/api/force-sim -H 'content-type: application/json' -d
 Boot straight into a mode with `FORCE_SIM=auto` (or `on`/`off`) in `web/server/.env`.
 Optionally set `PANIC_KEY=<secret>` to require an `X-Panic-Key` header on POST (so a
 judge's phone can't toggle it); reads (GET) stay open. Notes:
-- `auto` keys off *any* real robot client. If lidar-pi/another robot client is still
+- `auto` keys off *any* real robot client. If the lidar node/another robot client is still
   connected while the rover is dead, `auto` won't fire - use `on` to force regardless.
-- If lidar-sim is emitting scans separately, set `SIM_LIDAR=0` in `.env` so the fallback
+- If the lidar sim is emitting scans separately, set `SIM_LIDAR=0` in `.env` so the fallback
   sim doesn't double up on `lidar_scan`.
 
 ## Venue-day checklist

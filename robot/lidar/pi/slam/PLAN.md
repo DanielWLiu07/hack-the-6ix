@@ -24,9 +24,9 @@ lidar_scan (robot frame) --> ICP scan-match vs running map --> pose (x,y,theta)
         +--> render map.png  (offline proof + demo-backup footage)
 ```
 
-Why occupancy grid (not just an ICP point cloud like lidar-sim's `ScanMapper`):
+Why occupancy grid (not just an ICP point cloud like the lidar sim's `ScanMapper`):
 a probabilistic grid **denoises** the moving-person/noise, fills free space, and
-is what a live "the robot is building a map of the room" demo needs. lidar-sim
+is what a live "the robot is building a map of the room" demo needs. the lidar sim
 built the scan-match *algorithm* as a reference; this is the deployable **node +
 map + on-device packaging** - self-contained, no cross-package import.
 
@@ -53,16 +53,16 @@ no WebXR depth API - the pro capture apps do the scanning; we do ingest+optimize
                "origin":[ox,oy],"cells":[[cx,cy],...]}  // occupied grid cells, capped ≤1500
 ```
 The hub whitelists relayed robot events (`ROBOT_EVENTS` in web/server/index.js).
-**Coordination:** ask server-core to add `slam_update` to that list; ask
-web-frontend to render the grid in the lidar view. Until then SLAM is fully
+**Coordination:** ask the hub to add `slam_update` to that list; ask
+the web app to render the grid in the lidar view. Until then SLAM is fully
 verifiable offline (map.png) and its emit is a no-op relay - no one blocked.
 
 ## UNO Q / Qualcomm on-device story
 - Pure numpy, ARM-clean, <30 MB RAM target, real-time at 2 Hz with headroom.
 - Deploys to the UNO Q **Linux (MPU)** side alongside vision inference - SLAM is
   the "spatial AI" half of the on-device compute story; MCU stays real-time motor
-  control. Coordinate the process handoff with fw-linux (they own `firmware/linux/`).
-- `bench.py` output goes into docs/QUALCOMM.md (vision-infer owns that doc).
+  control. Coordinate the process handoff with the Linux node (they own `firmware/linux/`).
+- `bench.py` output goes into docs/QUALCOMM.md (the vision module owns that doc).
 
 ## Test plan (start -> finish)
 1. `occupancy.py` + `icp.py` unit tests (pure, no hw).
@@ -73,6 +73,6 @@ verifiable offline (map.png) and its emit is a no-op relay - no one blocked.
 6. viewer.html: overlay the slam grid; headless-Chrome render proof.
 
 ## Status / ownership
-Owned by lidar-pi: everything under `robot/lidar/pi/` and `robot/lidar/phone/`.
-Coordination (via status files, not edits): server-core (relay), web-frontend
-(render), fw-linux (UNO Q deploy), vision-infer (QUALCOMM.md bench).
+Owned by the lidar node: everything under `robot/lidar/pi/` and `robot/lidar/phone/`.
+Coordination (via status files, not edits): the hub (relay), the web app
+(render), the Linux node (UNO Q deploy), the vision module (QUALCOMM.md bench).

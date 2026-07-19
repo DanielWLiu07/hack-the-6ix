@@ -3,7 +3,7 @@
 
     photo -> ONNX detector -> detection event -> sort decision -> pick_event
 
-Prints the exact root-CLAUDE.md `detection` and `pick_event` JSON for each photo
+Prints the exact docs/SCHEMAS.md `detection` and `pick_event` JSON for each photo
 (zero deps beyond the detector), so you can watch a stored image get routed to
 its bin. With --emit it also pushes those events to the live hub so the sort
 shows up on the web dashboard (needs python-socketio + the hub on SERVER_URL).
@@ -30,7 +30,7 @@ from robust_detect import classify as color_classify
 
 ROOT = Path(__file__).resolve().parent
 IMG_EXTS = (".jpg", ".jpeg", ".png", ".bmp", ".webp")
-# 4-bin sort scheme (root CLAUDE.md). Falls back to fruit-only if a 2-bin rig.
+# 4-bin sort scheme (docs/SCHEMAS.md). Falls back to fruit-only if a 2-bin rig.
 BINS = ("apple_ripe", "apple_unripe", "banana_ripe", "banana_unripe")
 
 

@@ -1,6 +1,6 @@
 // Browser-side fake robot. Mirrors server/sim.js behavior so the UI is
 // testable with zero backend (enable with ?sim=1). Payloads follow the
-// shared schemas in root CLAUDE.md exactly.
+// shared schemas in docs/SCHEMAS.md exactly.
 
 import { OccGrid } from './occgrid.js'
 

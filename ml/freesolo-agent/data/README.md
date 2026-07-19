@@ -32,12 +32,12 @@ Every assistant output is **JSON, nothing else** - one of two shapes:
    same conversation and the model then emits the action JSON.
 
 Notes:
-- `zone` extends the root-CLAUDE.md example (which omits it). Consumers should
+- `zone` extends the docs/SCHEMAS.md example (which omits it). Consumers should
   treat a missing `zone` as `"any"`. For `drive`, `zone` is the direction/target;
   for `pick` it can scope location ("the apples on the left").
 - Color language maps to ripeness: red apples / yellow bananas -> `ripe`,
   green anything -> `unripe`.
-- This matches llm-client's strict validator (see `../NOTES.md` Q4/Q5): actions
+- This matches the NL client's strict validator (see `../NOTES.md` Q4/Q5): actions
   validate against the enums above; `{"clarify": ...}` is surfaced to the user.
 
 ## Dataset composition (2,472 total)
@@ -55,7 +55,7 @@ Notes:
 format: `prompt` and `chosen`/`rejected` are message lists). After SFT, a
 preference-optimization pass (DPO/KTO/ORPO) teaches the model to *prefer* the
 correct, machine-parseable action over the plausible-but-wrong alternative - the
-failure modes that actually cost us commands, since llm-client's strict validator
+failure modes that actually cost us commands, since the NL client's strict validator
 silently drops anything that isn't valid schema JSON. `chosen` is always
 schema-valid; `rejected` is a realistic worse answer. Categories:
 

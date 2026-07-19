@@ -25,7 +25,7 @@ Never let a P2 block a P0. If IK is fighting us -> record/replay servo poses ("c
 
 ## Timeline (assuming Fri eve -> Sun AM hacking window - adjust to real schedule)
 
-### Fri night (hours 0–6)
+### Fri night (hours 0-6)
 - [ ] All: repo, team sync on this plan, claim UNO Q + hardware from Qualcomm table
 - [ ] A: **queue all 3D prints** (arm segments, gripper, mounts) - reprint queue is the bottleneck
 - [ ] A: servo driver + one 30kg servo sweep test on bench PSU
@@ -33,24 +33,24 @@ Never let a P2 block a P0. If IK is fighting us -> record/replay servo poses ("c
 - [ ] C: dataset downloaded, training run launched (overnight), UNO Q Linux flashed + camera capture working
 - [ ] D: Vite app scaffolded, deployed to Vercel, Atlas cluster live, Socket.IO echoing fake telemetry to dashboard
 
-### Sat AM (6–16)
+### Sat AM (6-16)
 - [ ] A: arm assembled, 5-servo poses scripted, first canned pick of a real apple (film it immediately - backup demo footage)
 - [ ] B: base drives under teleop from dashboard buttons; ultrasonic e-stop on MCU
 - [ ] C: model v1 on-device: bounding box + ripe/unripe at usable FPS; camera -> server MJPEG/WebRTC stream
 - [ ] D: dashboard v1: live camera, telemetry cards, pick log persisted to Atlas, Auth0 login
 
-### Sat PM (16–26)
+### Sat PM (16-26)
 - [ ] A+C: **vision -> IK -> pick** loop closed (the money demo). Simple 3-DOF geometric IK; depth from known apple size or fixed pick plane
 - [ ] B: lidar on Pi streaming scans -> web Three.js point cloud
 - [ ] C: Freesolo SFT job: generate synthetic command->JSON dataset, train, evaluate; wire FarmHand -> robot command bus
 - [ ] D: manga-shader Three.js landing (Blender/Meshy assets), ripeness analytics charts
 
-### Sat night (26–34)
+### Sat night (26-34)
 - [ ] All: integration on full system; battery-powered untethered run
 - [ ] Film demo video segments as things work (never wait until the end)
 - [ ] Stretch: ElevenLabs voice, autonomous drive-to-tree
 
-### Sun AM (34–end)
+### Sun AM (34-end)
 - [ ] Feature freeze 3h before deadline. No new features, only demo hardening
 - [ ] Devpost writeup (use TRACKS.md checklist), video edit, slide for MPU/MCU split + env impact numbers
 - [ ] Rehearse 3-min pitch: env hook -> live pick -> dashboard -> edge-AI story -> FarmHand

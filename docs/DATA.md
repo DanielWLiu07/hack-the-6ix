@@ -1,11 +1,11 @@
 # Data layer - collections, schemas, impact model
 
-Owner: worker `db`. Implementation: `web/server/db/` (see its README for the
+Implementation: `web/server/db/` (see its README for the
 code interface). Storage: **MongoDB Atlas** when `MONGODB_URI` is set, else an
 in-memory fallback with the identical interface - the stack never blocks on the
 database. Database name: `ht6`.
 
-Documents are the root `CLAUDE.md` Socket.IO payloads stored verbatim, plus a
+Documents are the docs/SCHEMAS.md Socket.IO payloads stored verbatim, plus a
 server-stamped `ts` (epoch **milliseconds**) when the robot sends none/zero.
 `_id` is never returned by read APIs.
 
@@ -53,7 +53,7 @@ drift.
 Indexes: `{ts:-1}`, `{fruit:1, ripeness:1}`, `{bin:1}`, `{operator:1}` (sparse).
 
 **Operator attribution (`operator`).** Optional Auth0 identity (`sub` or email)
-of the authenticated operator who triggered the pick - server-core stamps it from
+of the authenticated operator who triggered the pick - the hub stamps it from
 the verified JWT. Filter via `getPicks({operator})`. This is the MongoDB<->Auth0
 synergy (see `docs/MONGODB_AUTH0.md`): every action on a physical robot is
 attributed to a logged-in operator and queryable as an audit trail. Additive +
@@ -68,12 +68,12 @@ needs **zero db-layer changes** - it round-trips through `recordPickEvent` /
 
 | Piece | Owner | What |
 |---|---|---|
-| capture + write file `web/server/media/pick_<ts>.jpg` | fw-linux (robot) -> server-core (save) | hub writes the frame to disk on pick |
-| set `image_url: "/media/pick_<ts>.jpg"` on the emitted `pick_event` | fw-linux / server-core | reference only, never bytes |
-| serve `GET /media/*` (Express static) | server-core | so the browser can load it |
-| render the thumbnail next to each pick | web-frontend | pick log + `/api/picks` already returns `image_url` |
+| capture + write file `web/server/media/pick_<ts>.jpg` | the Linux node (robot) -> the hub (save) | hub writes the frame to disk on pick |
+| set `image_url: "/media/pick_<ts>.jpg"` on the emitted `pick_event` | the Linux node / the hub | reference only, never bytes |
+| serve `GET /media/*` (Express static) | the hub | so the browser can load it |
+| render the thumbnail next to each pick | the web app | pick log + `/api/picks` already returns `image_url` |
 
-`image_url` is an **optional** extension to the root `CLAUDE.md` pick_event
+`image_url` is an **optional** extension to the docs/SCHEMAS.md pick_event
 schema - absent on picks with no photo; readers must treat it as nullable.
 
 ### `detections` - vision model outputs (sampled stream)
@@ -129,8 +129,8 @@ people ask the robot, and what did it do" trail for the LLM-track demo.
 ```
 
 Indexes: `{ts:-1}`, `{operator:1}` (sparse). Memory mode caps at 500 docs.
-Filter via `getCommands({operator})`. **server-core:** call
-`db.recordCommand({...})` on the `nl_command` path (after llm-client validates),
+Filter via `getCommands({operator})`. **the hub:** call
+`db.recordCommand({...})` on the `nl_command` path (after FarmHand validates),
 stamping `operator` from the verified Auth0 token.
 
 ## `GET /api/stats` response (from `db.getStats()`)
@@ -180,7 +180,7 @@ model). The UI cumulates client-side for the "yield climbing" / ROI animation.
 **Harvest runs**, inferred - a gap ≥ `gapMs` (default 120 s) between consecutive
 picks starts a new run. This is a *derived* view, **not a stored collection**:
 no run boundaries are written anywhere, so there's nothing to coordinate with
-fw-linux/server-core and it stays correct even as picks stream in. Maps to a
+the Linux node/the hub and it stays correct even as picks stream in. Maps to a
 Base44 "HarvestJob" and powers the "this run: N picks in M min, K kg" demo card.
 Newest run first.
 
@@ -233,9 +233,9 @@ Constants in `web/server/db/impact.js`:
 - Mass per successfully picked+sorted fruit: **apple 0.18 kg, banana 0.12 kg**
   (USDA medium-fruit averages, rounded).
 - `waste_avoided_kg` = Σ successful picks × per-fruit mass. Claim: fruit graded
-  at the point of harvest instead of joining the 30–40% post-harvest loss gap.
+  at the point of harvest instead of joining the 30-40% post-harvest loss gap.
 - `co2e_avoided_kg` = `waste_avoided_kg × 2.5` kg CO₂e/kg - conservative end of
-  FAO food-wastage-footprint estimates (2–4). Say "conservative" on stage.
+  FAO food-wastage-footprint estimates (2-4). Say "conservative" on stage.
 
 ## Atlas setup (task 3 - LIVE)
 

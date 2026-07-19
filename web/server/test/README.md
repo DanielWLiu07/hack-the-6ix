@@ -16,7 +16,7 @@ Point at a non-default hub with `SERVER_URL=http://host:3001 npm test`.
 
 ## What's here
 
-- `schemas.js` - validators for every Socket.IO event in root `CLAUDE.md` (the source of truth; if these disagree with it, these are wrong). Strict: unknown keys are errors.
+- `schemas.js` - validators for every Socket.IO event in docs/SCHEMAS.md (the source of truth; if these disagree with it, these are wrong). Strict: unknown keys are errors.
 - `schemas.test.js` - validator self-tests, no server needed.
 - `conformance.test.js` - against the live hub: sim payloads pass schemas; every event type relays robot<->web verbatim. `nl_command` is exempt from verbatim relay (routes through FarmHand).
 - `robustness.test.js` - reconnect storms, malformed/oversized payloads: hub must survive and must not relay schema-invalid garbage.

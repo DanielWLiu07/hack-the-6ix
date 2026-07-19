@@ -1,5 +1,5 @@
-// Validators for the shared Socket.IO event schemas defined in root CLAUDE.md.
-// Root CLAUDE.md is the single source of truth - if these disagree with it, THESE are wrong.
+// Validators for the shared Socket.IO event schemas defined in docs/SCHEMAS.md.
+// Root docs/SCHEMAS.md is the single source of truth - if these disagree with it, THESE are wrong.
 //
 // Each validator takes a payload and returns an array of error strings (empty = valid).
 // Unknown/extra keys are errors: the assignment says payloads must match the schemas
@@ -66,7 +66,7 @@ export function validateDetection(p) {
 
 export function validatePickEvent(p) {
   const errs = [];
-  // image_url is an OPTIONAL, master-ratified field (photo-per-pick; root CLAUDE.md).
+  // image_url is an OPTIONAL, master-ratified field (photo-per-pick; docs/SCHEMAS.md).
   if (!checkKeys(p, ["ts", "fruit", "ripeness", "bin", "success", "duration_ms", "image_url"], errs)) return errs;
   req(p, "ts", isNum, "number (epoch ms)", errs);
   req(p, "fruit", (v) => FRUITS.includes(v), `one of ${FRUITS.join("|")}`, errs);
@@ -132,10 +132,10 @@ export function validateNlCommand(p) {
   return errs;
 }
 
-// nl_action - FarmHand LLM reply. NOT in root CLAUDE.md; contract owned by
-// llm-client (see status/llm-client.md 22:05) and consumed by server-core's hub
+// nl_action - FarmHand LLM reply. NOT in docs/SCHEMAS.md; contract owned by
+// the NL client (see status/the NL client.md 22:05) and consumed by the hub's hub
 // (index.js). Shape: {ts, text, ok, <one of action|clarification|error>}.
-//   action:        {task, fruit, filter, zone} - every key required (llm-client 22:11)
+//   action:        {task, fruit, filter, zone} - every key required (the NL client 22:11)
 //   clarification: string (ok:true, no action - hub echoes to ui, does NOT forward to robot)
 //   error:         string (ok:false - never forwarded to robot)
 const NL_TASKS = ["pick", "sort", "stop", "drive"];
@@ -176,7 +176,7 @@ export function validateNlAction(p) {
   return errs;
 }
 
-// SLAM map + pose (root CLAUDE.md "Schema addendum: SLAM map", master-approved).
+// SLAM map + pose (docs/SCHEMAS.md "Schema addendum: SLAM map").
 // robot -> web, max 0.5 Hz. Occupancy grid capped at 128x128 cells; `data` is a
 // base64 uint8 grid (0=free, 100=occupied, 255=unknown) of exactly width*height
 // bytes. Producer: lidar SLAM node (sim + Pi). Consumer: web lidar page.
@@ -231,7 +231,7 @@ export const validators = {
 
 export const ROBOT_TO_WEB_EVENTS = ["telemetry", "detection", "pick_event", "lidar_scan", "slam_map", "slam_pose"];
 export const WEB_TO_ROBOT_EVENTS = ["drive", "arm_pose", "pick", "estop", "nl_command"];
-// SLAM map + pose are now relayed by server-core's hub (index.js ROBOT_EVENTS),
+// SLAM map + pose are now relayed by the hub's hub (index.js ROBOT_EVENTS),
 // so they live in ROBOT_TO_WEB_EVENTS above and the live-relay conformance test
 // covers them. Kept as a named subset for callers that want just the SLAM pair.
 export const SLAM_ROBOT_TO_WEB_EVENTS = ["slam_map", "slam_pose"];

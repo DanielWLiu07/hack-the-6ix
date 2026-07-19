@@ -77,7 +77,7 @@ correct for TB6612/L298, wrong for BTS7960. For bring-up it was adapted to
 `reverse -> RPWM=0, LPWM=|v|`; `stop -> both 0`). The canonical `firmware/mcu` was
 left untouched.
 
-**TODO(fw-mcu):** add a proper `DRIVE_BTS7960` mode to `config.h`/`drive.cpp`
+**TODO:** add a proper `DRIVE_BTS7960` mode to `config.h`/`drive.cpp`
 (dual-PWM pins + enables tied high) so the repo firmware drives this hardware
 directly. Uno Q pins: LEFT RPWM=D5 LPWM=D7, RIGHT RPWM=D6 LPWM=D8.
 

@@ -1,5 +1,5 @@
 // HT6 telemetry hub - Express + Socket.IO on :3001.
-// Relays events between robot clients and browser clients per root CLAUDE.md schemas.
+// Relays events between robot clients and browser clients per docs/SCHEMAS.md schemas.
 //
 // Client roles (handshake `auth: { role }` or `?role=`):
 //   robot - the rover / sim.js / lidar pi   (emits telemetry, detection, pick_event, lidar_scan)
@@ -60,7 +60,7 @@ const ROBOT_EVENTS = ['telemetry', 'detection', 'pick_event', 'lidar_scan', 'sla
 // set_mode is the demo toggle: {autostart:false} pauses the robot's autonomous
 // SEEK/PICK/SORT cycle so an NL command visibly drives it on stage (otherwise
 // the autonomous loop masks whether a pick came from a command). The sim honors
-// it; fw-linux mirrors it on the real robot (contract in status/server-core.md).
+// it; the Linux node mirrors it on the real robot (contract in status/the hub.md).
 // nav_goal is an operator-declared destination (world meters, or {cancel:true}
 // to abort): the robot/SLAM node plans a path to it and drives there.
 const CONTROL_EVENTS = ['drive', 'arm_pose', 'pick', 'estop', 'nl_command', 'set_mode', 'nav_goal'];
@@ -89,7 +89,7 @@ const realRobots = new Set();
 // Fleet roster for the /swarm page. Keyed by robot socket id; each entry merges
 // that robot's latest telemetry (state/battery/drive) and slam_pose (x/y/theta).
 // The hub SNAPSHOTS this to uis at ~1 Hz as the `fleet` event (schema addendum
-// in root CLAUDE.md). This does not touch the robot->server telemetry contract.
+// in docs/SCHEMAS.md). This does not touch the robot->server telemetry contract.
 const fleet = new Map();
 let roverSeq = 0;
 
@@ -139,7 +139,7 @@ io.on('connection', (socket) => {
   updateRealRobot(socket.id, role, isSim);
   console.log(`[hub] ${role}${isSim ? ' (sim)' : ''} connected (${socket.id}) - robots:${counts.robot} uis:${counts.ui} agents:${counts.agent}`);
 
-  // llm-client's service registers post-connect: register {"role":"farmhand"}
+  // the NL client's service registers post-connect: register {"role":"farmhand"}
   socket.on('register', (payload = {}) => {
     const next = ['robot', 'agent'].includes(normalizeRole(payload?.role)) ? normalizeRole(payload.role) : 'ui';
     if (next === role) return;
@@ -249,8 +249,8 @@ io.on('connection', (socket) => {
   }
 
   // FarmHand agent replies: nl_action {ts, text, ok, action|clarification|error}
-  // (contract proposed by llm-client). Echo to uis for display; forward the full
-  // nl_action to robots plus a mapped basic control event for fw-linux.
+  // (contract proposed by the NL client). Echo to uis for display; forward the full
+  // nl_action to robots plus a mapped basic control event for the Linux node.
   socket.on('nl_action', (payload) => {
     if (role !== 'agent' || !isObj(payload) || typeof payload.ok !== 'boolean') return;
     io.to('uis').emit('nl_action', payload);
@@ -261,7 +261,7 @@ io.on('connection', (socket) => {
     else if (task === 'pick' || task === 'sort') {
       // Basic-pick convenience mapping. It INTENTIONALLY drops ripeness/filter/
       // zone and collapses the action to pick{target:fruit}. The full nl_action
-      // (all four fields) is already forwarded to robots above, and fw-linux's
+      // (all four fields) is already forwarded to robots above, and the Linux node's
       // robot_node honors ripeness/filter from it (the rich path). This mapped
       // `pick` is only a fallback for consumers that do NOT parse nl_action; do
       // not rely on it for ripeness- or zone-aware picking.
@@ -384,7 +384,7 @@ app.post('/api/force-sim', (req, res) => {
 // GET  /api/robot/mode                 -> current { autostart }
 // POST /api/robot/mode {autostart:bool} -> pause (false) / resume (true) autonomy
 // Pausing lets an NL command visibly drive the robot; the sim honors it and
-// fw-linux mirrors it on the real robot.
+// the Linux node mirrors it on the real robot.
 app.get('/api/robot/mode', (_req, res) => res.json(lastRobotMode ?? { autostart: true }));
 
 app.post('/api/robot/mode', (req, res) => {

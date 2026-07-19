@@ -8,7 +8,7 @@ Action schema (all four keys always present, "any" = unspecified):
   {"task":"pick|sort|stop|drive","fruit":"apple|banana|any",
    "filter":"ripe|unripe|any","zone":"any|left|right|forward|backward|home"}
 
-Assistant convention (model ALWAYS outputs JSON - llm-client parses both shapes):
+Assistant convention (model ALWAYS outputs JSON - the NL client parses both shapes):
   - actionable command  -> assistant outputs ONLY the compact action JSON
   - ambiguous command   -> assistant outputs {"clarify":"<one short question>"},
                            user answers, assistant outputs the action JSON

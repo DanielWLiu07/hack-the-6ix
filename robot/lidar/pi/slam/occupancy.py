@@ -126,7 +126,7 @@ class OccupancyGrid:
         return np.column_stack([wx, wy]).round(3).tolist()
 
     def slam_map_payload(self, ts, center_xy, size=128):
-        """Serialize the master-approved `slam_map` payload (root CLAUDE.md).
+        """Serialize the `slam_map` payload (docs/SCHEMAS.md).
 
         This grid grows unbounded, but the schema caps the map at 128x128 cells.
         So crop a `size`-cell window at the grid's native resolution centered on

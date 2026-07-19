@@ -75,7 +75,7 @@ interface (`robot/vision/detector.py`, `load_detector()`):
 Either way, **inference never leaves the board.** The laptop/cloud only ever
 receives the *result* dicts (`detection` events) for the dashboard - the raw
 camera frames and the model both stay on the UNO Q. This is a hard project rule
-(root `CLAUDE.md`): cloud is allowed for the web app, never for robot vision.
+(docs/SCHEMAS.md): cloud is allowed for the web app, never for robot vision.
 
 ## Bench FPS - final v0 model
 
@@ -113,7 +113,7 @@ Overall precision 0.988 / recall 0.986. (HSV fallback, for reference: precision
 is ~2.6× faster (180 vs 70 fps at 320), but its output confidences saturate at a
 constant ~1.54 (>1.0) - **boxes and fruit/ripeness class are still correct**, but
 you can't threshold or rank by confidence, so we run **fp32** (`model.onnx`,
-confs 0.50–0.95, correct) for the demo. The int8 fix is per-channel quantization,
+confs 0.50-0.95, correct) for the demo. The int8 fix is per-channel quantization,
 which needs ONNX opset ≥ 13; we export at opset-12 for UNO Q compatibility, so it
 is deferred. If the board proves fp32 too slow, the int8 path is the lever to
 revisit (re-quantize + threshold-calibrate). fp32 already clears camera framerate

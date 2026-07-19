@@ -65,7 +65,7 @@ PCA9685 channels (do **not** reorder - BRIDGE.md joint order):
   Brownout = mystery reboots + dropped fruit.
 - **HC-SR04 ECHO must be level-divided** to 3.3 V before D3 (skip only for a
   3.3 V RCWL-1601). TRIG at 3.3 V is fine.
-- **Gripper (ch 4)** is soft-limited to 30–120° in `config.h`
+- **Gripper (ch 4)** is soft-limited to 30-120° in `config.h`
   (`JOINT_MIN/MAX_DEG[4]`) so it can't strip its gears closing on a fruit;
   re-tune on the bench before trusting it on a real prop.
 - Motor "backwards"? Swap that motor's two leads (preferred) or flip the single
@@ -82,7 +82,7 @@ PCA9685 channels (do **not** reorder - BRIDGE.md joint order):
   Catches C++ errors in the transport-agnostic core. It does **not** compile the
   `Arduino_RouterBridge` path (guarded out when the header is absent), so it
   can't validate the real Bridge glue - use the next step for that.
-- **Real compile** (fw-tools' toolchain): `../tools/flash.sh --check` compiles
+- **Real compile** (firmware/tools' toolchain): `../tools/flash.sh --check` compiles
   for FQBN `arduino:zephyr:unoq` with the actual libraries - this is what
   validates the `bridge_rpc.cpp` MsgPack/`provide_safe` code. `flash.sh`
   (no `--check`) flashes; `../tools/monitor.sh` opens serial @115200.

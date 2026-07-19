@@ -1,10 +1,10 @@
-// Schema conformance against the LIVE hub (server-core on :3001).
+// Schema conformance against the LIVE hub (the hub on :3001).
 // A fake browser listens for sim traffic and validates every payload;
 // a fake robot + fake browser pair verifies the hub relays every event
 // type in both directions without mangling payloads.
 //
 // If the server isn't up, the whole suite is skipped (clearly), not failed -
-// so `npm test` stays meaningful before server-core lands.
+// so `npm test` stays meaningful before the hub lands.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -93,7 +93,7 @@ test("hub relays web->robot commands verbatim", { skip: !up, timeout: 15000 }, a
   await Promise.all([connected(robot), connected(browser)]);
   await sleep(200);
   try {
-    // nl_command is excluded: per root CLAUDE.md it routes web -> server ->
+    // nl_command is excluded: per docs/SCHEMAS.md it routes web -> server ->
     // FarmHand LLM -> robot (structured), so a verbatim relay isn't required.
     for (const event of WEB_TO_ROBOT_EVENTS.filter((e) => e !== "nl_command")) {
       const p = waitFor(robot, event, 4000);

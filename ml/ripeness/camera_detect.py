@@ -2,7 +2,7 @@
 """Live camera fruit detection - the on-device loop for the UNO Q MPU.
 
 Grabs frames from the arm camera, runs detection every frame, prints each
-root-CLAUDE.md detection and (with --emit) streams them to the hub so the
+docs/SCHEMAS.md detection and (with --emit) streams them to the hub so the
 dashboard updates in real time. This is the exact loop that runs on the UNO Q's
 Linux side; inference stays on the board (onnxruntime CPU or the pure-cv2 color
 detector), never in the cloud.

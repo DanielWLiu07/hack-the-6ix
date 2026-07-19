@@ -2,7 +2,7 @@
 """Synthetic lidar simulator.
 
 Drives a fake robot around a synthetic room and emits `lidar_scan` Socket.IO
-events matching the root CLAUDE.md schema:
+events matching the docs/SCHEMAS.md schema:
 
     "lidar_scan" {"ts": <epoch ms>, "points": [[x, y], ...]}   # meters, robot frame, <=360 pts
 

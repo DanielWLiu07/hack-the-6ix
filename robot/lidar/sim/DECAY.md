@@ -1,4 +1,4 @@
-# Scan accumulation & decay - reference for web-frontend
+# Scan accumulation & decay - reference for the web app
 
 How to turn 2 Hz `lidar_scan` events into the "map-ish" glowing point cloud in
 the react-three-fiber view. You implement this in JS; this doc is the spec.
@@ -60,12 +60,12 @@ obvious, and a faint 1 m grid for scale. Room in the sim is 8×6 m - camera at
 ## Nice-to-haves (cheap)
 
 - Color newest scan white/cyan, older scans darker blue -> motion trails read instantly.
-- `sizeAttenuation` on, point size 0.05–0.08 world units.
+- `sizeAttenuation` on, point size 0.05-0.08 world units.
 - Clamp/ignore scans with `points.length === 0` (possible on dropout).
 - If scans stop arriving (robot offline), let everything fade out - free "signal lost" UX.
 
 ## Test source
 
 `robot/lidar/sim/` emits realistic scans (moving robot, moving obstacle, noise,
-dropout) to the server at 2 Hz - see its README. Point count varies ~340–360
+dropout) to the server at 2 Hz - see its README. Point count varies ~340-360
 per scan; handle variable length.

@@ -24,13 +24,13 @@ SERVER_URL = os.environ.get("SERVER_URL", "http://localhost:3001")
 LIDAR_PORT = os.environ.get("LIDAR_PORT", "")
 LIDAR_BAUD = _env_int("LIDAR_BAUD", 115200)  # RPLIDAR A1/A2 default
 
-# Emit rate (root CLAUDE.md: ~2 Hz)
+# Emit rate (docs/SCHEMAS.md: ~2 Hz)
 EMIT_HZ = _env_float("EMIT_HZ", 2.0)
 
-# Max points per lidar_scan payload (root CLAUDE.md: ≤360)
+# Max points per lidar_scan payload (docs/SCHEMAS.md: ≤360)
 MAX_POINTS = _env_int("MAX_POINTS", 360)
 
-# Discard returns outside this range (meters). A1 spec is 0.15–12 m.
+# Discard returns outside this range (meters). A1 spec is 0.15-12 m.
 MIN_RANGE_M = _env_float("MIN_RANGE_M", 0.10)
 MAX_RANGE_M = _env_float("MAX_RANGE_M", 12.0)
 

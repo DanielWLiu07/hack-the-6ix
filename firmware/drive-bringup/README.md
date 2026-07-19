@@ -1,19 +1,19 @@
-# drive-bringup — standalone BTS7960 drive-base test sketches
+# drive-bringup - standalone BTS7960 drive-base test sketches
 
 Runnable drive-base tests for the **BTS7960 / IBT-2** drivers on a **spare board**
-— no Uno Q or App Lab needed. Used to validate the wiring, motors, and direction
-before/without the real firmware. **✅ Confirmed working** (both 12 V motors spin).
+- no Uno Q or App Lab needed. Used to validate the wiring, motors, and direction
+before/without the real firmware. ** Confirmed working** (both 12 V motors spin).
 
 Wiring + safety: see [`../DRIVE_BTS7960.md`](../DRIVE_BTS7960.md). **Do the
 continuity checks and staged (battery-off-first) power-up there BEFORE running
-these** — bad wiring here already cost two boards.
+these** - bad wiring here already cost two boards.
 
 ## Two kinds of sketch
-- **`*-run`** — drives **both motors forward continuously** (gentle). For the
+- **`*-run`** - drives **both motors forward continuously** (gentle). For the
   battery-toggle test: power the board on USB, then flick the battery on and
   watch for movement. `esp32c3-run` is the one that first spun the motors.
-- **`*-drivetest`** — runs a timed **jog sequence**: LEFT-alone → RIGHT-alone →
-  both fwd → both back → spin, then stops. Good for checking each wheel + steering.
+- **`*-drivetest`** - runs a timed **jog sequence**: LEFT-alone -> RIGHT-alone ->
+  both fwd -> both back -> spin, then stops. Good for checking each wheel + steering.
 
 Both auto-run a few seconds after boot and accept serial keys (115200):
 `s`=stop `f`=both fwd `b`=both back `l`=left only `r`=right only (`g`=re-run seq).
@@ -35,4 +35,4 @@ arduino-cli upload  --fqbn esp32:esp32:esp32c3:CDCOnBoot=cdc -p /dev/ttyACM0 esp
 ```
 
 Direction: if a wheel spins backward, flip its `L_INVERT`/`R_INVERT` flag in the
-sketch and reflash — don't rewire.
+sketch and reflash - don't rewire.

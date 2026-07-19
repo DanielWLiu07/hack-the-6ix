@@ -6,7 +6,7 @@ Conventions
 -----------
 - Lidar measurements arrive as (angle_deg, distance_mm). RPLIDAR angles
   increase CLOCKWISE viewed from above, 0° at the connector/front.
-- Robot frame (root CLAUDE.md `lidar_scan` points): meters, x forward,
+- Robot frame (docs/SCHEMAS.md `lidar_scan` points): meters, x forward,
   y left, right-handed. So a clockwise lidar angle maps to -theta.
 """
 

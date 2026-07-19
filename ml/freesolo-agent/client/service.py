@@ -1,6 +1,6 @@
 """FarmHand Socket.IO service.
 
-Connects to the laptop hub (server-core, web/server/ on :3001), listens for
+Connects to the laptop hub (the hub, web/server/ on :3001), listens for
 `nl_command` {"text": "..."} events, runs them through farmhand.handle()
 (mock rules or FARMHAND_URL endpoint + strict validation), and emits back:
 
@@ -89,7 +89,7 @@ def main():
         sio.connect(SERVER_URL)
         sio.wait()
     except socketio.exceptions.ConnectionError as e:
-        log.error("cannot reach %s (%s) - is server-core up?", SERVER_URL, e)
+        log.error("cannot reach %s (%s) - is the hub up?", SERVER_URL, e)
         sys.exit(1)
     except KeyboardInterrupt:
         sio.disconnect()

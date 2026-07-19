@@ -12,12 +12,12 @@ vision inference:
 
 ```
         UNO Q  +-----------------------------------------------+
-        (MPU,  |  camera -> on-device fruit/ripeness inference |  vision-infer
+        (MPU,  |  camera -> on-device fruit/ripeness inference |
         Linux) |  C1 lidar -> on-device 2D SLAM (this) --------+--> slam_update
                +-----------------------+-----------------------+
-                                       | bridge RPC (fw-tools BRIDGE.md)
+                                       | bridge RPC (firmware/tools BRIDGE.md)
         (MCU, STM32)  +---------------v---------------+
-                      |  real-time motor + servo ctrl |  fw-mcu
+                      |  real-time motor + servo ctrl |  the MCU firmware
                       +-------------------------------+
 ```
 No cloud, no ROS, no GPU - 5 W edge compute doing SLAM. That's the pitch.
@@ -28,9 +28,9 @@ ms/scan  mean 14.8   p50 14.0   p95 23.4   max 35.4
 peak RSS 41 MB        2 Hz budget headroom: 34x
 ```
 The C1 runs at ~2 Hz (500 ms/scan budget). 34× laptop headroom means even a
-5–10× slower UNO Q ARM core stays comfortably real-time (~75–150 ms/scan).
+5-10× slower UNO Q ARM core stays comfortably real-time (~75-150 ms/scan).
 **Re-run `bench.py` on the UNO Q for the figure to quote to judges** (numbers go
-into `docs/QUALCOMM.md`, owned by vision-infer - hand them over via status).
+into `docs/QUALCOMM.md`).
 
 ## Deploy on the UNO Q / Pi
 ```bash
@@ -54,11 +54,11 @@ SERVER_URL=http://<laptop-hotspot-ip>:3001 ./run_slam.sh
 "slam_update" {"ts":0,"pose":[x,y,theta_deg],"res":0.05,
                "origin":[ox,oy],"cells":[[cx,cy],...]}  // world-m occupied cells, ≤1500
 ```
-- **server-core**: the hub whitelists relayed events (`ROBOT_EVENTS`). Add a
+- **the hub**: the hub whitelists relayed events (`ROBOT_EVENTS`). Add a
   `slam_update` relay `ui -> uis` (it's a compute/telemetry event; the producing
   node connects as `ui` because it must *receive* `lidar_scan`). One handler,
-  mirrors the existing relay loop. Requested via status/lidar-pi.md.
-- **web-frontend**: render `cells` as a ground-plane occupancy overlay (grid of
+  mirrors the existing relay loop.
+- **the web app**: render `cells` as a ground-plane occupancy overlay (grid of
   `res`-sized squares at `origin + cell*res`) and `pose` as the robot marker,
   inside the same Three.js scene as `world.glb` + the live C1 ring. Frame is the
   robot frame (same axis map as the C1 ring - see `robot/lidar/phone/README.md`).

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""fw-tools: serial bench-test client for the MCU (BRIDGE.md §5 protocol).
+"""firmware/tools: serial bench-test client for the MCU (BRIDGE.md §5 protocol).
 
-Drives fw-mcu's bench mode over USB serial. Two modes:
+Drives the MCU firmware's bench mode over USB serial. Two modes:
 
     python3 bench.py              # scripted smoke test of every RPC
     python3 bench.py -i           # interactive REPL (raw protocol + helpers)

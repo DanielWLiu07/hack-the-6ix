@@ -1,5 +1,5 @@
 // Load/robustness probing of the hub. Findings get FILED (status/server-test.md),
-// not fixed - server-core owns the code.
+// not fixed - the hub owns the code.
 //
 // What "pass" means here:
 //  - reconnect storm: hub survives and still serves a fresh client afterwards

@@ -7,7 +7,7 @@ behind one interface; everything runs with zero hardware (synthetic scenes).
 
 | file | what |
 |---|---|
-| `detector.py` | `load_detector()` - the import surface for fw-linux. ONNX if `ml/ripeness/export/model.onnx` exists, else HSV fallback. |
+| `detector.py` | `load_detector()` - the import surface for the Linux node. ONNX if `ml/ripeness/export/model.onnx` exists, else HSV fallback. |
 | `hsv_detector.py` | Works-today OpenCV HSV blob detector (red->apple ripe, yellow->banana ripe, green split by elongation). |
 | `onnx_detector.py` | YOLOv8 ONNX wrapper (onnxruntime CPU) for vision-train's export. |
 | `pipeline.py` | capture -> detect -> annotated MJPEG `:8080/stream` + `/detections` + `/health`. |
@@ -27,13 +27,13 @@ python3 bench.py --detector auto             # FPS numbers (prints BENCH json li
 With a camera: `CAMERA_INDEX=0 python3 pipeline.py` (falls back to synthetic if
 the camera won't open).
 
-## Detection dict (root CLAUDE.md schema - do not drift)
+## Detection dict (docs/SCHEMAS.md schema - do not drift)
 
 ```json
 {"ts": 0, "fruit": "apple|banana", "ripeness": "ripe|unripe", "conf": 0.93, "bbox": [x, y, w, h]}
 ```
 
-## fw-linux integration
+## the Linux node integration
 
 ```python
 sys.path.insert(0, "<repo>/robot/vision")

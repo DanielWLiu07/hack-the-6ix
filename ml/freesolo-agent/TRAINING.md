@@ -37,12 +37,12 @@ converted copies into `data/export/`. Upload whichever Freesolo asks for.
 ## Step 1 - SFT (the actual training)
 
 1. Log into Freesolo -> **New fine-tune / training run**.
-2. **Base model:** pick the smallest instruct model they offer (a 1–3B is plenty -
+2. **Base model:** pick the smallest instruct model they offer (a 1-3B is plenty -
    the task is narrow, small = fast + cheap + edge-friendly, and "distilled a big
    model's ability into a small one" is a *selling point* for the Best-Model track).
 3. **Training data:** upload `farmhand_train.jsonl`. **Validation:** `farmhand_val.jsonl`.
 4. **Method:** SFT (supervised fine-tuning). Defaults for epochs/LR are fine - if it
-   asks, 2–3 epochs is right for ~2.3k examples (more overfits).
+   asks, 2-3 epochs is right for ~2.3k examples (more overfits).
 5. Start it. Watch validation loss go down. When it finishes you get a **model ID /
    endpoint URL** - copy that.
 

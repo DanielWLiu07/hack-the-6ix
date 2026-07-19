@@ -27,7 +27,7 @@ drops - safe to start in any order.
 - `ts`: epoch **milliseconds** (JS `Date.now()` convention)
 - `points`: cartesian meters, **robot frame** (+x = robot forward, +y = robot left,
   CCW), ≤360 points. Beams that hit nothing (>8 m) or drop out are omitted, so
-  count varies per scan (~340–360).
+  count varies per scan (~340-360).
 - Realism: ~1.2 cm gaussian range noise, 2 % beam dropout, one moving obstacle.
 
 ## Tests
@@ -54,7 +54,7 @@ scan-to-map ICP front-end (point-to-point, numpy-only):
 
 Runs at the lidar's **native ~10 Hz**, not the 2 Hz display-emit throttle -
 that's what keeps inter-scan motion inside ICP's convergence basin. Open-loop
-drift is ~10–15 % of path length over a room tour (no loop closure - this is a
+drift is ~10-15 % of path length over a room tour (no loop closure - this is a
 demo wow-feature, not metric-grade SLAM). Self-check: `python3 scan_match.py`.
 
 ## SLAM producer (live to the hub)
@@ -79,7 +79,7 @@ source = reader instead of the sim). Run:
 python3 test_slam_producer.py                    # grid + payload conformance tests
 ```
 
-Note: `sim.py`, `slam_producer.py`, and server-core's `sim.js` are all robot-role
+Note: `sim.py`, `slam_producer.py`, and the hub's `sim.js` are all robot-role
 lidar sources - run exactly ONE so the web does not get overlaid scans.
 
 ## Room-tour demo video

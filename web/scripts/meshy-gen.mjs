@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Meshy AI → GLB generator (local tooling; key stays out of the frontend).
+// Meshy AI -> GLB generator (local tooling; key stays out of the frontend).
 //
 // Usage:
 //   node scripts/meshy-gen.mjs "a cute cartoon monkey mascot, standing" monkey
@@ -26,7 +26,7 @@ function loadKey() {
   } catch {
     /* no .env.local */
   }
-  console.error('✖ No MESHY_API_KEY. Paste it into web/.env.local and retry.')
+  console.error('x No MESHY_API_KEY. Paste it into web/.env.local and retry.')
   process.exit(1)
 }
 
@@ -51,14 +51,14 @@ async function createTask(mode, extra = {}) {
     headers,
     body: JSON.stringify({ mode, prompt, art_style: artStyle, ...extra }),
   })
-  if (!res.ok) throw new Error(`create ${mode} → ${res.status} ${await res.text()}`)
+  if (!res.ok) throw new Error(`create ${mode} -> ${res.status} ${await res.text()}`)
   return (await res.json()).result
 }
 
 async function poll(id) {
   for (;;) {
     const res = await fetch(`${API}/${id}`, { headers })
-    if (!res.ok) throw new Error(`poll → ${res.status} ${await res.text()}`)
+    if (!res.ok) throw new Error(`poll -> ${res.status} ${await res.text()}`)
     const t = await res.json()
     process.stdout.write(`\r  ${t.status} ${t.progress ?? 0}%   `)
     if (t.status === 'SUCCEEDED') return t
@@ -69,11 +69,11 @@ async function poll(id) {
 }
 
 async function main() {
-  console.log(`▶ Meshy: "${prompt}" (${artStyle}) → public/assets/${name}.glb`)
-  console.log('  preview pass…')
+  console.log(`▶ Meshy: "${prompt}" (${artStyle}) -> public/assets/${name}.glb`)
+  console.log('  preview pass...')
   const previewId = await createTask('preview')
   const preview = await poll(previewId)
-  console.log('\n  refine pass…')
+  console.log('\n  refine pass...')
   const refineId = await createTask('refine', { preview_task_id: preview.id ?? previewId })
   const refined = await poll(refineId)
 
@@ -87,6 +87,6 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('\n✖', e.message)
+  console.error('\nx', e.message)
   process.exit(1)
 })

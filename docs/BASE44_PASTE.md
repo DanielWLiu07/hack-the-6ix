@@ -1,6 +1,6 @@
 # Base44 Context Pack - paste this BEFORE prompt P1
 
-Copy the block below into the Base44 builder as your first message, then follow with P1–P5 from `docs/BASE44.md`. It gives their machine our real brand, palette, and data shapes (with genuine sample rows from our robot's telemetry), so Orchard OS matches the robot system exactly and the webhook data slots straight in.
+Copy the block below into the Base44 builder as your first message, then follow with P1-P5 from `docs/BASE44.md`. It gives their machine our real brand, palette, and data shapes (with genuine sample rows from our robot's telemetry), so Orchard OS matches the robot system exactly and the webhook data slots straight in.
 
 ---
 

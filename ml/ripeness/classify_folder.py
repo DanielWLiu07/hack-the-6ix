@@ -9,7 +9,7 @@ image, the detected fruit + ripeness + confidence + the sort bin it belongs in.
     python3 classify_folder.py --dir photos --model export/model.int8.onnx --conf 0.25
     python3 classify_folder.py --dir photos --json out.json   # machine-readable
 
-Bins follow root CLAUDE.md: apple_ripe, apple_unripe, banana_ripe, banana_unripe.
+Bins follow docs/SCHEMAS.md: apple_ripe, apple_unripe, banana_ripe, banana_unripe.
 Decode logic is shared with infer_test.py (the same path firmware/linux runs
 on-device), so results here match what the robot would emit as detection events.
 """
