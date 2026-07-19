@@ -294,24 +294,24 @@ export default function RobotPOV() {
 
         {/* Mission-control sidebar: live fleet roster (click a rover to enter it)
             + FarmHand NL command console. Collapsible so the cockpit stays clean.
-            Commands broadcast to the fleet; the real robot executes for real. */}
-        {feedsOn && (
-          <aside className={`pov-fleetbar ${fleetOpen ? 'open' : ''}`}>
-            <button
-              className="pov-fleetbar-tab"
-              onClick={() => setFleetOpen((v) => !v)}
-              title={fleetOpen ? 'Hide fleet + command' : 'Fleet + command'}
-            >
-              <span className="chev">{fleetOpen ? '›' : '‹'}</span>
-              <span className="lab">FLEET</span>
-            </button>
-            {fleetOpen && (
-              <div className="pov-fleetbar-body">
-                <PovFleetPanel fleet={fleet} activeId={activeRobot?.id} onPick={pickRobot} />
-              </div>
-            )}
-          </aside>
-        )}
+            Commands broadcast to the fleet; the real robot executes for real.
+            NOT gated on the connection: the console must exist offline too (the
+            roster honestly shows "no robots on the hub"). */}
+        <aside className={`pov-fleetbar ${fleetOpen ? 'open' : ''}`}>
+          <button
+            className="pov-fleetbar-tab"
+            onClick={() => setFleetOpen((v) => !v)}
+            title={fleetOpen ? 'Hide fleet + command' : 'Fleet + command'}
+          >
+            <span className="chev">{fleetOpen ? '›' : '‹'}</span>
+            <span className="lab">FLEET</span>
+          </button>
+          {fleetOpen && (
+            <div className="pov-fleetbar-body">
+              <PovFleetPanel fleet={fleet} activeId={activeRobot?.id} onPick={pickRobot} />
+            </div>
+          )}
+        </aside>
 
         {/* center reticle (camera view only) */}
         {tab === 'cam' && feedsOn && (

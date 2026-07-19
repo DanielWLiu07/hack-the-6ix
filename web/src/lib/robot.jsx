@@ -46,10 +46,22 @@ export function RobotProvider({ children, authToken = null, authReady = true }) 
   const [detections, setDetections] = useState([])
   const [picks, setPicks] = useState([])
   // SLAM demo: local frozen+navigable map feed for when there is no live hub
-  // (deployed site). Operator-toggled; routes nav_goal to the demo, not a socket.
-  const [demo, setDemo] = useState(false)
+  // (deployed site). Operator-toggled; routes commands to the demo, not a socket.
+  // State is mirrored in localStorage so the POV page and its /pov-slam iframe
+  // (separate documents, separate providers) stay in sync: the DEMO button
+  // lives in the iframe while the command console lives in the parent.
+  const [demo, setDemo] = useState(() => {
+    try { return localStorage.getItem('ht6-demo') === '1' } catch { return false }
+  })
   const demoRef = useRef(false)
   demoRef.current = demo
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'ht6-demo') setDemo(e.newValue === '1')
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
 
   useEffect(() => {
     const offs = [
@@ -108,7 +120,13 @@ export function RobotProvider({ children, authToken = null, authReady = true }) 
     else socketRef.current?.emit(event, payload)
   }, [bus])
 
-  const toggleDemo = useCallback(() => setDemo((d) => !d), [])
+  const toggleDemo = useCallback(() => {
+    setDemo((d) => {
+      const next = !d
+      try { localStorage.setItem('ht6-demo', next ? '1' : '0') } catch { /* private mode */ }
+      return next
+    })
+  }, [])
 
   const value = useMemo(
     () => ({ connected, sim: SIM, demo, toggleDemo, telemetry, detections, picks, emit, bus }),

@@ -132,6 +132,9 @@
 /* HUD layer */
 .pov-hud { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
 .pov-hud button, .pov-hud a, .pov-hud .pov-fringe-h { pointer-events: auto; }
+/* The fleet + command drawer must be fully interactive (text input included):
+   the hud's pointer-events:none otherwise makes the chat input unfocusable. */
+.pov-hud .pov-fleetbar { pointer-events: auto; }
 
 /* faint corner ticks */
 .pov-tick { position: absolute; width: 18px; height: 18px; border: 1.5px solid var(--edge); opacity: 0.45; }

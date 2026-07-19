@@ -5,6 +5,7 @@
 // class of approved stand-in as the server sim - a simulator feeding the bus,
 // not hardcoded UI data. Off by default; the operator toggles it (DEMO button).
 import { OccGrid } from './occgrid.js'
+import { parseNlCommand } from './sim.js'
 
 // A small room (4 x 3 m) with a few round objects, matching the server sim's feel.
 const W = 4
@@ -95,8 +96,15 @@ export function startSlamDemo(bus) {
     if (mapTick++ % 8 === 0) bus.push('slam_map', occ.payload(ts))
   }
 
-  // nav_goal comes through emit() -> bus.onCommand while the demo is active.
+  // Commands come through emit() -> bus.onCommand while the demo is active.
   bus.onCommand = (event, payload = {}) => {
+    if (event === 'nl_command') {
+      // FarmHand stand-in (same parser the ?sim robot uses) so the command
+      // console converses even with no hub; a goal command drives the demo rover.
+      const action = parseNlCommand(String(payload.text ?? ''))
+      bus.push('nl_action', { ts: Date.now(), text: String(payload.text ?? ''), ...action })
+      return
+    }
     if (event !== 'nav_goal') return
     if (payload.cancel) {
       nav = null
