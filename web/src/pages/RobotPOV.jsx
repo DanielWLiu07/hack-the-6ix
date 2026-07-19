@@ -175,24 +175,10 @@ export default function RobotPOV() {
     new URLSearchParams(window.location.search).has('edit') &&
     tab === 'cam'
   const [isFs, setIsFs] = useState(false)
-  // Machine-fringe spread: independent up/down split of the deco. Two HUD
-  // sliders, both persist. 0 = baked layout; UP lifts the top cluster, DOWN
-  // drops the bottom cluster, by that many world units - independently.
-  const [fringeUp, setFringeUp] = useState(() => {
-    const v = parseFloat(localStorage.getItem('pov-fringe-up') ?? '0.45')
-    return Number.isFinite(v) ? Math.max(0, Math.min(5, v)) : 0.45
-  })
-  const [fringeDown, setFringeDown] = useState(() => {
-    const v = parseFloat(localStorage.getItem('pov-fringe-down') ?? '0.2')
-    return Number.isFinite(v) ? Math.max(0, Math.min(5, v)) : 0.2
-  })
-  useEffect(() => {
-    localStorage.setItem('pov-fringe-up', String(fringeUp))
-  }, [fringeUp])
-  useEffect(() => {
-    localStorage.setItem('pov-fringe-down', String(fringeDown))
-  }, [fringeDown])
-  const [spreadCopied, setSpreadCopied] = useState(false)
+  // Machine-fringe spread: baked up/down split of the deco (tuning sliders
+  // removed). Fixed values - stale slider settings in localStorage are ignored.
+  const fringeUp = 0.45
+  const fringeDown = 0.2
 
   // Live gate. OFF by default so no socket-sourced data (which may be a stand-in
   // robot / camera test pattern, indistinguishable from real hardware here)
@@ -398,43 +384,6 @@ export default function RobotPOV() {
             </div>
 
             <div className="pov-top-r">
-              <label className="pov-fringe-h" title="Lift the top deco up">
-                <span className="lab">UP</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="5"
-                  step="0.05"
-                  value={fringeUp}
-                  onChange={(e) => setFringeUp(parseFloat(e.target.value))}
-                />
-                <span className="val">{fringeUp.toFixed(1)}</span>
-              </label>
-              <label className="pov-fringe-h" title="Drop the bottom deco down">
-                <span className="lab">DOWN</span>
-                <input
-                  type="range"
-                  min="0"
-                  max="5"
-                  step="0.05"
-                  value={fringeDown}
-                  onChange={(e) => setFringeDown(parseFloat(e.target.value))}
-                />
-                <span className="val">{fringeDown.toFixed(1)}</span>
-              </label>
-              <button
-                className="pov-fs"
-                onClick={() => {
-                  navigator.clipboard
-                    ?.writeText(`up ${fringeUp.toFixed(2)}  down ${fringeDown.toFixed(2)}`)
-                    .catch(() => {})
-                  setSpreadCopied(true)
-                  setTimeout(() => setSpreadCopied(false), 1200)
-                }}
-                title="Copy the current UP / DOWN spread values"
-              >
-                {spreadCopied ? 'COPIED' : 'COPY'}
-              </button>
               <button className="pov-fs" onClick={toggleFs} title="Fullscreen">
                 {isFs ? 'EXIT FS' : 'FULL'}
               </button>
